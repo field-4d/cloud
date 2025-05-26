@@ -1,9 +1,21 @@
+# Ignore everything
 *
 
+# Keep these folders
 !process_files/
 !query_last_timestamp/
 !update-labels/
 !upload_To_bucket/
 !users-devices-permission/
 !F4D/
+
+# Also keep their contents
+!process_files/**
+!query_last_timestamp/**
+!update-labels/**
+!upload_To_bucket/**
+!users-devices-permission/**
+!F4D/**
+
+# Keep .gitignore itself
 !.gitignore
