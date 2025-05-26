@@ -1,0 +1,13 @@
+[Unit]
+Description=Streamlit Dashboard application-V2
+After=influxdb.service 
+
+[Service] 
+User=pi
+WorkingDirectory=/home/pi/6to4/Dashboard/ServerSide/
+ExecStart=/home/pi/.local/bin/streamlit run /home/pi/6to4/Dashboard/ServerSide/app.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

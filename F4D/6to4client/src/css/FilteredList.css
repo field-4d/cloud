@@ -1,0 +1,99 @@
+/* Form hover effect */
+.add-form-filter {
+    width: 100%; /* Make the form take full width */
+    max-width: 800px; /* Set a max-width for the form */
+    margin: auto; /* Center the form horizontally */
+    padding: 1rem; /* Add padding inside the form */
+    background-color: rgb(22, 76, 137); /* Ensure the background color matches */
+    border-radius: 1.5rem; /* Keep the rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+.add-form-filter:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* Increase shadow on hover */
+}
+
+/* Header */
+.filter-header {
+    font-size: 24px;
+    margin-bottom: 1rem;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    text-align: center; /* Center align the header */
+}
+
+/* Filter group */
+.filter-group {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%; /* Make filter-group take full width */
+}
+
+.filter-group .filter-select,
+.filter-group .filter-remove-button {
+    width: 80%; /* Adjust width of the select and button */
+    max-width: 500px; /* Set a max-width for larger screens */
+    margin-bottom: 1rem; /* Add space below each element */
+}
+
+.small-select {
+    width: 60%; /* Adjust width of the select boxes when added filters */
+}
+
+/* Button styles */
+.Inside-Add-Filter,
+.Inside-Apply-Filter,
+.Inside-Close-Filter {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    padding: 0.5rem 1rem; /* Adjust padding */
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 20px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin: 0.5rem; /* Add margin for distance between buttons */
+}
+
+.Inside-Add-Filter:disabled,
+.Inside-Apply-Filter:disabled {
+    background-color: rgb(128, 128, 128); /* Grey background for disabled state */
+    cursor: not-allowed; /* Show not-allowed cursor */
+}
+
+.filter-button {
+    margin: 0.6rem;
+    padding: 0.5rem;
+    font-size: 18px;
+    color: white;
+    background-color: rgb(22, 76, 137);
+    border-radius: 0.5rem;
+    border: solid rgb(117, 192, 224) 1px;
+    cursor: pointer;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+}
+
+.filter-button:hover {
+    color: rgb(160, 160, 160);
+    background-color: rgb(16, 54, 97);
+    border: solid rgb(72, 119, 139) 1px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+}
+
+.filter-remove-button {
+    background-color: rgb(255, 69, 0); /* Set a background color for distinction */
+    color: white; /* Set text color */
+    padding: 0.5rem 1rem; /* Adjust padding */
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 16px; /* Adjust font size */
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Match the font */
+}
+
+.error-message {
+    color: red;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Match the font */
+}

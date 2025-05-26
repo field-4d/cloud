@@ -1,0 +1,1428 @@
+May 15 13:51:56 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:51:56 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 2 bytes, From fd002124b0021f9feb1
+May 15 13:51:56 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:51:56 DeveloperRoom npm[15416]: [40B blob data]
+May 15 13:51:56 DeveloperRoom npm[15416]: Ping From:fd002124b0021f9feb1
+May 15 13:51:56 DeveloperRoom npm[15416]: 
+May 15 13:52:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:52:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 13:52:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:52:22 DeveloperRoom npm[15416]: JSON_START
+May 15 13:52:22 DeveloperRoom npm[15416]: {
+May 15 13:52:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:52:22 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.4665,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.67,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.2795,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.44,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.85,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.70,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":29.84,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":48.73,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":29.85,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":48.63,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":383.68,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":385.28,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":393.92,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":389.76,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":381.44,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.13,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":22.62,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 13:52:22 DeveloperRoom npm[15416]:     "package_number":638
+May 15 13:52:22 DeveloperRoom npm[15416]: }
+May 15 13:52:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:52:22 GMT+0300 (Israel Daylight Time)
+May 15 13:52:22 DeveloperRoom npm[15416]: JSON_END
+May 15 13:52:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:52:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 13:52:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:52:52 DeveloperRoom npm[15416]: JSON_START
+May 15 13:52:52 DeveloperRoom npm[15416]: {
+May 15 13:52:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:52:52 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.4665,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.67,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.2795,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.44,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.85,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.70,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":29.84,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":48.73,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":29.85,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":48.63,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":383.68,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":385.28,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":393.92,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":389.76,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":381.44,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.13,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":22.62,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 13:52:52 DeveloperRoom npm[15416]:     "package_number":638
+May 15 13:52:52 DeveloperRoom npm[15416]: }
+May 15 13:52:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:52:52 GMT+0300 (Israel Daylight Time)
+May 15 13:52:52 DeveloperRoom npm[15416]: JSON_END
+May 15 13:53:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 13:53:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 13:53:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 13:53:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 13:55:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 13:55:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:22 DeveloperRoom npm[15416]: JSON_START
+May 15 13:55:22 DeveloperRoom npm[15416]: {
+May 15 13:55:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:55:22 DeveloperRoom npm[15416]:     "co2_ppm":651,
+May 15 13:55:22 DeveloperRoom npm[15416]:     "air_velocity":1.25,
+May 15 13:55:22 DeveloperRoom npm[15416]:     "package_number":213
+May 15 13:55:22 DeveloperRoom npm[15416]: }
+May 15 13:55:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:55:22 GMT+0300 (Israel Daylight Time)
+May 15 13:55:22 DeveloperRoom npm[15416]: JSON_END
+May 15 13:55:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:24 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 13:55:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:24 DeveloperRoom npm[15416]: JSON_START
+May 15 13:55:24 DeveloperRoom npm[15416]: {
+May 15 13:55:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:55:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5191,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":29.20,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.3258,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.57,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.99,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.90,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":30.27,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":47.61,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":30.28,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":47.62,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":406.08,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":387.84,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":400.32,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":401.28,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":390.40,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.92,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.59,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 13:55:24 DeveloperRoom npm[15416]:     "package_number":639
+May 15 13:55:24 DeveloperRoom npm[15416]: }
+May 15 13:55:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:55:24 GMT+0300 (Israel Daylight Time)
+May 15 13:55:24 DeveloperRoom npm[15416]: JSON_END
+May 15 13:55:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 13:55:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:52 DeveloperRoom npm[15416]: JSON_START
+May 15 13:55:52 DeveloperRoom npm[15416]: {
+May 15 13:55:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:55:52 DeveloperRoom npm[15416]:     "co2_ppm":651,
+May 15 13:55:52 DeveloperRoom npm[15416]:     "air_velocity":1.25,
+May 15 13:55:52 DeveloperRoom npm[15416]:     "package_number":213
+May 15 13:55:52 DeveloperRoom npm[15416]: }
+May 15 13:55:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:55:52 GMT+0300 (Israel Daylight Time)
+May 15 13:55:52 DeveloperRoom npm[15416]: JSON_END
+May 15 13:55:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 13:55:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:55:54 DeveloperRoom npm[15416]: JSON_START
+May 15 13:55:54 DeveloperRoom npm[15416]: {
+May 15 13:55:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:55:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5191,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":29.20,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.3258,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.57,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.99,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.90,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":30.27,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":47.61,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":30.28,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":47.62,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":406.08,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":387.84,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":400.32,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":401.28,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":390.40,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.92,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.59,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 13:55:54 DeveloperRoom npm[15416]:     "package_number":639
+May 15 13:55:54 DeveloperRoom npm[15416]: }
+May 15 13:55:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:55:54 GMT+0300 (Israel Daylight Time)
+May 15 13:55:54 DeveloperRoom npm[15416]: JSON_END
+May 15 13:56:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:56:21 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 2 bytes, From fd002124b0021f9feb1
+May 15 13:56:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:56:21 DeveloperRoom npm[15416]: [40B blob data]
+May 15 13:56:21 DeveloperRoom npm[15416]: Ping From:fd002124b0021f9feb1
+May 15 13:56:21 DeveloperRoom npm[15416]: 
+May 15 13:56:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 13:56:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 13:56:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 13:56:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 13:57:41 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:57:41 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 13:57:41 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:57:41 DeveloperRoom npm[15416]: JSON_START
+May 15 13:57:41 DeveloperRoom npm[15416]: {
+May 15 13:57:41 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:57:41 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.4997,
+May 15 13:57:41 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.17,
+May 15 13:57:41 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.3018,
+May 15 13:57:41 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.65,
+May 15 13:57:41 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":26.05,
+May 15 13:57:41 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.48,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":28.29,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":51.68,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":28.27,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":51.78,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":426.24,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":407.36,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":419.20,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":420.16,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":408.96,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":24.87,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":25.50,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 13:57:42 DeveloperRoom npm[15416]:     "package_number":640
+May 15 13:57:42 DeveloperRoom npm[15416]: }
+May 15 13:57:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:57:42 GMT+0300 (Israel Daylight Time)
+May 15 13:57:42 DeveloperRoom npm[15416]: JSON_END
+May 15 13:58:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:58:11 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 13:58:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 13:58:11 DeveloperRoom npm[15416]: JSON_START
+May 15 13:58:11 DeveloperRoom npm[15416]: {
+May 15 13:58:11 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 13:58:11 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.4997,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.17,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.3018,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.65,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":26.05,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.48,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":28.29,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":51.68,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":28.27,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":51.78,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":426.24,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":407.36,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":419.20,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":420.16,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":408.96,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":24.87,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":25.50,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 13:58:11 DeveloperRoom npm[15416]:     "package_number":640
+May 15 13:58:11 DeveloperRoom npm[15416]: }
+May 15 13:58:11 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 13:58:11 GMT+0300 (Israel Daylight Time)
+May 15 13:58:11 DeveloperRoom npm[15416]: JSON_END
+May 15 13:59:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 13:59:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 13:59:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 13:59:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:00:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:00:21 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:00:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:00:21 DeveloperRoom npm[15416]: JSON_START
+May 15 14:00:21 DeveloperRoom npm[15416]: {
+May 15 14:00:21 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:00:21 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5955,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":27.48,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4119,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.58,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.96,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.14,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":27.71,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":53.69,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":27.70,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":53.70,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":424.00,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":402.56,
+May 15 14:00:21 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":414.08,
+May 15 14:00:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":414.72,
+May 15 14:00:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":404.16,
+May 15 14:00:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":25.26,
+May 15 14:00:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":25.88,
+May 15 14:00:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:00:22 DeveloperRoom npm[15416]:     "package_number":641
+May 15 14:00:22 DeveloperRoom npm[15416]: }
+May 15 14:00:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:00:22 GMT+0300 (Israel Daylight Time)
+May 15 14:00:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:00:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:00:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:00:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:00:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:00:52 DeveloperRoom npm[15416]: {
+May 15 14:00:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:00:52 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5955,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":27.48,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4119,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.58,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.96,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.14,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":27.71,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":53.69,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":27.70,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":53.70,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":424.00,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":402.56,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":414.08,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":414.72,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":404.16,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":25.26,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":25.88,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:00:52 DeveloperRoom npm[15416]:     "package_number":641
+May 15 14:00:52 DeveloperRoom npm[15416]: }
+May 15 14:00:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:00:52 GMT+0300 (Israel Daylight Time)
+May 15 14:00:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:02:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:02:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:02:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:02:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:03:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:03:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:03:22 DeveloperRoom npm[15416]: {
+May 15 14:03:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:03:22 DeveloperRoom npm[15416]:     "co2_ppm":660,
+May 15 14:03:22 DeveloperRoom npm[15416]:     "air_velocity":0.15,
+May 15 14:03:22 DeveloperRoom npm[15416]:     "package_number":214
+May 15 14:03:22 DeveloperRoom npm[15416]: }
+May 15 14:03:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:03:22 GMT+0300 (Israel Daylight Time)
+May 15 14:03:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:03:23 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:23 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:03:23 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:24 DeveloperRoom npm[15416]: JSON_START
+May 15 14:03:24 DeveloperRoom npm[15416]: {
+May 15 14:03:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:03:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.6213,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":27.17,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4501,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.48,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.86,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.67,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":27.42,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":54.50,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":27.40,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":54.55,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":416.00,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":396.48,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":408.32,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":410.24,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":401.60,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":24.29,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":24.91,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:03:24 DeveloperRoom npm[15416]:     "package_number":642
+May 15 14:03:24 DeveloperRoom npm[15416]: }
+May 15 14:03:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:03:24 GMT+0300 (Israel Daylight Time)
+May 15 14:03:24 DeveloperRoom npm[15416]: JSON_END
+May 15 14:03:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:03:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:03:52 DeveloperRoom npm[15416]: {
+May 15 14:03:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:03:52 DeveloperRoom npm[15416]:     "co2_ppm":660,
+May 15 14:03:52 DeveloperRoom npm[15416]:     "air_velocity":0.15,
+May 15 14:03:52 DeveloperRoom npm[15416]:     "package_number":214
+May 15 14:03:52 DeveloperRoom npm[15416]: }
+May 15 14:03:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:03:52 GMT+0300 (Israel Daylight Time)
+May 15 14:03:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:03:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:03:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:03:54 DeveloperRoom npm[15416]: JSON_START
+May 15 14:03:54 DeveloperRoom npm[15416]: {
+May 15 14:03:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:03:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.6213,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":27.17,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4501,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.48,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.86,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.67,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":27.42,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":54.50,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":27.40,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":54.55,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":416.00,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":396.48,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":408.32,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":410.24,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":401.60,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":24.29,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":24.91,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:03:54 DeveloperRoom npm[15416]:     "package_number":642
+May 15 14:03:54 DeveloperRoom npm[15416]: }
+May 15 14:03:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:03:54 GMT+0300 (Israel Daylight Time)
+May 15 14:03:54 DeveloperRoom npm[15416]: JSON_END
+May 15 14:05:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:05:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:05:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:05:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:05:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:05:42 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:05:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:05:42 DeveloperRoom npm[15416]: JSON_START
+May 15 14:05:42 DeveloperRoom npm[15416]: {
+May 15 14:05:42 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:05:42 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5883,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.15,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4168,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.40,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.85,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.87,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":29.40,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":50.11,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":29.45,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":50.04,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":420.16,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":400.64,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":415.04,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":414.40,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":406.40,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.72,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.57,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:05:42 DeveloperRoom npm[15416]:     "package_number":643
+May 15 14:05:42 DeveloperRoom npm[15416]: }
+May 15 14:05:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:05:42 GMT+0300 (Israel Daylight Time)
+May 15 14:05:42 DeveloperRoom npm[15416]: JSON_END
+May 15 14:06:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:06:11 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:06:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:06:11 DeveloperRoom npm[15416]: JSON_START
+May 15 14:06:11 DeveloperRoom npm[15416]: {
+May 15 14:06:11 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:06:11 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5883,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.15,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4168,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.40,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.85,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.87,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":29.40,
+May 15 14:06:11 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":50.11,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":29.45,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":50.04,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":420.16,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":400.64,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":415.04,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":414.40,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":406.40,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.72,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.57,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:06:12 DeveloperRoom npm[15416]:     "package_number":643
+May 15 14:06:12 DeveloperRoom npm[15416]: }
+May 15 14:06:12 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:06:12 GMT+0300 (Israel Daylight Time)
+May 15 14:06:12 DeveloperRoom npm[15416]: JSON_END
+May 15 14:08:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:08:21 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:08:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:08:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:08:22 DeveloperRoom npm[15416]: {
+May 15 14:08:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:08:22 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5870,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.89,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4110,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.54,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.94,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.31,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":30.06,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":48.43,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":30.06,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":48.37,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":428.48,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":408.96,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":421.44,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":422.08,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":409.60,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.53,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.20,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:08:22 DeveloperRoom npm[15416]:     "package_number":644
+May 15 14:08:22 DeveloperRoom npm[15416]: }
+May 15 14:08:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:08:22 GMT+0300 (Israel Daylight Time)
+May 15 14:08:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:08:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:08:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:08:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:08:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:08:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:08:51 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:08:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:08:51 DeveloperRoom npm[15416]: JSON_START
+May 15 14:08:51 DeveloperRoom npm[15416]: {
+May 15 14:08:51 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:08:51 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.5870,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.89,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4110,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.54,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.94,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":59.31,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":30.06,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":48.43,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":30.06,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":48.37,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":428.48,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":408.96,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":421.44,
+May 15 14:08:51 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":422.08,
+May 15 14:08:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":409.60,
+May 15 14:08:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.53,
+May 15 14:08:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.20,
+May 15 14:08:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:08:52 DeveloperRoom npm[15416]:     "package_number":644
+May 15 14:08:52 DeveloperRoom npm[15416]: }
+May 15 14:08:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:08:52 GMT+0300 (Israel Daylight Time)
+May 15 14:08:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:11:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:11:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:11:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:11:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:11:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:11:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:11:22 DeveloperRoom npm[15416]: {
+May 15 14:11:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:11:22 DeveloperRoom npm[15416]:     "co2_ppm":679,
+May 15 14:11:22 DeveloperRoom npm[15416]:     "air_velocity":1.27,
+May 15 14:11:22 DeveloperRoom npm[15416]:     "package_number":215
+May 15 14:11:22 DeveloperRoom npm[15416]: }
+May 15 14:11:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:11:22 GMT+0300 (Israel Daylight Time)
+May 15 14:11:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:11:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:24 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:11:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:24 DeveloperRoom npm[15416]: JSON_START
+May 15 14:11:24 DeveloperRoom npm[15416]: {
+May 15 14:11:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:11:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.6158,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":29.32,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4528,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.70,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":26.07,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.35,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":30.36,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":47.09,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":30.38,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":46.99,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":415.36,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":396.80,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":407.04,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":404.80,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":394.88,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":23.31,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.97,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:11:24 DeveloperRoom npm[15416]:     "package_number":645
+May 15 14:11:24 DeveloperRoom npm[15416]: }
+May 15 14:11:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:11:24 GMT+0300 (Israel Daylight Time)
+May 15 14:11:24 DeveloperRoom npm[15416]: JSON_END
+May 15 14:11:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:11:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:11:52 DeveloperRoom npm[15416]: {
+May 15 14:11:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:11:52 DeveloperRoom npm[15416]:     "co2_ppm":679,
+May 15 14:11:52 DeveloperRoom npm[15416]:     "air_velocity":1.27,
+May 15 14:11:52 DeveloperRoom npm[15416]:     "package_number":215
+May 15 14:11:52 DeveloperRoom npm[15416]: }
+May 15 14:11:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:11:52 GMT+0300 (Israel Daylight Time)
+May 15 14:11:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:11:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:11:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:11:54 DeveloperRoom npm[15416]: JSON_START
+May 15 14:11:54 DeveloperRoom npm[15416]: {
+May 15 14:11:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:11:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.6158,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":29.32,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.4528,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.70,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":26.07,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.35,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":30.36,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":47.09,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":30.38,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":46.99,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":415.36,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":396.80,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":407.04,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":404.80,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":394.88,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":23.31,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":23.97,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:11:54 DeveloperRoom npm[15416]:     "package_number":645
+May 15 14:11:54 DeveloperRoom npm[15416]: }
+May 15 14:11:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:11:54 GMT+0300 (Israel Daylight Time)
+May 15 14:11:54 DeveloperRoom npm[15416]: JSON_END
+May 15 14:13:41 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:13:41 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:13:41 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:13:41 DeveloperRoom npm[15416]: JSON_START
+May 15 14:13:41 DeveloperRoom npm[15416]: {
+May 15 14:13:41 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:13:41 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.7247,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.29,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.5558,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.73,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":26.12,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.43,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":28.42,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":51.64,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":28.38,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":51.70,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":408.00,
+May 15 14:13:41 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":387.20,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":402.88,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":400.32,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":392.64,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":25.26,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":25.89,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:13:42 DeveloperRoom npm[15416]:     "package_number":646
+May 15 14:13:42 DeveloperRoom npm[15416]: }
+May 15 14:13:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:13:42 GMT+0300 (Israel Daylight Time)
+May 15 14:13:42 DeveloperRoom npm[15416]: JSON_END
+May 15 14:14:12 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:14:12 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:14:12 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:14:12 DeveloperRoom npm[15416]: JSON_START
+May 15 14:14:12 DeveloperRoom npm[15416]: {
+May 15 14:14:12 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:14:12 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.7247,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":28.29,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.5558,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.73,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":26.12,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.43,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":28.42,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":51.64,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":28.38,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":51.70,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":408.00,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":387.20,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":402.88,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":400.32,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":392.64,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":25.26,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":25.89,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:14:12 DeveloperRoom npm[15416]:     "package_number":646
+May 15 14:14:12 DeveloperRoom npm[15416]: }
+May 15 14:14:12 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:14:12 GMT+0300 (Israel Daylight Time)
+May 15 14:14:12 DeveloperRoom npm[15416]: JSON_END
+May 15 14:14:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:14:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:14:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:14:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:16:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:16:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:16:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:16:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:16:22 DeveloperRoom npm[15416]: {
+May 15 14:16:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:16:22 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.8180,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":27.62,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.6198,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.64,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.99,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.24,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":27.82,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":52.66,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":27.81,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":52.62,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":400.32,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":382.08,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":395.84,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":393.92,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":386.24,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":25.45,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":26.26,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:16:22 DeveloperRoom npm[15416]:     "package_number":647
+May 15 14:16:22 DeveloperRoom npm[15416]: }
+May 15 14:16:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:16:22 GMT+0300 (Israel Daylight Time)
+May 15 14:16:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:16:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:16:51 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:16:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:16:51 DeveloperRoom npm[15416]: JSON_START
+May 15 14:16:51 DeveloperRoom npm[15416]: {
+May 15 14:16:51 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:16:52 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.8180,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":27.62,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.6198,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":25.64,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.99,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.24,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":27.82,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":52.66,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":27.81,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":52.62,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":400.32,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":382.08,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":395.84,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":393.92,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":386.24,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":25.45,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":26.26,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:16:52 DeveloperRoom npm[15416]:     "package_number":647
+May 15 14:16:52 DeveloperRoom npm[15416]: }
+May 15 14:16:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:16:52 GMT+0300 (Israel Daylight Time)
+May 15 14:16:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:17:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:17:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:17:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:17:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:19:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:19:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:19:22 DeveloperRoom npm[15416]: {
+May 15 14:19:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:19:22 DeveloperRoom npm[15416]:     "co2_ppm":727,
+May 15 14:19:22 DeveloperRoom npm[15416]:     "air_velocity":0.15,
+May 15 14:19:22 DeveloperRoom npm[15416]:     "package_number":216
+May 15 14:19:22 DeveloperRoom npm[15416]: }
+May 15 14:19:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:19:22 GMT+0300 (Israel Daylight Time)
+May 15 14:19:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:19:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:24 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:19:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:24 DeveloperRoom npm[15416]: JSON_START
+May 15 14:19:24 DeveloperRoom npm[15416]: {
+May 15 14:19:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:19:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.9080,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":25.43,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.7134,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":24.99,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.27,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.94,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":25.21,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":57.72,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":25.13,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":57.89,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":382.72,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":365.76,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":379.84,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":375.68,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":366.08,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":27.02,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":27.40,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:19:24 DeveloperRoom npm[15416]:     "package_number":648
+May 15 14:19:24 DeveloperRoom npm[15416]: }
+May 15 14:19:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:19:24 GMT+0300 (Israel Daylight Time)
+May 15 14:19:24 DeveloperRoom npm[15416]: JSON_END
+May 15 14:19:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:19:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:19:52 DeveloperRoom npm[15416]: {
+May 15 14:19:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:19:52 DeveloperRoom npm[15416]:     "co2_ppm":727,
+May 15 14:19:52 DeveloperRoom npm[15416]:     "air_velocity":0.15,
+May 15 14:19:52 DeveloperRoom npm[15416]:     "package_number":216
+May 15 14:19:52 DeveloperRoom npm[15416]: }
+May 15 14:19:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:19:52 GMT+0300 (Israel Daylight Time)
+May 15 14:19:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:19:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:19:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:19:54 DeveloperRoom npm[15416]: JSON_START
+May 15 14:19:54 DeveloperRoom npm[15416]: {
+May 15 14:19:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:19:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.9080,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":25.43,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.7134,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":24.99,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":25.27,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":58.94,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":25.21,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":57.72,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":25.13,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":57.89,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":382.72,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":365.76,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":379.84,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":375.68,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":366.08,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":27.02,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":27.40,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:19:54 DeveloperRoom npm[15416]:     "package_number":648
+May 15 14:19:54 DeveloperRoom npm[15416]: }
+May 15 14:19:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:19:54 GMT+0300 (Israel Daylight Time)
+May 15 14:19:54 DeveloperRoom npm[15416]: JSON_END
+May 15 14:20:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:20:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:20:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:20:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:21:41 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:21:42 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:21:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:21:42 DeveloperRoom npm[15416]: JSON_START
+May 15 14:21:42 DeveloperRoom npm[15416]: {
+May 15 14:21:42 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:21:42 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.9706,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":23.99,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.7580,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":23.59,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":23.99,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":60.62,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":24.90,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":57.35,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":24.91,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":57.33,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":398.72,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":383.68,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":391.04,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":385.60,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":378.88,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":26.63,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":27.20,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:21:42 DeveloperRoom npm[15416]:     "package_number":649
+May 15 14:21:42 DeveloperRoom npm[15416]: }
+May 15 14:21:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:21:42 GMT+0300 (Israel Daylight Time)
+May 15 14:21:42 DeveloperRoom npm[15416]: JSON_END
+May 15 14:22:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:22:11 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:22:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:22:11 DeveloperRoom npm[15416]: JSON_START
+May 15 14:22:11 DeveloperRoom npm[15416]: {
+May 15 14:22:11 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:22:11 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.9706,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":23.99,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.7580,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":23.59,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":23.99,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":60.62,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":24.90,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":57.35,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":24.91,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":57.33,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":398.72,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":383.68,
+May 15 14:22:11 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":391.04,
+May 15 14:22:12 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":385.60,
+May 15 14:22:12 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":378.88,
+May 15 14:22:12 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":26.63,
+May 15 14:22:12 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":27.20,
+May 15 14:22:12 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:22:12 DeveloperRoom npm[15416]:     "package_number":649
+May 15 14:22:12 DeveloperRoom npm[15416]: }
+May 15 14:22:12 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:22:12 GMT+0300 (Israel Daylight Time)
+May 15 14:22:12 DeveloperRoom npm[15416]: JSON_END
+May 15 14:23:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:23:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:23:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:23:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:24:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:24:21 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:24:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:24:21 DeveloperRoom npm[15416]: JSON_START
+May 15 14:24:21 DeveloperRoom npm[15416]: {
+May 15 14:24:21 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:24:21 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.0422,
+May 15 14:24:21 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":23.43,
+May 15 14:24:21 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.8508,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":22.88,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":23.37,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":61.90,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":24.49,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":58.07,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":24.51,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":58.07,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":397.44,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":381.12,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":387.84,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":387.20,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":380.16,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":24.09,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":24.69,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:24:22 DeveloperRoom npm[15416]:     "package_number":650
+May 15 14:24:22 DeveloperRoom npm[15416]: }
+May 15 14:24:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:24:22 GMT+0300 (Israel Daylight Time)
+May 15 14:24:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:24:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:24:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:24:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:24:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:24:52 DeveloperRoom npm[15416]: {
+May 15 14:24:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:24:52 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.0422,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":23.43,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.8508,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":22.88,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":23.37,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":61.90,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":24.49,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":58.07,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":24.51,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":58.07,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":397.44,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":381.12,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":387.84,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":387.20,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":380.16,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":24.09,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":24.69,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:24:52 DeveloperRoom npm[15416]:     "package_number":650
+May 15 14:24:52 DeveloperRoom npm[15416]: }
+May 15 14:24:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:24:52 GMT+0300 (Israel Daylight Time)
+May 15 14:24:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:26:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:26:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:26:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:26:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:27:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:27:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:27:22 DeveloperRoom npm[15416]: {
+May 15 14:27:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:27:22 DeveloperRoom npm[15416]:     "co2_ppm":660,
+May 15 14:27:22 DeveloperRoom npm[15416]:     "air_velocity":1.20,
+May 15 14:27:22 DeveloperRoom npm[15416]:     "package_number":217
+May 15 14:27:22 DeveloperRoom npm[15416]: }
+May 15 14:27:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:27:22 GMT+0300 (Israel Daylight Time)
+May 15 14:27:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:27:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:24 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:27:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:24 DeveloperRoom npm[15416]: JSON_START
+May 15 14:27:24 DeveloperRoom npm[15416]: {
+May 15 14:27:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:27:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1494,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":23.20,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9587,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":22.53,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":23.07,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":62.88,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":24.26,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":58.72,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":24.28,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":58.74,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":397.12,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":380.48,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":396.16,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":393.28,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":387.84,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.33,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":22.78,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:27:24 DeveloperRoom npm[15416]:     "package_number":651
+May 15 14:27:24 DeveloperRoom npm[15416]: }
+May 15 14:27:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:27:24 GMT+0300 (Israel Daylight Time)
+May 15 14:27:24 DeveloperRoom npm[15416]: JSON_END
+May 15 14:27:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:27:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:27:52 DeveloperRoom npm[15416]: {
+May 15 14:27:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:27:52 DeveloperRoom npm[15416]:     "co2_ppm":660,
+May 15 14:27:52 DeveloperRoom npm[15416]:     "air_velocity":1.20,
+May 15 14:27:52 DeveloperRoom npm[15416]:     "package_number":217
+May 15 14:27:52 DeveloperRoom npm[15416]: }
+May 15 14:27:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:27:52 GMT+0300 (Israel Daylight Time)
+May 15 14:27:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:27:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:27:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:27:54 DeveloperRoom npm[15416]: JSON_START
+May 15 14:27:54 DeveloperRoom npm[15416]: {
+May 15 14:27:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:27:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1494,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":23.20,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9587,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":22.53,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":23.07,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":62.88,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":24.26,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":58.72,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":24.28,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":58.74,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":397.12,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":380.48,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":396.16,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":393.28,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":387.84,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":22.33,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":22.78,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:27:54 DeveloperRoom npm[15416]:     "package_number":651
+May 15 14:27:54 DeveloperRoom npm[15416]: }
+May 15 14:27:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:27:54 GMT+0300 (Israel Daylight Time)
+May 15 14:27:54 DeveloperRoom npm[15416]: JSON_END
+May 15 14:29:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:29:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:29:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:29:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:29:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:29:42 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:29:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:29:42 DeveloperRoom npm[15416]: JSON_START
+May 15 14:29:42 DeveloperRoom npm[15416]: {
+May 15 14:29:42 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:29:42 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1254,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.18,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9521,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":22.30,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.81,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":63.49,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":22.51,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":63.59,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":22.50,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":63.68,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":400.96,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":382.08,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":391.36,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":386.88,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":378.56,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":21.16,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":21.63,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:29:42 DeveloperRoom npm[15416]:     "package_number":652
+May 15 14:29:42 DeveloperRoom npm[15416]: }
+May 15 14:29:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:29:42 GMT+0300 (Israel Daylight Time)
+May 15 14:29:42 DeveloperRoom npm[15416]: JSON_END
+May 15 14:30:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:30:11 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:30:11 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:30:12 DeveloperRoom npm[15416]: JSON_START
+May 15 14:30:12 DeveloperRoom npm[15416]: {
+May 15 14:30:12 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:30:12 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1254,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.18,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9521,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":22.30,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.81,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":63.49,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":22.51,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":63.59,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":22.50,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":63.68,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":400.96,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":382.08,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":391.36,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":386.88,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":378.56,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":21.16,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":21.63,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:30:12 DeveloperRoom npm[15416]:     "package_number":652
+May 15 14:30:12 DeveloperRoom npm[15416]: }
+May 15 14:30:12 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:30:12 GMT+0300 (Israel Daylight Time)
+May 15 14:30:12 DeveloperRoom npm[15416]: JSON_END
+May 15 14:32:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:32:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:32:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:32:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:32:22 DeveloperRoom npm[15416]: {
+May 15 14:32:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:32:22 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1215,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":21.69,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9497,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.99,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.48,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.18,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":22.11,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":64.73,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":22.10,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":64.74,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":389.12,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":372.80,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":385.92,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":385.92,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":374.72,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":19.41,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":20.11,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:32:22 DeveloperRoom npm[15416]:     "package_number":653
+May 15 14:32:22 DeveloperRoom npm[15416]: }
+May 15 14:32:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:32:22 GMT+0300 (Israel Daylight Time)
+May 15 14:32:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:32:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:32:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:32:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:32:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:32:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:32:51 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:32:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:32:51 DeveloperRoom npm[15416]: JSON_START
+May 15 14:32:51 DeveloperRoom npm[15416]: {
+May 15 14:32:51 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:32:51 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1215,
+May 15 14:32:51 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":21.69,
+May 15 14:32:51 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9497,
+May 15 14:32:51 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.99,
+May 15 14:32:51 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.48,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.18,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":22.11,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":64.73,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":22.10,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":64.74,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":389.12,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":372.80,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":385.92,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":385.92,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":374.72,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":19.41,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":20.11,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:32:52 DeveloperRoom npm[15416]:     "package_number":653
+May 15 14:32:52 DeveloperRoom npm[15416]: }
+May 15 14:32:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:32:52 GMT+0300 (Israel Daylight Time)
+May 15 14:32:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:35:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:35:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:35:22 DeveloperRoom npm[15416]: {
+May 15 14:35:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:35:22 DeveloperRoom npm[15416]:     "co2_ppm":702,
+May 15 14:35:22 DeveloperRoom npm[15416]:     "air_velocity":0.15,
+May 15 14:35:22 DeveloperRoom npm[15416]:     "package_number":218
+May 15 14:35:22 DeveloperRoom npm[15416]: }
+May 15 14:35:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:35:22 GMT+0300 (Israel Daylight Time)
+May 15 14:35:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:35:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:35:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:35:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:35:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:35:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:24 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:35:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:24 DeveloperRoom npm[15416]: JSON_START
+May 15 14:35:24 DeveloperRoom npm[15416]: {
+May 15 14:35:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:35:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1040,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":21.54,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9131,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.83,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.32,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.49,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":21.98,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":64.96,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":21.97,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":64.98,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":390.08,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":370.24,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":380.48,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":375.68,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":368.96,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":17.25,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":18.00,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:35:24 DeveloperRoom npm[15416]:     "package_number":654
+May 15 14:35:24 DeveloperRoom npm[15416]: }
+May 15 14:35:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:35:24 GMT+0300 (Israel Daylight Time)
+May 15 14:35:24 DeveloperRoom npm[15416]: JSON_END
+May 15 14:35:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:51 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:35:51 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:51 DeveloperRoom npm[15416]: JSON_START
+May 15 14:35:51 DeveloperRoom npm[15416]: {
+May 15 14:35:51 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:35:51 DeveloperRoom npm[15416]:     "co2_ppm":702,
+May 15 14:35:52 DeveloperRoom npm[15416]:     "air_velocity":0.15,
+May 15 14:35:52 DeveloperRoom npm[15416]:     "package_number":218
+May 15 14:35:52 DeveloperRoom npm[15416]: }
+May 15 14:35:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:35:52 GMT+0300 (Israel Daylight Time)
+May 15 14:35:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:35:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:35:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:35:54 DeveloperRoom npm[15416]: JSON_START
+May 15 14:35:54 DeveloperRoom npm[15416]: {
+May 15 14:35:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:35:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.1040,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":21.54,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.9131,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.83,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.32,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.49,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":21.98,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":64.96,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":21.97,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":64.98,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":390.08,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":370.24,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":380.48,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":375.68,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":368.96,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":17.25,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":18.00,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:35:54 DeveloperRoom npm[15416]:     "package_number":654
+May 15 14:35:54 DeveloperRoom npm[15416]: }
+May 15 14:35:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:35:54 GMT+0300 (Israel Daylight Time)
+May 15 14:35:54 DeveloperRoom npm[15416]: JSON_END
+May 15 14:37:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:37:42 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:37:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:37:42 DeveloperRoom npm[15416]: JSON_START
+May 15 14:37:42 DeveloperRoom npm[15416]: {
+May 15 14:37:42 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:37:42 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.0701,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.30,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.8613,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.76,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.30,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.50,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":23.50,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":60.32,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":23.54,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":60.32,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":390.08,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":377.92,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":393.92,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":391.36,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":377.28,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.92,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":15.91,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:37:42 DeveloperRoom npm[15416]:     "package_number":655
+May 15 14:37:42 DeveloperRoom npm[15416]: }
+May 15 14:37:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:37:42 GMT+0300 (Israel Daylight Time)
+May 15 14:37:42 DeveloperRoom npm[15416]: JSON_END
+May 15 14:38:12 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:38:12 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:38:12 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:38:12 DeveloperRoom npm[15416]: JSON_START
+May 15 14:38:12 DeveloperRoom npm[15416]: {
+May 15 14:38:12 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:38:12 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.0701,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.30,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.8613,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.76,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.30,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.50,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":23.50,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":60.32,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":23.54,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":60.32,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":390.08,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":377.92,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":393.92,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":391.36,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":377.28,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.92,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":15.91,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:38:12 DeveloperRoom npm[15416]:     "package_number":655
+May 15 14:38:12 DeveloperRoom npm[15416]: }
+May 15 14:38:12 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:38:12 GMT+0300 (Israel Daylight Time)
+May 15 14:38:12 DeveloperRoom npm[15416]: JSON_END
+May 15 14:38:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:38:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:38:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:38:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:40:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:40:21 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:40:21 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:40:21 DeveloperRoom npm[15416]: JSON_START
+May 15 14:40:21 DeveloperRoom npm[15416]: {
+May 15 14:40:21 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:40:21 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.0353,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.55,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.8756,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.79,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.33,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.30,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":23.69,
+May 15 14:40:21 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":59.55,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":23.71,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":59.55,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":384.96,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":370.24,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":383.68,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":381.76,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":375.68,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.33,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":14.97,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:40:22 DeveloperRoom npm[15416]:     "package_number":656
+May 15 14:40:22 DeveloperRoom npm[15416]: }
+May 15 14:40:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:40:22 GMT+0300 (Israel Daylight Time)
+May 15 14:40:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:40:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:40:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:40:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:40:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:40:52 DeveloperRoom npm[15416]: {
+May 15 14:40:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:40:52 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1012.0353,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.55,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.8756,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.79,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.33,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.30,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":23.69,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":59.55,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":23.71,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":59.55,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":384.96,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":370.24,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":383.68,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":381.76,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":375.68,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.33,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":14.97,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:40:52 DeveloperRoom npm[15416]:     "package_number":656
+May 15 14:40:52 DeveloperRoom npm[15416]: }
+May 15 14:40:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:40:52 GMT+0300 (Israel Daylight Time)
+May 15 14:40:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:41:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:41:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:41:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:41:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:43:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:22 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:43:22 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:22 DeveloperRoom npm[15416]: JSON_START
+May 15 14:43:22 DeveloperRoom npm[15416]: {
+May 15 14:43:22 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:43:22 DeveloperRoom npm[15416]:     "co2_ppm":682,
+May 15 14:43:22 DeveloperRoom npm[15416]:     "air_velocity":1.06,
+May 15 14:43:22 DeveloperRoom npm[15416]:     "package_number":219
+May 15 14:43:22 DeveloperRoom npm[15416]: }
+May 15 14:43:22 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:43:22 GMT+0300 (Israel Daylight Time)
+May 15 14:43:22 DeveloperRoom npm[15416]: JSON_END
+May 15 14:43:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:24 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:43:24 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:24 DeveloperRoom npm[15416]: JSON_START
+May 15 14:43:24 DeveloperRoom npm[15416]: {
+May 15 14:43:24 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:43:24 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.8918,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.52,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.7306,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.76,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.26,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.03,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":23.65,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":59.30,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":23.62,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":59.34,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":409.28,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":392.64,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":403.52,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":400.96,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":393.28,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.13,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":14.99,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:43:24 DeveloperRoom npm[15416]:     "package_number":657
+May 15 14:43:24 DeveloperRoom npm[15416]: }
+May 15 14:43:24 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:43:24 GMT+0300 (Israel Daylight Time)
+May 15 14:43:24 DeveloperRoom npm[15416]: JSON_END
+May 15 14:43:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:52 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 12 bytes, From fd002124b0021f9feb1
+May 15 14:43:52 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:52 DeveloperRoom npm[15416]: JSON_START
+May 15 14:43:52 DeveloperRoom npm[15416]: {
+May 15 14:43:52 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:43:52 DeveloperRoom npm[15416]:     "co2_ppm":682,
+May 15 14:43:52 DeveloperRoom npm[15416]:     "air_velocity":1.06,
+May 15 14:43:52 DeveloperRoom npm[15416]:     "package_number":219
+May 15 14:43:52 DeveloperRoom npm[15416]: }
+May 15 14:43:52 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:43:52 GMT+0300 (Israel Daylight Time)
+May 15 14:43:52 DeveloperRoom npm[15416]: JSON_END
+May 15 14:43:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:54 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:43:54 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:43:54 DeveloperRoom npm[15416]: JSON_START
+May 15 14:43:54 DeveloperRoom npm[15416]: {
+May 15 14:43:54 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:43:54 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.8918,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":22.52,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.7306,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.76,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.26,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":64.03,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":23.65,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":59.30,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":23.62,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":59.34,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":409.28,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":392.64,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":403.52,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":400.96,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":393.28,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.13,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":14.99,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:43:54 DeveloperRoom npm[15416]:     "package_number":657
+May 15 14:43:54 DeveloperRoom npm[15416]: }
+May 15 14:43:54 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:43:54 GMT+0300 (Israel Daylight Time)
+May 15 14:43:54 DeveloperRoom npm[15416]: JSON_END
+May 15 14:44:22 DeveloperRoom npm[15416]: Trying to sync packets:
+May 15 14:44:22 DeveloperRoom npm[15416]: Syncing Packets:
+May 15 14:44:22 DeveloperRoom npm[15416]: wiped splist after sending to DB: {}
+May 15 14:44:22 DeveloperRoom npm[15416]: [FieldArr@y-BlackBox] successfully saved .
+May 15 14:45:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:45:42 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:45:42 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:45:42 DeveloperRoom npm[15416]: JSON_START
+May 15 14:45:42 DeveloperRoom npm[15416]: {
+May 15 14:45:42 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:45:42 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.8709,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":21.63,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.6762,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.71,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.20,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":63.97,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":22.02,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":63.76,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":22.00,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":63.89,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":402.56,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":385.60,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":398.08,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":396.48,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":389.12,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.72,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":15.56,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:45:42 DeveloperRoom npm[15416]:     "package_number":658
+May 15 14:45:42 DeveloperRoom npm[15416]: }
+May 15 14:45:42 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:45:42 GMT+0300 (Israel Daylight Time)
+May 15 14:45:42 DeveloperRoom npm[15416]: JSON_END
+May 15 14:46:12 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:46:12 DeveloperRoom npm[15416]: [INFO: F4D       ] Received 76 bytes, From fd002124b0021f9feb1
+May 15 14:46:12 DeveloperRoom npm[15416]: [INFO: F4D       ] ############################################
+May 15 14:46:12 DeveloperRoom npm[15416]: JSON_START
+May 15 14:46:12 DeveloperRoom npm[15416]: {
+May 15 14:46:12 DeveloperRoom npm[15416]:     "ipv6":"fd002124b0021f9feb1",
+May 15 14:46:12 DeveloperRoom npm[15416]:     "bmp_390_u18_pressure":1011.8709,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "bmp_390_u18_temperature":21.63,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "bmp_390_u19_pressure":1011.6762,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "bmp_390_u19_temperature":21.71,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_temperature":22.20,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "hdc_2010_u13_humidity":63.97,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_temperature":22.02,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "hdc_2010_u16_humidity":63.76,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_temperature":22.00,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "hdc_2010_u17_humidity":63.89,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "opt_3001_u1_light_intensity":402.56,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "opt_3001_u2_light_intensity":385.60,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "opt_3001_u3_light_intensity":398.08,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "opt_3001_u4_light_intensity":396.48,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "opt_3001_u5_light_intensity":389.12,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "ztp_315_object_temperature":14.72,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "ztp_315_ambient_temperature":15.56,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "batmon_battery_voltage":3292,
+May 15 14:46:12 DeveloperRoom npm[15416]:     "package_number":658
+May 15 14:46:12 DeveloperRoom npm[15416]: }
+May 15 14:46:12 DeveloperRoom npm[15416]: New packet from: fd002124b0021f9feb1 at: Thu May 15 2025 14:46:12 GMT+0300 (Israel Daylight Time)
+May 15 14:46:12 DeveloperRoom npm[15416]: JSON_END

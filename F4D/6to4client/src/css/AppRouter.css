@@ -1,0 +1,43 @@
+.nav-container {
+  position: absolute;
+  top: 30px; /* Adjust this value as needed */
+  right: 20px; /* Adjust this value as needed */
+  display: flex;
+  color:black;
+}
+
+.nav-button-Exp {
+  color: black;
+  margin-left: 10px; /* Adjust margin-left for spacing between buttons */
+  padding: 8px 12px; /* Adjust padding for button size */
+  background-color: #3498db;
+  color: #000000;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+  border: 1px solid black;
+}
+.nav-button-Exp:hover {
+  color: rgb(159, 156, 156);
+  background-color: #060707;
+}
+
+.nav-button-Data {
+  color: black;
+  margin-left: 10px; /* Adjust margin-left for spacing between buttons */
+  padding: 8px 12px;
+  background-color: #3498db;
+  color: #000000;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+  border: 1px solid black;
+
+}
+.nav-button-Data:hover {
+  color: rgb(159, 156, 156);
+  background-color: #060707;
+}
+
