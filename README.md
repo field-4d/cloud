@@ -1,53 +1,68 @@
 # Google Cloud Data Processing Project (F4D)
 
-This repository contains scripts and tools for interacting with Google Cloud services, specifically for fetching data, processing files, and managing permissions. The project is part of the F4D initiative, which focuses on advanced data processing and analytics.
+## F4D Folder (Located in `6to4server` on the Raspberry Pi)
 
-## Project Structure
+The **F4D** folder is a core component of the `6to4server` project deployed on the Raspberry Pi. It contains specialized scripts and utilities designed for the **Field4D (F4D)** initiative—an advanced system for collecting, transforming, and analyzing agricultural and environmental data.
 
-- **fetch_google**: Contains scripts for fetching data from Google Cloud services.
-- **process_files**: Directory for scripts that process and transform data files.
-- **query_last_timestamp**: Scripts to query and retrieve the last timestamp from data sources.
-- **update-labels**: Tools for updating labels on Google Cloud resources.
-- **upload_To_bucket**: Scripts to upload files to Google Cloud Storage buckets.
-- **users-devices-permission**: Utilities for managing user and device permissions.
+This folder is dedicated to high-level data processing tasks and includes:
 
-## Key Files
+- **Data Transformation**: Python scripts to clean, normalize, and restructure raw sensor data into analysis-ready formats.
+- **Analytics Tools**: Functions and scripts for performing advanced statistical analysis and machine learning model integration.
+- **Reporting**: Modules for generating visualizations and structured reports, aiding in decision-making and research insights.
 
-- **data_fetcher.py**: Main script for fetching data from Google Cloud.
-- **main_by_config.py**: Script to run the data fetching process using a configuration file.
-- **main_interactive.py**: Interactive script for data fetching and processing.
-- **config.json**: Configuration file for the project.
+This folder is essential for researchers and developers working on the F4D project, offering streamlined tools for end-to-end data management.
+
+Each subfolder also contains its own `README.md` file with specific documentation for that module.
+
+---
+
+## Other Folders in the Repository
+
+- **fetch_google**: Scripts to retrieve data from Google Cloud services, such as BigQuery or Cloud Storage.
+- **process_files**: Contains file preprocessing logic including reformatting, validation, and batch handling.
+- **query_last_timestamp**: Tools to identify the latest data record timestamps for incremental data pulling.
+- **update-labels**: Scripts for dynamically updating metadata labels in Google Cloud resources.
+- **upload_To_bucket**: Logic for uploading local files and results to GCP Storage Buckets.
+- **users-devices-permission**: Utilities for managing permission mappings between users, devices, and experiments.
+
+Each directory supports a different stage of the data lifecycle—ranging from ingestion to permission management—and collectively powers the F4D data pipeline.
+
+Each of these folders includes its own `README.md` for further documentation.
+
+---
+
+## Project Structure Overview
+
+- `F4D/`: Core processing, analytics, and reporting logic for the Field4D initiative.
+- `fetch_google/`: Interfaces for cloud data extraction.
+- `process_files/`: Local data processing and reformatting.
+- `query_last_timestamp/`: Utilities to track data update state.
+- `update-labels/`: Cloud resource label automation.
+- `upload_To_bucket/`: Cloud export logic.
+- `users-devices-permission/`: User-device access control.
+
+---
+
+## Key Scripts
+
+- **`data_fetcher.py`**: Main entry point for downloading data from cloud resources.
+- **`main_by_config.py`**: Automated execution of data tasks using a defined config file.
+- **`main_interactive.py`**: A manual, interactive script for on-demand execution.
+- **`config.json`**: The configuration file used to customize fetch and processing parameters.
+
+---
 
 ## Getting Started
 
-1. Ensure you have the necessary Google Cloud credentials and permissions.
-2. Install the required dependencies (if any).
-3. Run the desired script, for example:
-   ```
+1. Ensure the Raspberry Pi has access to the required **Google Cloud credentials** (e.g., service account JSON key).
+2. Install all necessary Python dependencies (listed in `requirements.txt` or pip-free setup).
+3. Run a script as needed. Example:
+   ```bash
    python main_by_config.py
    ```
 
+---
+
 ## License
 
-This project is licensed under the terms included in the LICENSE file.
-
-## F4D Folder
-
-The **F4D** folder contains specialized scripts and resources related to the F4D initiative. This folder is dedicated to advanced data processing and analytics tasks, including:
-
-- **Data Transformation**: Scripts for transforming raw data into a format suitable for analysis.
-- **Analytics Tools**: Tools for performing advanced analytics on the processed data.
-- **Reporting**: Scripts for generating reports and visualizations based on the analyzed data.
-
-This folder is essential for users working on the F4D initiative and provides the necessary tools to handle complex data processing tasks efficiently.
-
-## Other Folders
-
-- **fetch_google**: Contains scripts for fetching data from Google Cloud services.
-- **process_files**: Directory for scripts that process and transform data files.
-- **query_last_timestamp**: Scripts to query and retrieve the last timestamp from data sources.
-- **update-labels**: Tools for updating labels on Google Cloud resources.
-- **upload_To_bucket**: Scripts to upload files to Google Cloud Storage buckets.
-- **users-devices-permission**: Utilities for managing user and device permissions.
-
-Each of these folders plays a crucial role in the overall functionality of the project, providing specific tools and scripts for different aspects of data management and processing.
+This repository is licensed under the terms provided in the `LICENSE` file. Please review it before using or distributing the code.
