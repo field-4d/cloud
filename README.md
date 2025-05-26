@@ -1,6 +1,6 @@
 # Google Cloud Data Processing Project (F4D)
 
-## F4D Folder (Located in `6to4server` on the Raspberry Pi)
+## F4D Folder (Located in `6to4 folder` on the Raspberry Pi)
 
 The **F4D** folder is a core component of the `6to4server` project deployed on the Raspberry Pi. It contains specialized scripts and utilities designed for the **Field4D (F4D)** initiative—an advanced system for collecting, transforming, and analyzing agricultural and environmental data.
 
