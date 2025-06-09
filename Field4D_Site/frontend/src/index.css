@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary-color: #8ac6bb;
+    --primary-dark: #7ab6ab;
+    --secondary-color: #b2b27a;
+    --secondary-dark: #a2a26a;
+    --text-primary: #2d3748;
+    --text-secondary: #4a5568;
+    --background-light: #f7fafc;
+    --background-white: #ffffff;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-gray-900;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-md 
+           focus:outline-none focus:ring-2 focus:ring-primary-500 
+           focus:border-transparent transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply w-full px-4 py-2 text-white bg-[#8ac6bb] rounded-md 
+           hover:bg-[#7ab6ab] focus:outline-none focus:ring-2 
+           focus:ring-[#8ac6bb] focus:ring-offset-2 transition-colors 
+           duration-200 font-medium;
+  }
+
+  .btn-secondary {
+    @apply w-full px-4 py-2 text-white bg-[#b2b27a] rounded-md 
+           hover:bg-[#a2a26a] focus:outline-none focus:ring-2 
+           focus:ring-[#b2b27a] focus:ring-offset-2 transition-colors 
+           duration-200 font-medium;
+  }
+  
+  .error-message {
+    @apply text-red-500 text-sm mt-1;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6 transition-shadow 
+           duration-200 hover:shadow-lg;
+  }
+
+  .select-container {
+    @apply relative w-full;
+  }
+
+  .select-container select {
+    @apply appearance-none w-full px-4 py-2 border border-gray-300 
+           rounded-md focus:outline-none focus:ring-2 focus:ring-[#8ac6bb] 
+           focus:border-transparent bg-white;
+  }
+
+  .select-container::after {
+    @apply absolute right-3 top-1/2 transform -translate-y-1/2 
+           pointer-events-none;
+    content: "▼";
+    color: var(--text-secondary);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-[#8ac6bb] rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-[#7ab6ab];
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Plotly mode bar styling */
+.modebar {
+  top: 0 !important;          /* Position from top of plot container */
+  right: 0 !important;        /* Position from right of plot container */
+  transform: translateY(-100%) !important;  /* Move up by its own height to position above plot */
+  background: transparent !important;  /* Make background transparent to show plot underneath */
+  font-size: 16px !important; /* Base font size for text elements in mode bar */
+}
+
+.modebar-group {
+  display: flex !important;           /* Use flexbox for horizontal layout */
+  flex-direction: row !important;     /* Arrange buttons horizontally */
+  align-items: center !important;     /* Center buttons vertically */
+  background: rgba(255, 255, 255, 0.9) !important;  /* Semi-transparent white background */
+  border-radius: 6px !important;      /* Rounded corners of the mode bar container */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;  /* Subtle shadow for depth */
+  padding: 4px !important;            /* Space between container edge and buttons */
+}
+
+.modebar-btn {
+  padding: 6px !important;    /* Space between button edge and icon */
+  margin: 0 3px !important;   /* Space between buttons */
+  width: 35px !important;     /* Fixed width of each button */
+  height: 35px !important;    /* Fixed height of each button */
+}
+
+.modebar-btn svg {
+  width: 20px !important;     /* Width of the icon inside button */
+  height: 20px !important;    /* Height of the icon inside button */
+}
+
+/* Ensure mode bar is visible on hover */
+.modebar-container:hover .modebar {
+  opacity: 1 !important;      /* Make mode bar fully visible when hovering */
+}
+
+/* Add some spacing between the mode bar and the plot */
+.modebar-container {
+  margin-top: 12px !important;  /* Space between mode bar and plot content */
+}
+ 
