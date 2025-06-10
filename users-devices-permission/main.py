@@ -3,6 +3,17 @@ import logging
 import time
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound, GoogleCloudError
+from datetime import datetime
+
+
+# System Admins
+SYSTEM_ADMINS = [
+    "menachem.moshelion@mail.huji.ac.il",
+    "nir.averbuch@mail.huji.ac.il",
+    "bnaya.hami@mail.huji.ac.il",
+    "idan.ifrach@mail.huji.ac.il",
+    "Field4D_ADMIN@field4d.com"
+]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -71,17 +82,37 @@ def create_or_update_mac_entry(request):
                 print(f"Step.9 - Checking if IP {new_ip} exists for MAC {mac_address}")
                 if check_ip_exists(client, mac_address, new_ip):
                     print("Step.10 - MAC and IP already exist. No update performed.")
-                    return {"message": "MAC and IP already exist. No update performed."}, 200
+                    # return {"message": "MAC and IP already exist. No update performed."}, 200
                 else:
                     print(f"Step.11 - Adding new IP {new_ip} to existing MAC record.")
                     update_ip_array(client, mac_address, new_ip)
-                    return {"message": "IP added to existing MAC record."}, 200
+                    # Add admin permissions
+                    table_id_full = f"{client.project}.{new_owner}.{mac_address}"
+                    add_admin_permissions(client, mac_address, new_owner, table_id_full)
+                    # return {"message": "IP added to existing MAC record and admin permissions verified."}, 200
+                # ✅ Always check admin permissions, even if IP existed
+                table_id_full = f"{client.project}.{new_owner}.{mac_address}"
+                add_admin_permissions(client, mac_address, new_owner, table_id_full)
+                # Return message reflecting what happened
+                if check_ip_exists(client, mac_address, new_ip) if new_ip else False:
+                    return {"message": "MAC and IP already exist. Admin permissions verified."}, 200
+                elif new_ip:
+                    return {"message": "IP added to existing MAC record and admin permissions verified."}, 200
+                else:
+                    return {"message": "No new IP provided. Admin permissions verified."}, 200                
             else:
                 print("Step.12 - No new IP provided in request.")
-                return {"message": "No new IP provided. No update performed."}, 200
+                # Add admin permissions
+                table_id_full = f"{client.project}.{new_owner}.{mac_address}"
+                add_admin_permissions(client, mac_address, new_owner, table_id_full)
+                return {"message": "No new IP provided. Admin permissions verified."}, 200
         else:
             print(f"Step.13 - Creating new MAC entry: {mac_address}")
             insert_new_row(client, request_json)
+            # Add admin permisions
+            table_id_full = f"{client.project}.{new_owner}.{mac_address}"
+            add_admin_permissions(client, mac_address, new_owner, table_id_full)
+
             return {"message": "New MAC entry created successfully."}, 201
 
     except Exception as e:
@@ -241,3 +272,52 @@ def update_owner_and_metadata(client, mac_address, new_owner, new_table_name, ne
     )
     client.query(query, job_config=job_config).result()
     print(f"Step.24 - Successfully updated owner, table_name, and description for MAC address {mac_address}.")
+
+# function to add System admins 
+def add_admin_permissions(client, mac_address, owner_name, table_id):
+    permissions_table = f"{client.project}.user_device_permission.permissions"
+    now = datetime.utcnow().isoformat()
+
+    new_rows = []
+
+    for email in SYSTEM_ADMINS:
+        # Check if permission already exists
+        query = f"""
+        SELECT COUNT(*) as count FROM `{permissions_table}`
+        WHERE email = @user_email
+          AND mac_address = @mac_address
+          AND role = 'admin'
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("user_email", "STRING", email),
+                bigquery.ScalarQueryParameter("mac_address", "STRING", mac_address),
+            ]
+        )
+        result = client.query(query, job_config=job_config).result()
+        exists = any(row["count"] > 0 for row in result)
+
+        if not exists:
+            new_rows.append({
+                "email": email,
+                "owner": owner_name,
+                "mac_address": mac_address,
+                "experiment": "*",
+                "role": "admin",
+                "valid_from": now,
+                "valid_until": None,
+                "created_at": now,
+                "table_id": table_id
+            })
+        else:
+            print(f"Step.25 - Admin permission already exists for {email}")
+
+    if new_rows:
+        errors = client.insert_rows_json(permissions_table, new_rows)
+        if errors:
+            logger.error(f"Failed to insert admin permissions: {errors}")
+            raise RuntimeError(f"BigQuery insert error: {errors}")
+        else:
+            print(f"Step.26 - Added admin permissions for: {', '.join([r['email'] for r in new_rows])}")
+    else:
+        print("Step.26 - All admin permissions already exist. Nothing inserted.")
