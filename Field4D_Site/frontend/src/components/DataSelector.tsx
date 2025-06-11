@@ -275,6 +275,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const [showLabelFilter, setShowLabelFilter] = useState(false);
   const [includedLabels, setIncludedLabels] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState<'sensor' | 'label'>('sensor');
+  const [errorType, setErrorType] = useState<'STD' | 'SE'>('SE');
 
   // Get current experiment and check if it has label options
   const currentExperiment = experimentSummaries.find(exp => exp.experimentName === selectedExperiment);
@@ -504,8 +505,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         // Get UTC range while preserving local day boundaries
         const utcRange = getUtcRangeFromLocalDates(dateRange[0], dateRange[1]);
 
-        // Split selectedSensors into chunks of 50
-        const CHUNK_SIZE = 50;
+        // Split selectedSensors into chunks of 20
+        const CHUNK_SIZE = 20;
         const sensorChunks: string[][] = [];
         for (let i = 0; i < selectedSensors.length; i += CHUNK_SIZE) {
           sensorChunks.push(selectedSensors.slice(i, i + CHUNK_SIZE));
@@ -637,11 +638,11 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
       // Create a separate file for each parameter
       selectedParameters.forEach(param => {
-        // Build columns: for each label, add mean and STD
+        // Build columns: for each label, add mean and errorType (SE or STD)
         const columns: string[] = ['Timestamp'];
         labelsToExport.forEach(label => {
           columns.push(`${label}-Mean`);
-          columns.push(`${label}-STD`);
+          columns.push(`${label}-${errorType}`);
         });
 
         // Build rows
@@ -654,11 +655,16 @@ const DataSelector: React.FC<DataSelectorProps> = ({
               const mean = values.reduce((a, b) => a + b, 0) / values.length;
               row.push(mean);
 
-              // Calculate STD if we have more than 1 value
+              // Calculate errorType if we have more than 1 value
               if (values.length > 1) {
                 const meanVal = mean;
                 const variance = values.reduce((a, b) => a + (b - meanVal) ** 2, 0) / values.length;
-                row.push(Math.sqrt(variance));
+                const std = Math.sqrt(variance);
+                if (errorType === 'SE') {
+                  row.push(std / Math.sqrt(values.length));
+                } else {
+                  row.push(std);
+                }
               } else {
                 row.push('');
               }
@@ -876,8 +882,6 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           />
         </div>
 
-
-
         {/* Action Buttons */}
         <div className="flex space-x-4 mt-6">
           <button
@@ -937,6 +941,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             includedLabels={includedLabels}
             groupBy={groupBy}
             setGroupBy={setGroupBy}
+            errorType={errorType}
+            setErrorType={setErrorType}
           />
         </div>
       )}

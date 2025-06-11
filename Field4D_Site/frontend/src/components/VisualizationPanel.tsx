@@ -17,7 +17,10 @@ import { getParameterUnit } from './DataSelector';
 
 interface SensorData {
   timestamp: string;
-  [key: string]: string | number;
+  sensor: string;
+  parameter: string;
+  value: number;
+  [key: string]: any;
 }
 
 interface CorrelationData {
@@ -53,13 +56,15 @@ interface VisualizationPanelProps {
   includedLabels: string[];
   groupBy: 'sensor' | 'label';
   setGroupBy?: React.Dispatch<React.SetStateAction<'sensor' | 'label'>>;
+  errorType?: 'STD' | 'SE';
+  setErrorType?: React.Dispatch<React.SetStateAction<'STD' | 'SE'>>;
 }
 
 const VISUALIZATIONS = [
   { label: 'Scatter Plot', value: 'scatter' },
   { label: 'Box Plot', value: 'box' },
   { label: 'Histogram', value: 'histogram' },
-  { label: 'Correlation Matrix', value: 'correlation' }
+  // { label: 'Correlation Matrix', value: 'correlation' } 
 ];
 
 /**
@@ -84,6 +89,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   const [correlationApproved, setCorrelationApproved] = useState(false);
   const [plotWidth, setPlotWidth] = useState(1800);   // default width
   const [plotHeight, setPlotHeight] = useState(1000); // default height
+  const [showDates, setShowDates] = useState(false); // Add state for dates toggle
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
+  const [outlierMethod, setOutlierMethod] = useState('IQR');
+  const [outlierThreshold, setOutlierThreshold] = useState(1.5);
 
   // Extract unique dates from data
   const allDates = Array.from(new Set(props.data.map(d => (typeof d.timestamp === 'string' ? d.timestamp.split('T')[0] : '')))).filter(Boolean);
@@ -102,6 +111,16 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       setCorrelationApproved(false);
     }
   }, [selectedViz]);
+
+  // Add effect to handle loading state
+  useEffect(() => {
+    setIsLoading(true);
+    // Simulate loading time for data processing
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [props.data, selectedParameters, selectedViz, props.groupBy]);
 
   // Handle date selection
   const handleDateChange = (selected: any) => {
@@ -127,10 +146,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     typeof props.data[0].parameter === 'string' &&
     typeof props.data[0].value !== 'undefined';
 
-  // Helper: IQR-based outlier detection (per parameter, per date)
-  function filterOutliersIQR(data, selectedParameters) {
+  // Helper: Outlier detection (per parameter, per date)
+  function filterOutliers(data: SensorData[], selectedParameters: string[]) {
     // Group by parameter and date
-    const grouped = {};
+    const grouped: Record<string, Record<string, SensorData[]>> = {};
     data.forEach(d => {
       const param = d.parameter;
       const date = typeof d.timestamp === 'string' ? d.timestamp.split('T')[0] : '';
@@ -138,35 +157,59 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       if (!grouped[param][date]) grouped[param][date] = [];
       grouped[param][date].push(d);
     });
-    // For each group, compute IQR and filter
+
+    // For each group, compute and filter based on selected method
     Object.keys(grouped).forEach(param => {
       Object.keys(grouped[param]).forEach(date => {
-        const values = grouped[param][date].map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
-        if (values.length < 4) return; // Not enough data for IQR
-        values.sort((a, b) => a - b);
-        const q1 = values[Math.floor(values.length * 0.25)];
-        const q3 = values[Math.floor(values.length * 0.75)];
-        const iqr = q3 - q1;
-        const lower = q1 - 1.5 * iqr;
-        const upper = q3 + 1.5 * iqr;
-        grouped[param][date].forEach(d => {
-          if (d.value < lower || d.value > upper) {
-            d.value = null; // Mark as outlier
-          }
-        });
+        const values = grouped[param][date]
+          .map(d => d.value)
+          .filter(v => !isNaN(v));
+        
+        if (values.length < 4) return; // Not enough data for statistical analysis
+
+        if (outlierMethod === 'IQR') {
+          // IQR method
+          values.sort((a, b) => a - b);
+          const q1 = values[Math.floor(values.length * 0.25)];
+          const q3 = values[Math.floor(values.length * 0.75)];
+          const iqr = q3 - q1;
+          const lower = q1 - outlierThreshold * iqr;
+          const upper = q3 + outlierThreshold * iqr;
+          grouped[param][date].forEach(d => {
+            if (d.value < lower || d.value > upper) {
+              d.value = NaN; // Mark as outlier
+            }
+          });
+        } else if (outlierMethod === 'ZSCORE') {
+          // Z-Score method
+          const mean = values.reduce((a, b) => a + b, 0) / values.length;
+          const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+          const std = Math.sqrt(variance);
+          grouped[param][date].forEach(d => {
+            const zScore = Math.abs((d.value - mean) / std);
+            if (zScore > outlierThreshold) {
+              d.value = NaN; // Mark as outlier
+            }
+          });
+        }
       });
     });
+
     // Flatten back to array
     return data;
   }
 
   // Preprocess data for visualization (apply outlier filtering if enabled)
   const processedData = React.useMemo(() => {
+    if (selectedViz === 'scatter') return filteredData;
     if (!props.outlierFiltering) return filteredData;
     // Deep copy to avoid mutating original data
-    const dataCopy = filteredData.map(d => ({ ...d }));
-    return filterOutliersIQR(dataCopy, selectedParameters);
-  }, [filteredData, props.outlierFiltering, selectedParameters]);
+    const dataCopy = filteredData.map(d => ({
+      ...d,
+      value: typeof d.value === 'number' ? d.value : NaN
+    }));
+    return filterOutliers(dataCopy, selectedParameters);
+  }, [filteredData, props.outlierFiltering, selectedParameters, outlierMethod, outlierThreshold, selectedViz]);
 
   // Compute correlation matrix
   const correlationData = useMemo(() => {
@@ -278,58 +321,102 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
         </select>
       </div>
       <div className="flex items-center space-x-4 mb-2">
-        <label className="text-sm font-medium text-gray-700">Dates:</label>
-        <div className="flex flex-col min-w-[200px]">
-          {/* Toolbar for Select All / Deselect All */}
-          <div className="flex space-x-3 mb-1">
-            <button
-              type="button"
-              className="text-sm font-semibold text-[#8AC6B6] hover:underline px-2 py-1 rounded transition-colors"
-              style={{ fontWeight: 600 }}
-              onClick={() => {
-                setSelectedDates(allDates);
-                setAllDatesSelected(true);
-              }}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowDates(!showDates)}
+            className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-[#8ac6bb] transition-colors"
+            title="Press to filter dates"
+          >
+            <span>Select Dates</span>
+            <svg
+              className={`w-4 h-4 transform transition-transform ${showDates ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              Select All
-            </button>
-            <button
-              type="button"
-              className="text-sm font-semibold text-[#8AC6B6] hover:underline px-2 py-1 rounded transition-colors"
-              style={{ fontWeight: 600 }}
-              onClick={() => {
-                setSelectedDates([]);
-                setAllDatesSelected(false);
-              }}
-            >
-              Deselect All
-            </button>
-          </div>
-          <Select
-            isMulti
-            options={[
-              ...allDates.map(date => ({ value: date, label: date }))
-            ]}
-            value={
-              selectedDates.map(date => ({ value: date, label: date }))
-            }
-            onChange={selected => {
-              if (!selected) {
-                setSelectedDates([]);
-                setAllDatesSelected(false);
-              } else {
-                setSelectedDates(selected.map((opt: any) => opt.value));
-                setAllDatesSelected(selected.length === allDates.length);
-              }
-            }}
-            classNamePrefix="select"
-            placeholder="Select dates..."
-            closeMenuOnSelect={false}
-          />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
+        {showDates && (
+          <div className="flex flex-col min-w-[200px]">
+            {/* Toolbar for Select All / Deselect All */}
+            <div className="flex space-x-3 mb-1">
+              <button
+                type="button"
+                className="text-sm font-semibold text-[#8AC6B6] hover:underline px-2 py-1 rounded transition-colors"
+                style={{ fontWeight: 600 }}
+                onClick={() => {
+                  setSelectedDates(allDates);
+                  setAllDatesSelected(true);
+                }}
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                className="text-sm font-semibold text-[#8AC6B6] hover:underline px-2 py-1 rounded transition-colors"
+                style={{ fontWeight: 600 }}
+                onClick={() => {
+                  setSelectedDates([]);
+                  setAllDatesSelected(false);
+                }}
+              >
+                Deselect All
+              </button>
+            </div>
+            <Select
+              isMulti
+              options={[
+                ...allDates.map(date => ({ value: date, label: date }))
+              ]}
+              value={
+                selectedDates.map(date => ({ value: date, label: date }))
+              }
+              onChange={selected => {
+                if (!selected) {
+                  setSelectedDates([]);
+                  setAllDatesSelected(false);
+                } else {
+                  setSelectedDates(selected.map((opt: any) => opt.value));
+                  setAllDatesSelected(selected.length === allDates.length);
+                }
+              }}
+              classNamePrefix="select"
+              placeholder="Select dates..."
+              closeMenuOnSelect={false}
+            />
+          </div>
+        )}
       </div>
       {/* Parameter selection for Scatter and BoxPlot */}
-      {['scatter', 'box'].includes(selectedViz) && (
+      {selectedViz === 'scatter' && (
+        <div className="flex items-center space-x-2 mb-2">
+          <label className="text-sm font-medium text-gray-700">Parameters:</label>
+          <div className="min-w-[200px]">
+            <Select
+              isMulti
+              options={[
+                ...allParameters.map(param => ({ value: param, label: param }))
+              ]}
+              value={
+                selectedParameters.map(param => ({ value: param, label: param }))
+              }
+              onChange={selected => {
+                if (!selected) {
+                  setSelectedParameters([]);
+                } else {
+                  setSelectedParameters(selected.map((opt: any) => opt.value));
+                }
+              }}
+              classNamePrefix="select"
+              placeholder="Select parameters..."
+              closeMenuOnSelect={false}
+            />
+          </div>
+        </div>
+      )}
+      {['box', 'histogram'].includes(selectedViz) && (
         <div className="flex items-center space-x-2 mb-2">
           <label className="text-sm font-medium text-gray-700">Parameters:</label>
           <div className="min-w-[200px]">
@@ -354,12 +441,20 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
             />
           </div>
           {/* Outlier toggle next to parameters */}
-          <OutlierToggle enabled={props.outlierFiltering} onChange={props.setOutlierFiltering} method="IQR" />
+          <OutlierToggle 
+            enabled={props.outlierFiltering} 
+            onChange={props.setOutlierFiltering}
+            method={outlierMethod}
+            threshold={outlierThreshold}
+            onMethodChange={setOutlierMethod}
+            onThresholdChange={setOutlierThreshold}
+            visualizationType={selectedViz === 'box' ? 'boxplot' : 'histogram'}
+          />
         </div>
       )}
       <div>
         {(selectedViz === 'scatter' || selectedViz === 'box') && (
-          <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center justify-center mb-4 space-x-4">
             <div className="inline-flex rounded-md shadow-sm bg-gray-100" role="group">
               <button
                 type="button"
@@ -376,55 +471,91 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 Group by Label
               </button>
             </div>
+            
+            {/* Error Type Selection - Only show for scatter plot */}
+            {props.groupBy === 'label' && selectedViz === 'scatter' && (
+              <div className="flex items-center space-x-2">
+                <div className="relative group">
+                  <select
+                    value={props.errorType}
+                    onChange={(e) => props.setErrorType && props.setErrorType(e.target.value as 'STD' | 'SE')}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
+                  >
+                    <option value="SE">Standard Error (SE)</option>
+                    <option value="STD">Standard Deviation (STD)</option>
+                  </select>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
+                    <div className="bg-gray-800 text-white text-xs rounded py-1 px-2 w-64">
+                      <p className="font-bold mb-1">STD vs. SE</p>
+                      <p>Use STD to show variability within each group.</p>
+                      <p>Use SE to show how precisely the group mean represents the data.</p>
+                    </div>
+                    <div className="w-2 h-2 bg-gray-800 transform rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1"></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
-        {selectedViz === 'scatter' && (
-          <div className="flex justify-center">
-            <ScatterPlot
-              data={processedData}
-              selectedParameters={selectedParameters}
-              selectedSensors={props.selectedSensors}
-              experimentName={props.experimentName}
-              getSensorColor={props.getSensorColor}
-              getParameterUnit={getParameterUnit}
-              sensorLabelMap={props.sensorLabelMap}
-              groupBy={props.groupBy}
-              includedLabels={props.includedLabels}
-            />
+        {isLoading ? (
+          <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent"></div>
+              <p className="mt-4 text-gray-600">Loading visualization...</p>
+            </div>
           </div>
-        )}
-        {selectedViz === 'box' && isBoxPlotData && (
-          <div className="flex justify-center">
-            <BoxPlot
-              data={processedData}
-              selectedParameters={selectedParameters}
-              selectedSensors={props.selectedSensors}
-              experimentName={props.experimentName}
-              getSensorColor={props.getSensorColor}
-              getParameterUnit={getParameterUnit}
-              onParameterLimitExceeded={() => {
-                setSelectedParameters(selectedParameters.slice(0, 2));
-              }}
-              combine={false}
-              groupBy={props.groupBy || 'label'}
-              sensorLabelMap={props.sensorLabelMap}
-              includedLabels={props.includedLabels}
-            />
-          </div>
-        )}
-        {selectedViz === 'histogram' && (
-          <div className="flex justify-center">
-            <Histogram
-              data={processedData}
-              selectedParameters={selectedParameters}
-              selectedSensors={props.selectedSensors}
-              experimentName={props.experimentName}
-              getSensorColor={props.getSensorColor}
-              getParameterUnit={getParameterUnit}
-              sensorLabelMap={props.sensorLabelMap}
-              includedLabels={props.includedLabels}
-            />
-          </div>
+        ) : (
+          <>
+            {selectedViz === 'scatter' && (
+              <div className="flex justify-center">
+                <ScatterPlot
+                  data={filteredData}
+                  selectedParameters={selectedParameters}
+                  selectedSensors={props.selectedSensors}
+                  experimentName={props.experimentName}
+                  getSensorColor={props.getSensorColor}
+                  getParameterUnit={getParameterUnit}
+                  sensorLabelMap={props.sensorLabelMap}
+                  groupBy={props.groupBy}
+                  includedLabels={props.includedLabels}
+                  errorType={props.errorType}
+                />
+              </div>
+            )}
+            {selectedViz === 'box' && isBoxPlotData && (
+              <div className="flex justify-center">
+                <BoxPlot
+                  data={processedData}
+                  selectedParameters={selectedParameters}
+                  selectedSensors={props.selectedSensors}
+                  experimentName={props.experimentName}
+                  getSensorColor={props.getSensorColor}
+                  getParameterUnit={getParameterUnit}
+                  onParameterLimitExceeded={() => {
+                    setSelectedParameters(selectedParameters.slice(0, 2));
+                  }}
+                  combine={false}
+                  groupBy={props.groupBy || 'label'}
+                  sensorLabelMap={props.sensorLabelMap}
+                  includedLabels={props.includedLabels}
+                />
+              </div>
+            )}
+            {selectedViz === 'histogram' && (
+              <div className="flex justify-center">
+                <Histogram
+                  data={processedData}
+                  selectedParameters={selectedParameters}
+                  selectedSensors={props.selectedSensors}
+                  experimentName={props.experimentName}
+                  getSensorColor={props.getSensorColor}
+                  getParameterUnit={getParameterUnit}
+                  sensorLabelMap={props.sensorLabelMap}
+                  includedLabels={props.includedLabels}
+                />
+              </div>
+            )}
+          </>
         )}
         {selectedViz === 'correlation' && correlationApproved && (
           <div className="space-y-4 relative">
@@ -435,6 +566,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 onChange={handleOutlierToggle}
                 method="IQR"
                 disabled={correlationLoading}
+                visualizationType="boxplot"
               />
             </div>
             {/* Loading spinner overlay */}

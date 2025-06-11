@@ -161,12 +161,12 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
 
   // Layout with two y-axes
   const layout: Partial<import('plotly.js-dist-min').Layout> = {
-    title: {
-      text: `${experimentName} - Box Plot`,
-      font: { size: axisConfig.textSize },
-      y: 0.98,
-      yanchor: 'bottom',
-    },
+    // title: {
+    //   text: `${experimentName} - Box Plot`,
+    //   font: { size: axisConfig.textSize },
+    //   y: 0.98,
+    //   yanchor: 'bottom',
+    // },
     xaxis: {
       title: groupBy === 'sensor' ? 'Sensor' : 'Label',
       titlefont: { size: axisConfig.textSize },
@@ -209,7 +209,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     legend: {
       x: 0,
       y: -0.15,
-      xanchor: 'left',
+      xanchor: 'top',
       yanchor: 'top',
       orientation: 'h',
       bgcolor: 'rgba(255, 255, 255, 0.9)',

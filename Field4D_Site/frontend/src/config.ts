@@ -1,7 +1,10 @@
 // Get the base URL from environment variable or default to cloud URL
+import { logger } from './config/logger';
+
+
 const getBaseUrl = () => {
   // Debug logging
-  console.log('Environment variables:', {
+  logger.info('Environment variables:', {
     DEV: import.meta.env.DEV,
     VITE_USE_LOCAL_BACKEND: import.meta.env.VITE_USE_LOCAL_BACKEND
   });

@@ -1,7 +1,7 @@
 // Logger configuration
 export const LOGGER_CONFIG = {
   // Set to false to disable all console logs
-  ENABLE_LOGGING: false,
+  ENABLE_LOGGING: true,
   
   // Log levels that are enabled
   LOG_LEVELS: {

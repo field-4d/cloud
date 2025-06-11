@@ -37,6 +37,7 @@ interface ScatterPlotProps {
   sensorLabelMap?: Record<string, string[]>;
   groupBy?: 'sensor' | 'label';
   includedLabels?: string[];
+  errorType?: 'STD' | 'SE';
 }
 
 const defaultGetSensorColor = (sensor: string, selectedSensors: string[]) => {
@@ -102,6 +103,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   sensorLabelMap,
   groupBy,
   includedLabels,
+  errorType = 'SE',
 }) => {
   // Check for parameter limit and notify if exceeded
   useEffect(() => {
@@ -180,19 +182,21 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           if (!byTimestamp[ts]) byTimestamp[ts] = [];
           byTimestamp[ts].push(Number(d.value));
         });
-        // 3. For each timestamp, compute mean and std
+        // 3. For each timestamp, compute mean and error (STD or SE)
         const timestamps = Object.keys(byTimestamp).sort();
         const means = timestamps.map(ts => {
           const vals = byTimestamp[ts];
           if (!vals || vals.length === 0) return null;
           return vals.reduce((a, b) => a + b, 0) / vals.length;
         });
-        const stds = timestamps.map(ts => {
+        const errors = timestamps.map(ts => {
           const vals = byTimestamp[ts];
           if (!vals || vals.length === 0) return null;
           const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
           const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
-          return Math.sqrt(variance);
+          const std = Math.sqrt(variance);
+          // Calculate SE if errorType is 'SE', otherwise use STD
+          return errorType === 'SE' ? std / Math.sqrt(vals.length) : std;
         });
         // 4. Add mean line
         plotData.push({
@@ -207,10 +211,10 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             width: 2,
           },
         });
-        // 5. If group has >3 sensors, add std shaded area
+        // 5. If group has >3 sensors, add error shaded area
         if (sensorsInGroup.length > 3) {
-          const upper = means.map((m, i) => (m !== null && stds[i] !== null) ? m + stds[i] : null);
-          const lower = means.map((m, i) => (m !== null && stds[i] !== null) ? m - stds[i] : null);
+          const upper = means.map((m, i) => (m !== null && errors[i] !== null) ? m + errors[i] : null);
+          const lower = means.map((m, i) => (m !== null && errors[i] !== null) ? m - errors[i] : null);
           plotData.push({
             x: [...timestamps.map(ts => String(ts)), ...timestamps.slice().reverse().map(ts => String(ts))],
             y: [...upper, ...lower.slice().reverse()],
@@ -219,7 +223,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             fill: 'toself',
             fillcolor: labelColor(label) + '22', // semi-transparent
             line: { color: 'rgba(0,0,0,0)' },
-            name: `${label} ±STD`,
+            name: `${label} ±${errorType}`,
             yaxis: paramIdx === 0 ? 'y' : 'y2',
             showlegend: false,
             hoverinfo: 'skip',
@@ -269,12 +273,12 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
       <Plot
         data={plotData}
         layout={{
-          title: {
-            text: `${experimentName} - Sensor Data`,
-            font: { size: leftAxisConfig.textSize },
-            y: 0.98,
-            yanchor: 'bottom',
-          },
+          // title: {
+          //   text: `${experimentName} - Sensor Data`,
+          //   font: { size: leftAxisConfig.textSize },
+          //   y: 0.98,
+          //   yanchor: 'bottom',
+          // },
           xaxis: {
             title: 'Time',
             titlefont: { size: leftAxisConfig.textSize },
@@ -320,7 +324,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           legend: {
             x: 0,
             y: -0.15,
-            xanchor: 'left',
+            xanchor: 'top',
             yanchor: 'top',
             orientation: 'h',
             bgcolor: 'rgba(255, 255, 255, 0.9)',
