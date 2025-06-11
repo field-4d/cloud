@@ -32,6 +32,7 @@ const Option = (props: OptionProps<LabelOption, true>) => {
   );
 };
 
+
 const LabelFilter: React.FC<LabelFilterProps> = ({
   sensorLabelOptions,
   sensorLabelMap,
@@ -40,6 +41,9 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
   const [selectedIncludeLabels, setSelectedIncludeLabels] = React.useState<string[]>([]);
   const [selectedExcludeLabels, setSelectedExcludeLabels] = React.useState<string[]>([]);
   const [isAndMode, setIsAndMode] = React.useState(false);
+
+  // Icon size variable for AND/OR images
+  const iconSize = "w-12 h-12";
 
   // Convert label options to react-select format
   const labelOptions: LabelOption[] = sensorLabelOptions.map(label => ({
@@ -115,19 +119,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
             }`}
             title="OR Mode"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-5 h-5"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M8 12h8" />
-            </svg>
+            <img src="/OR_Large.png" alt="OR Mode" className={`${iconSize} object-contain p-1 bg-white rounded-full border border-gray-300`} />
           </button>
           <button
             onClick={() => handleLogicModeChange(true)}
@@ -136,20 +128,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
             }`}
             title="AND Mode"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-5 h-5"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M8 12h8" />
-              <path d="M12 8v8" />
-            </svg>
+            <img src="/AND_Large.png" alt="AND Mode" className={`${iconSize} object-contain p-1 bg-white rounded-full border border-gray-300`} />
           </button>
         </div>
       </div>
