@@ -55,6 +55,101 @@ interface HistogramProps {
 
 }
 
+// Add this function after the COLORS constant
+const sampleData = (data: any[], maxPoints: number = 100_000): { sampledData: any[]; samplingInfo: SamplingInfo } => {
+  if (data.length <= maxPoints) return { sampledData: data, samplingInfo: { originalCount: data.length, sampledCount: data.length, parameters: {} } };
+  
+  // Group data by parameter
+  const groupedByParam: { [key: string]: any[] } = {};
+  data.forEach(d => {
+    if (!groupedByParam[d.parameter]) {
+      groupedByParam[d.parameter] = [];
+    }
+    groupedByParam[d.parameter].push(d);
+  });
+
+  // Calculate points per parameter based on their relative proportions
+  const totalPoints = data.length;
+  const sampledData: any[] = [];
+  const samplingInfo: SamplingInfo = {
+    originalCount: totalPoints,
+    sampledCount: 0,
+    parameters: {}
+  };
+  
+  Object.entries(groupedByParam).forEach(([param, paramData]) => {
+    // Calculate how many points this parameter should contribute
+    // For example, if Parameter A has 60% of the data and Parameter B has 40%, 
+    // and we want 100,000 total points, Parameter A will get 60,000 points 
+    // and Parameter B will get 40,000 points
+    const paramProportion = paramData.length / totalPoints;
+    // Each parameter's maximum points is proportional to maxPoints (default 100,000)
+    // paramMaxPoints = maxPoints * (number of points for this parameter / total points)
+    const paramMaxPoints = Math.max(1000, Math.floor(maxPoints * paramProportion));
+    
+    // Randomly sample points for this parameter
+    const sampledParamData = paramData.length > paramMaxPoints
+      ? paramData
+          .map((d, i) => ({ d, i, r: Math.random() })) // Add random number for sorting
+          .sort((a, b) => a.r - b.r) // Sort by random number
+          .slice(0, paramMaxPoints) // Take first paramMaxPoints items
+          .sort((a, b) => a.i - b.i) // Sort back by original index
+          .map(({ d }) => d) // Extract just the data
+      : paramData;
+    
+    samplingInfo.parameters[param] = {
+      original: paramData.length,
+      sampled: sampledParamData.length
+    };
+    samplingInfo.sampledCount += sampledParamData.length;
+    
+    sampledData.push(...sampledParamData);
+  });
+
+  return { sampledData, samplingInfo };
+};
+
+// Add after the sampleData function
+interface SamplingInfo {
+  originalCount: number;
+  sampledCount: number;
+  parameters: { [key: string]: { original: number; sampled: number } };
+}
+
+const SamplingNotification: React.FC<{ info: SamplingInfo; infoTextSize?: number }> = ({ info, infoTextSize = 18 }) => {
+  const [showTooltip, setShowTooltip] = React.useState(false);
+
+  return (
+    <div className="mb-4 p-4 bg-[#8ac6bb]/10 border border-[#8ac6bb]/20 rounded-lg max-w-md">
+      <div className="flex items-center">
+        <div className="relative">
+          <svg 
+            className="w-5 h-5 text-[#8ac6bb] cursor-help" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {showTooltip && (
+            <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-white border border-[#8ac6bb]/20 rounded-lg shadow-lg text-sm text-gray-600 z-50">
+              Need the complete dataset? Download it for full-resolution analysis in tools like Python, R, or Excel
+            </div>
+          )}
+        </div>
+        <div className="text-[#8ac6bb] ml-2" style={{ fontSize: infoTextSize }}>
+          <span className="font-medium">Data sampling applied for better performance</span>
+          <p className="text-sm mt-1 text-[#8ac6bb]/80">
+            The statistical properties of your data remain unchanged
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /**
  * Histogram
  * Displays a histogram for each parameter in the data as a subplot.
@@ -128,11 +223,20 @@ const Histogram: React.FC<HistogramProps> = ({
     return data;
   }
 
-  // Preprocess data for histogram (apply outlier filtering if enabled)
+  // Modify the processedData useMemo to handle sampling info
   const processedData = React.useMemo(() => {
-    if (!outlierFiltering) return data;
-    const dataCopy = data.map(d => ({ ...d }));
-    return filterOutliersIQR(dataCopy);
+    let dataToProcess = data;
+    let samplingInfo: SamplingInfo | null = null;
+    
+    if (data.length > 1_000_000) {
+      const result = sampleData(data);
+      dataToProcess = result.sampledData;
+      samplingInfo = result.samplingInfo;
+    }
+    
+    if (!outlierFiltering) return { data: dataToProcess, samplingInfo };
+    const dataCopy = dataToProcess.map(d => ({ ...d }));
+    return { data: filterOutliersIQR(dataCopy), samplingInfo };
   }, [data, outlierFiltering]);
 
   // Get all unique parameters
@@ -173,7 +277,7 @@ const Histogram: React.FC<HistogramProps> = ({
   let showLegend = groupMode === 'label';
   if (groupMode === 'all') {
     traces = parametersToRender.map((param, idx) => {
-      const paramData = processedData.filter(d => d.parameter === param && selectedSensors.includes(d.sensor));
+      const paramData = processedData.data.filter(d => d.parameter === param && selectedSensors.includes(d.sensor));
       const xVals = paramData.map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
       const min = Math.min(...xVals);
       const max = Math.max(...xVals);
@@ -193,13 +297,13 @@ const Histogram: React.FC<HistogramProps> = ({
   } else if (groupMode === 'label') {
     traces = parametersToRender.flatMap((param, pIdx) => {
       const labels = includedLabels.length > 0 ? includedLabels : Array.from(new Set(Object.values(sensorLabelMap).flat()));
-      const allVals = processedData.filter(d => d.parameter === param && selectedSensors.includes(d.sensor)).map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
+      const allVals = processedData.data.filter(d => d.parameter === param && selectedSensors.includes(d.sensor)).map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
       const min = Math.min(...allVals);
       const max = Math.max(...allVals);
       const size = (max - min) / binCount;
       return labels.map((label, lIdx) => {
         const sensorsForLabel = Object.entries(sensorLabelMap).filter(([sensor, labels]) => labels.includes(label)).map(([sensor]) => sensor);
-        const labelData = processedData.filter(d => d.parameter === param && sensorsForLabel.includes(d.sensor));
+        const labelData = processedData.data.filter(d => d.parameter === param && sensorsForLabel.includes(d.sensor));
         const xVals = labelData.map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
         return {
           x: xVals,
@@ -218,12 +322,12 @@ const Histogram: React.FC<HistogramProps> = ({
   }
 
   const layout: Partial<Layout> = {
-    title: {
-      text: `${experimentName} - Histogram`,
-      font: { size:20 },
-      y: 0.98,
-      yanchor: 'bottom',
-    },
+    // title: {
+    //   text: `${experimentName} - Histogram`,
+    //   font: { size:20 },
+    //   y: 0.98,
+    //   yanchor: 'bottom',
+    // },
     grid: {
       rows: paramCount,
       columns: paramCount > 5 ? 2 : 1,
@@ -308,13 +412,13 @@ const Histogram: React.FC<HistogramProps> = ({
               />
             </div>
           )}
-          <OutlierToggle enabled={outlierFiltering} onChange={setOutlierFiltering} method="IQR" />
+          {/* Removed OutlierToggle here to avoid duplicate toggle */}
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Number of bins:</label>
             <input
               type="range"
               min={10}
-              max={200}
+              max={100}
               value={binCount}
               onChange={e => setBinCount(Number(e.target.value))}
               className="w-48"
@@ -322,7 +426,7 @@ const Histogram: React.FC<HistogramProps> = ({
             <input
               type="number"
               min={10}
-              max={200}
+              max={100}
               value={binCount}
               onChange={e => setBinCount(Number(e.target.value))}
               className="w-16 border border-gray-300 rounded px-2 py-1"
@@ -330,6 +434,10 @@ const Histogram: React.FC<HistogramProps> = ({
           </div>
         </div>
       </div>
+      {/* Add sampling notification if data was sampled */}
+      {processedData.samplingInfo && (
+        <SamplingNotification info={processedData.samplingInfo} infoTextSize={infoTextSize} />
+      )}
       {/* Group mode toggle */}
       <div className="mb-4 flex items-center justify-center">
         <div className="inline-flex rounded-md shadow-sm bg-gray-100" role="group">
