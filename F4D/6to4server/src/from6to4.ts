@@ -73,8 +73,7 @@ let serverRunning = false;
 // checking the ttyACM0 connectio
 let usbConnected = true; // initially assume connected
 let lastUsbErrorSent: number = 0;
-const USB_ALERT_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
-
+const USB_ALERT_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes cooldown for USB error alerts
 
 // Convert server start to use Promise
 const startServerPromise = (): Promise<void> => {
@@ -411,7 +410,6 @@ Port.on('error', (err: any) => {
 
 // Check if the serial port is connected at startup
 const SERIAL_DEVICE_PATH = '/dev/ttyACM0';
-// const SERIAL_DEVICE_PATH = '/dev/ttyACM111';
 
 
 function checkSerialPortConnected(): boolean {
@@ -432,21 +430,35 @@ if (!checkSerialPortConnected()) {
 }
 
 // Periodically check every 5 minutes if the serial port is still connected
+let disconnectedAlertCount = 0;
+const MAX_DISCONNECTED_ALERTS = 2;
+
 setInterval(() => {
   const connected = checkSerialPortConnected();
   const now = Date.now();
   const cooldownPassed = now - lastUsbErrorSent > USB_ALERT_COOLDOWN_MS;
+
+  // Check if device just became disconnected and cooldown has passed
   if (!connected && usbConnected && cooldownPassed) {
     console.error(`Serial device (LaunchPad) ${SERIAL_DEVICE_PATH} became disconnected.`);
     sendSerialPortErrorAlert({ message: `Serial device (LaunchPad) ${SERIAL_DEVICE_PATH} became disconnected.` });
     usbConnected = false;
     lastUsbErrorSent = now;
+    disconnectedAlertCount = 1;
+  // Check if device is still disconnected, alert count not exceeded, and cooldown has passed
+  } else if (!connected && !usbConnected && disconnectedAlertCount < MAX_DISCONNECTED_ALERTS && cooldownPassed) {
+    // Still disconnected, send up to 3 alerts
+    console.warn(`Serial device (LaunchPad) ${SERIAL_DEVICE_PATH} is still disconnected. Alert #${disconnectedAlertCount + 1}`);
+    sendSerialPortErrorAlert({ message: `Serial device (LaunchPad) ${SERIAL_DEVICE_PATH} is still disconnected. Alert #${disconnectedAlertCount + 1}` });
+    lastUsbErrorSent = now;
+    disconnectedAlertCount++;
+  // Check if device has reconnected after being disconnected
   } else if (connected && !usbConnected) {
-    // Optionally, notify on reconnection here
-    console.log(`Serial device (LaunchPad) (LaunchPad) ${SERIAL_DEVICE_PATH} reconnected.`);
+    console.log(`Serial device (LaunchPad) ${SERIAL_DEVICE_PATH} reconnected.`);
     usbConnected = true;
+    disconnectedAlertCount = 0; // Reset counter on reconnection
+  // Check if device is still connected
   } else if (connected && usbConnected) {
-    // Log that the device is still connected
-    console.log(`Serial device (LaunchPad) (LaunchPad) ${SERIAL_DEVICE_PATH} is still connected.`);
+    console.log(`Serial device (LaunchPad) ${SERIAL_DEVICE_PATH} is still connected.`);
   }
-}, 60 * 60 * 1000); // 60 minutes
+}, 1 * 60 * 1000); // 60 minutes
