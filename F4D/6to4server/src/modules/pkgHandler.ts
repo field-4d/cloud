@@ -124,7 +124,7 @@ async function prepareBuffer(ts: number): Promise<Point[]> {
   }
   
   // console.log(pkgBuffer);
-  console.log("wiped splist after sending to DB:", spList);
+  console.log(`[${new Date().toLocaleString()}] wiped splist after sending to DB:`, spList);
   return pkgBuffer;
 }
 
@@ -144,7 +144,7 @@ export function showList(): void {
 }
 
 export async function syncPackets(): Promise<void> {
-  console.log('Trying to sync packets:\n');
+  console.log(`[${new Date().toLocaleString()}] Trying to sync packets:\n`);
   const now = new Date();
   const timeStamp = now.setSeconds(0, 0) / 1000; 
 
@@ -164,14 +164,48 @@ export async function syncPackets(): Promise<void> {
   lastBuffer = PkgBuffer;
 }
 
+function getDelayToNext3MinuteMark(): number {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
+  const ms = now.getMilliseconds();
+  const nextMark = Math.ceil(minutes / 3) * 3;
+  let delayMinutes = nextMark - minutes;
+
+  if (delayMinutes === 0 && (seconds > 0 || ms > 0)) {
+    delayMinutes = 3;
+  }
+
+  const delayMs = delayMinutes * 60 * 1000 - seconds * 1000 - ms;
+  const firstSyncTime = new Date(Date.now() + delayMs);
+  console.log(`[[SYNC] First sync will run at ${firstSyncTime.toLocaleTimeString()}`);
+
+  return delayMs;
+}
+
+
 // an interval function that checks if the uploadToInflux variable switched to true every 30s
-function isUploadTime() : void {
+// function isUploadTime() : void {
+//   if (uploadToInflux.value == true) {
+//     console.log("From PkgHandel SYNC IS ON!");
+//     clearInterval(checkInterval);
+//     // If so - start uploading to InfluxDB
+//     const syncInterval = setInterval(syncPackets, SYNC_INTERVAL); // sync the packets every 3 minutes
+//   } 
+// }
+function isUploadTime(): void {
   if (uploadToInflux.value == true) {
-    console.log("From PkgHandel SYNC IS ON!");
+    console.log(`From PkgHandel SYNC IS ON!`);
     clearInterval(checkInterval);
-    // If so - start uploading to InfluxDB
-    const syncInterval = setInterval(syncPackets, SYNC_INTERVAL); // sync the packets every 3 minutes
-  } 
+
+    const delay = getDelayToNext3MinuteMark();
+
+    setTimeout(() => {
+      syncPackets();
+      console.log(`[SYNC] Started 3-minute sync interval.`);
+      setInterval(syncPackets, SYNC_INTERVAL); // every 3 minutes
+    }, delay);
+  }
 }
 
 
