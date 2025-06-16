@@ -16,11 +16,14 @@ const defaultParm = {
     minBattery: 2750,
   };
 
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASSWORD = process.env.GMAIL_PASSWORD ;
+
 let transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: "mosheliongreenhouse@gmail.com",
-      pass: "***************",
+      user: GMAIL_USER,
+      pass: GMAIL_PASSWORD,
     },
   });
 
@@ -362,8 +365,8 @@ function sendEmailAlerts(alertsByExperiment: { [experiment: string]: { email: st
     let transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: "mosheliongreenhouse@gmail.com",
-            pass: "*******",
+            user: GMAIL_USER,
+            pass: GMAIL_PASSWORD,
         },
     });
 
@@ -413,12 +416,14 @@ function sendEmailAlerts(alertsByExperiment: { [experiment: string]: { email: st
 export function sendSerialPortErrorAlert(err: any) {
   const BUCKET_NAME = process.env.BUCKET_NAME || 'UNKNOWN_MAC';
   const ALERT_EMAILS = 'menachem.moshelion@mail.huji.ac.il, nir.averbuch@mail.huji.ac.il,bnaya.hami@mail.huji.ac.il';
+//   const ALERT_EMAILS = 'nir.averbuch@mail.huji.ac.il';
+
   const nodemailer = require('nodemailer');
   let transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'mosheliongreenhouse@gmail.com',
-      pass: '*****',
+      user: GMAIL_USER,
+      pass: GMAIL_PASSWORD,
     },
   });
   let mailOptions = {

@@ -449,4 +449,4 @@ setInterval(() => {
     // Log that the device is still connected
     console.log(`Serial device (LaunchPad) (LaunchPad) ${SERIAL_DEVICE_PATH} is still connected.`);
   }
-}, 1 * 60 * 1000); // 60 minutes
+}, 60 * 60 * 1000); // 60 minutes
