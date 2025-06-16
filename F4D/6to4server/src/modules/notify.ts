@@ -1,4 +1,6 @@
 import { activeSensorsInfo, updateActiveSensorsInfo,getSensorInfoByIpv6} from './LocalMongoHandler'
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const nodemailer = require("nodemailer");
 const tempSentMail = new Map();
@@ -18,7 +20,7 @@ let transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: "mosheliongreenhouse@gmail.com",
-      pass: "eojevzaqemkqstic",
+      pass: "***************",
     },
   });
 
@@ -361,7 +363,7 @@ function sendEmailAlerts(alertsByExperiment: { [experiment: string]: { email: st
         service: 'gmail',
         auth: {
             user: "mosheliongreenhouse@gmail.com",
-            pass: "eojevzaqemkqstic",
+            pass: "*******",
         },
     });
 
@@ -401,4 +403,35 @@ function sendEmailAlerts(alertsByExperiment: { [experiment: string]: { email: st
         // Clear the alertsByExperiment after sending the email
         delete alertsByExperiment[experimentKey]; // Remove the entry from the alertsByExperiment object
     });
+}
+
+
+/**
+ * Send an alert email when SerialPort fails to open or errors.
+ * @param err The error object or message
+ */
+export function sendSerialPortErrorAlert(err: any) {
+  const BUCKET_NAME = process.env.BUCKET_NAME || 'UNKNOWN_MAC';
+  const ALERT_EMAILS = 'menachem.moshelion@mail.huji.ac.il, nir.averbuch@mail.huji.ac.il,bnaya.hami@mail.huji.ac.il';
+  const nodemailer = require('nodemailer');
+  let transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: 'mosheliongreenhouse@gmail.com',
+      pass: '*****',
+    },
+  });
+  let mailOptions = {
+    from: 'mosheliongreenhouse@gmail.com',
+    to: ALERT_EMAILS,
+    subject: `SerialPort Connection Error (MAC: ${BUCKET_NAME})`,
+    text: `Failed to open /dev/ttyACM0 (MAC: ${BUCKET_NAME}):\n\n ${err && err.message ? err.message : err}`,
+  };
+  transporter.sendMail(mailOptions, function (error: any, info: any) {
+    if (error) {
+      console.log('Failed to send alert email:', error);
+    } else {
+      console.log('Alert email sent:', info.response);
+    }
+  });
 }
