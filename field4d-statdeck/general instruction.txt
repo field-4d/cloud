@@ -1,0 +1,10 @@
+start server:
+uvicorn app.main:app --reload 
+
+
+perfomance testing:
+2. Performance by Scenario
+Small, daily datasets (e.g., 2 groups, 10 reps, 7 days) are extremely fast (0.179s).
+Larger daily datasets (4 groups, 12 reps, 30 days) are still very fast (2.449s).
+High-frequency, short duration (3-min, 3 groups, 8 reps, 1 day) is reasonable (12.693s).
+High-frequency, longer duration (3-min, 4 groups, 4 reps, 30 days) is much slower (361.226s), as expected due to the huge number of timestamps (14,400).

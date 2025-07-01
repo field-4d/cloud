@@ -26,6 +26,18 @@ def run_anova_tukey(df: pd.DataFrame, alpha=0.05):
         if len(labels) < 2:
             continue
         try:
+            # Calculate group stats
+            group_stats = {}
+            for label, subdf in group_df.groupby("label"):
+                n = int(subdf["value"].count())
+                mean = float(subdf["value"].mean())
+                se = float(subdf["value"].std(ddof=1) / n**0.5) if n > 1 else 0.0
+                group_stats[label] = {
+                    "mean": mean,
+                    "standard_error": se,
+                    "n": n
+                }
+
             model = ols("value ~ C(label)", data=group_df).fit()
             anova_table = sm.stats.anova_lm(model, typ=2)
             p_value = anova_table["PR(>F)"].iloc[0]
@@ -33,6 +45,7 @@ def run_anova_tukey(df: pd.DataFrame, alpha=0.05):
             ts_result = {
                 "timestamp": ts,
                 "groups_tested": labels,
+                "group_stats": group_stats,
                 "significant_differences": [],
                 "letters_report": None
             }
@@ -42,7 +55,7 @@ def run_anova_tukey(df: pd.DataFrame, alpha=0.05):
                 for res in tukey.summary().data[1:]:
                     ts_result["significant_differences"].append({
                         "comparison": f"{res[0]} vs {res[1]}",
-                        "p_value": res[4],
+                        "p_value": float(res[4]),
                         "reject_null": bool(res[5])
                     })
                 # Letters report
