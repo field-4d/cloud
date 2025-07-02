@@ -1,0 +1,21 @@
+{
+  "test_id": "optimized_test_20250702_144847_aa3f07f9_Large_Dataset_230k_points_1worker",
+  "test_name": "Large Dataset (230K points) - 1 Worker",
+  "strategy": "size",
+  "batch_size": 5000,
+  "test_start_time": "2025-07-02T14:53:52.137312",
+  "test_end_time": "2025-07-02T15:00:52.316346",
+  "test_duration_seconds": 420.17903423309326,
+  "total_batches": 47,
+  "successful_batches": 47,
+  "failed_batches": 0,
+  "error_count": 0,
+  "success_rate": 100.0,
+  "total_time": 420.0250072479248,
+  "avg_batch_time": 8.93670228187074,
+  "total_data_points": 230400,
+  "results_count": 14423,
+  "throughput_points_per_second": 548.3376875776867,
+  "concurrent": false,
+  "max_workers": 1
+}

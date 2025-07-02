@@ -1,0 +1,21 @@
+{
+  "test_id": "optimized_test_20250702_144753_3f691772_Small_Dataset_40k_points_2workers",
+  "test_name": "Small Dataset (40K points) - 2 Workers",
+  "strategy": "size",
+  "batch_size": 10000,
+  "test_start_time": "2025-07-02T14:48:04.045218",
+  "test_end_time": "2025-07-02T14:48:10.176524",
+  "test_duration_seconds": 6.131305932998657,
+  "total_batches": 5,
+  "successful_batches": 0,
+  "failed_batches": 5,
+  "error_count": 5,
+  "success_rate": 0.0,
+  "total_time": 0,
+  "avg_batch_time": 0,
+  "total_data_points": 40320,
+  "results_count": 0,
+  "throughput_points_per_second": 6576.086797919831,
+  "concurrent": true,
+  "max_workers": 2
+}
