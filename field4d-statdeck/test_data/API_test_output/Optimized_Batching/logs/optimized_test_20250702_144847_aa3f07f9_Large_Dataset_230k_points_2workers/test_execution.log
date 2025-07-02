@@ -1,0 +1,54 @@
+2025-07-02 15:00:52,316 - MainThread - INFO - Starting optimized batch test: Large Dataset (230K points) - 2 Workers
+2025-07-02 15:00:52,316 - MainThread - INFO - Dataset size: 230,400 points
+2025-07-02 15:00:52,316 - MainThread - INFO - Optimal batch size: 5,000
+2025-07-02 15:00:52,316 - MainThread - INFO - Workers: 2
+2025-07-02 15:00:52,324 - MainThread - INFO - Created 47 batches
+2025-07-02 15:00:52,324 - MainThread - INFO - Processing batches with 2 workers
+2025-07-02 15:01:01,795 - ThreadPoolExecutor-2_1 - INFO - Batch 002 completed: 9.46s, Status: 200, Success: True
+2025-07-02 15:01:08,466 - ThreadPoolExecutor-2_0 - INFO - Batch 001 completed: 16.14s, Status: 200, Success: True
+2025-07-02 15:01:14,486 - ThreadPoolExecutor-2_1 - INFO - Batch 003 completed: 12.69s, Status: 200, Success: True
+2025-07-02 15:01:22,104 - ThreadPoolExecutor-2_0 - INFO - Batch 004 completed: 13.64s, Status: 200, Success: True
+2025-07-02 15:01:29,351 - ThreadPoolExecutor-2_1 - INFO - Batch 005 completed: 14.86s, Status: 200, Success: True
+2025-07-02 15:01:30,060 - ThreadPoolExecutor-2_0 - ERROR - Batch 006 failed: 7.96s, Error: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2025-07-02 15:01:38,225 - ThreadPoolExecutor-2_1 - INFO - Batch 007 completed: 8.87s, Status: 200, Success: True
+2025-07-02 15:01:44,964 - ThreadPoolExecutor-2_0 - INFO - Batch 008 completed: 14.90s, Status: 200, Success: True
+2025-07-02 15:01:52,619 - ThreadPoolExecutor-2_1 - INFO - Batch 009 completed: 14.39s, Status: 200, Success: True
+2025-07-02 15:02:01,090 - ThreadPoolExecutor-2_0 - INFO - Batch 010 completed: 16.13s, Status: 200, Success: True
+2025-07-02 15:02:09,164 - ThreadPoolExecutor-2_1 - INFO - Batch 011 completed: 16.54s, Status: 200, Success: True
+2025-07-02 15:02:17,088 - ThreadPoolExecutor-2_0 - INFO - Batch 012 completed: 15.99s, Status: 200, Success: True
+2025-07-02 15:02:23,553 - ThreadPoolExecutor-2_1 - INFO - Batch 013 completed: 14.39s, Status: 200, Success: True
+2025-07-02 15:02:31,544 - ThreadPoolExecutor-2_0 - INFO - Batch 014 completed: 14.45s, Status: 200, Success: True
+2025-07-02 15:02:38,248 - ThreadPoolExecutor-2_1 - INFO - Batch 015 completed: 14.69s, Status: 200, Success: True
+2025-07-02 15:02:44,865 - ThreadPoolExecutor-2_0 - INFO - Batch 016 completed: 13.31s, Status: 200, Success: True
+2025-07-02 15:02:51,979 - ThreadPoolExecutor-2_1 - INFO - Batch 017 completed: 13.73s, Status: 200, Success: True
+2025-07-02 15:03:05,034 - ThreadPoolExecutor-2_0 - INFO - Batch 018 completed: 20.17s, Status: 200, Success: True
+2025-07-02 15:03:17,361 - ThreadPoolExecutor-2_1 - INFO - Batch 019 completed: 25.38s, Status: 200, Success: True
+2025-07-02 15:03:32,822 - ThreadPoolExecutor-2_0 - INFO - Batch 020 completed: 27.78s, Status: 200, Success: True
+2025-07-02 15:03:50,465 - ThreadPoolExecutor-2_1 - INFO - Batch 021 completed: 33.10s, Status: 200, Success: True
+2025-07-02 15:04:03,387 - ThreadPoolExecutor-2_0 - INFO - Batch 022 completed: 30.56s, Status: 200, Success: True
+2025-07-02 15:04:15,726 - ThreadPoolExecutor-2_1 - INFO - Batch 023 completed: 25.26s, Status: 200, Success: True
+2025-07-02 15:04:33,344 - ThreadPoolExecutor-2_0 - INFO - Batch 024 completed: 29.95s, Status: 200, Success: True
+2025-07-02 15:04:49,175 - ThreadPoolExecutor-2_1 - INFO - Batch 025 completed: 33.44s, Status: 200, Success: True
+2025-07-02 15:05:04,329 - ThreadPoolExecutor-2_0 - INFO - Batch 026 completed: 30.98s, Status: 200, Success: True
+2025-07-02 15:05:24,356 - ThreadPoolExecutor-2_1 - INFO - Batch 027 completed: 35.18s, Status: 200, Success: True
+2025-07-02 15:05:44,427 - ThreadPoolExecutor-2_0 - INFO - Batch 028 completed: 40.10s, Status: 200, Success: True
+2025-07-02 15:06:02,774 - ThreadPoolExecutor-2_1 - INFO - Batch 029 completed: 38.41s, Status: 200, Success: True
+2025-07-02 15:06:18,318 - ThreadPoolExecutor-2_0 - INFO - Batch 030 completed: 33.89s, Status: 200, Success: True
+2025-07-02 15:06:34,796 - ThreadPoolExecutor-2_1 - INFO - Batch 031 completed: 32.02s, Status: 200, Success: True
+2025-07-02 15:06:48,444 - ThreadPoolExecutor-2_0 - INFO - Batch 032 completed: 30.13s, Status: 200, Success: True
+2025-07-02 15:07:02,925 - ThreadPoolExecutor-2_1 - INFO - Batch 033 completed: 28.12s, Status: 200, Success: True
+2025-07-02 15:07:18,359 - ThreadPoolExecutor-2_0 - INFO - Batch 034 completed: 29.91s, Status: 200, Success: True
+2025-07-02 15:07:33,689 - ThreadPoolExecutor-2_1 - INFO - Batch 035 completed: 30.76s, Status: 200, Success: True
+2025-07-02 15:07:50,475 - ThreadPoolExecutor-2_0 - INFO - Batch 036 completed: 32.11s, Status: 200, Success: True
+2025-07-02 15:08:07,274 - ThreadPoolExecutor-2_1 - INFO - Batch 037 completed: 33.58s, Status: 200, Success: True
+2025-07-02 15:08:22,234 - ThreadPoolExecutor-2_0 - INFO - Batch 038 completed: 31.75s, Status: 200, Success: True
+2025-07-02 15:08:40,985 - ThreadPoolExecutor-2_1 - INFO - Batch 039 completed: 33.71s, Status: 200, Success: True
+2025-07-02 15:08:55,425 - ThreadPoolExecutor-2_0 - INFO - Batch 040 completed: 33.19s, Status: 200, Success: True
+2025-07-02 15:09:13,722 - ThreadPoolExecutor-2_1 - INFO - Batch 041 completed: 32.73s, Status: 200, Success: True
+2025-07-02 15:09:28,835 - ThreadPoolExecutor-2_0 - INFO - Batch 042 completed: 33.41s, Status: 200, Success: True
+2025-07-02 15:09:42,797 - ThreadPoolExecutor-2_1 - INFO - Batch 043 completed: 29.07s, Status: 200, Success: True
+2025-07-02 15:09:57,045 - ThreadPoolExecutor-2_0 - INFO - Batch 044 completed: 28.21s, Status: 200, Success: True
+2025-07-02 15:10:12,861 - ThreadPoolExecutor-2_1 - INFO - Batch 045 completed: 30.06s, Status: 200, Success: True
+2025-07-02 15:10:27,461 - ThreadPoolExecutor-2_0 - INFO - Batch 046 completed: 30.42s, Status: 200, Success: True
+2025-07-02 15:10:28,440 - ThreadPoolExecutor-2_1 - INFO - Batch 047 completed: 15.58s, Status: 200, Success: True
+2025-07-02 15:10:28,445 - MainThread - INFO - Test completed: 576.12s, Success rate: 97.9%

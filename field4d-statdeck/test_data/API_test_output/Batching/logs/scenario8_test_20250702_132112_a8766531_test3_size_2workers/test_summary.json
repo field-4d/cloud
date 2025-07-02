@@ -1,0 +1,21 @@
+{
+  "test_id": "scenario8_test_20250702_132112_a8766531_test3_size_2workers",
+  "test_name": "Scenario 8 - Concurrent by Size (10K points/batch, 2 workers)",
+  "strategy": "size",
+  "batch_size": 10000,
+  "test_start_time": "2025-07-02T13:32:02.083508",
+  "test_end_time": "2025-07-02T13:37:20.355966",
+  "test_duration_seconds": 318.27245831489563,
+  "total_batches": 24,
+  "successful_batches": 24,
+  "failed_batches": 0,
+  "error_count": 0,
+  "success_rate": 100.0,
+  "total_time": 636.1683356761932,
+  "avg_batch_time": 26.507013986508053,
+  "total_data_points": 230400,
+  "results_count": 14400,
+  "throughput_points_per_second": 723.9080667546939,
+  "concurrent": true,
+  "max_workers": 2
+}

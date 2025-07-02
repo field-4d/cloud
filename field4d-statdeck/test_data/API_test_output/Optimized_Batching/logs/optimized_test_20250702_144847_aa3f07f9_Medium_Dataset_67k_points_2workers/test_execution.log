@@ -1,0 +1,14 @@
+2025-07-02 14:52:11,240 - MainThread - INFO - Starting optimized batch test: Medium Dataset (67K points) - 2 Workers
+2025-07-02 14:52:11,240 - MainThread - INFO - Dataset size: 67,200 points
+2025-07-02 14:52:11,241 - MainThread - INFO - Optimal batch size: 10,000
+2025-07-02 14:52:11,241 - MainThread - INFO - Workers: 2
+2025-07-02 14:52:11,242 - MainThread - INFO - Created 7 batches
+2025-07-02 14:52:11,242 - MainThread - INFO - Processing batches with 2 workers
+2025-07-02 14:52:28,434 - ThreadPoolExecutor-1_1 - INFO - Batch 002 completed: 17.19s, Status: 200, Success: True
+2025-07-02 14:52:43,034 - ThreadPoolExecutor-1_0 - INFO - Batch 001 completed: 31.79s, Status: 200, Success: True
+2025-07-02 14:52:58,693 - ThreadPoolExecutor-1_1 - INFO - Batch 003 completed: 30.25s, Status: 200, Success: True
+2025-07-02 14:53:13,440 - ThreadPoolExecutor-1_0 - INFO - Batch 004 completed: 30.37s, Status: 200, Success: True
+2025-07-02 14:53:28,451 - ThreadPoolExecutor-1_1 - INFO - Batch 005 completed: 29.76s, Status: 200, Success: True
+2025-07-02 14:53:42,394 - ThreadPoolExecutor-1_0 - INFO - Batch 006 completed: 28.95s, Status: 200, Success: True
+2025-07-02 14:53:52,122 - ThreadPoolExecutor-1_1 - INFO - Batch 007 completed: 23.67s, Status: 200, Success: True
+2025-07-02 14:53:52,131 - MainThread - INFO - Test completed: 100.88s, Success rate: 100.0%
