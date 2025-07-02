@@ -1,0 +1,7 @@
+2025-07-02 14:44:02,458 - MainThread - INFO - Starting optimized batch test: Small Dataset (40K points) - 1 Worker
+2025-07-02 14:44:02,459 - MainThread - INFO - Dataset size: 40,320 points
+2025-07-02 14:44:02,459 - MainThread - INFO - Optimal batch size: 10,000
+2025-07-02 14:44:02,459 - MainThread - INFO - Workers: 1
+2025-07-02 14:44:02,459 - MainThread - INFO - Created 5 batches
+2025-07-02 14:44:02,459 - MainThread - INFO - Processing batches sequentially
+2025-07-02 14:44:06,560 - MainThread - ERROR - Batch 001 failed: 4.10s, Error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /anova (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001E70F6A60C0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
