@@ -4,9 +4,10 @@ import time
 from datetime import datetime, timedelta
 import random
 import os
+import pandas as pd
 
 API_URL = "http://127.0.0.1:8000/analyze"
-OUTPUT_DIR = "API_test_output"
+OUTPUT_DIR = "API_test_output/General"
 
 # -----------------------------
 # Synthetic Data Generation
@@ -56,7 +57,7 @@ def run_test_case(name, payload):
     Returns:
         tuple: (elapsed_time, response_status_code)
     """
-    print(f"\nRunning test: {name}")
+    print(f"Running test: {name}")
     start = time.time()
     response = requests.post(API_URL, json=payload)
     elapsed = time.time() - start
@@ -170,13 +171,70 @@ def main():
     ))
 
     timings = []
-    for name, payload in test_cases:
+    for i, (name, payload) in enumerate(test_cases, 1):
+        print(f"\n=== Scenario {i}: {name} ===")
         elapsed, status = run_test_case(name, payload)
-        timings.append((name, elapsed, status))
+        timings.append((i, name, elapsed, status))
 
     print("\n--- Benchmark Summary ---")
-    for name, elapsed, status in timings:
-        print(f"{name}: {elapsed:.3f}s (status {status})")
+    for scenario_num, name, elapsed, status in timings:
+        print(f"Scenario {scenario_num}: {name}: {elapsed:.3f}s (status {status})")
+
+    # Export results to CSV for analysis
+    print("\n--- Exporting Results to CSV ---")
+    df = pd.DataFrame(timings, columns=['Scenario_Number', 'Scenario_Name', 'Execution_Time_Seconds', 'Status_Code'])
+    
+    # Add additional analysis columns
+    df['Execution_Time_Minutes'] = df['Execution_Time_Seconds'] / 60
+    df['Status'] = df['Status_Code'].apply(lambda x: 'Success' if x == 200 else 'Failed')
+    
+    # Extract scenario parameters for analysis
+    df['Frequency'] = df['Scenario_Name'].apply(lambda x: 
+        'Daily' if 'Daily' in x else 
+        '3-min' if '3-min' in x else 
+        '15-min' if '15-min' in x else 
+        '60-min' if '60-min' in x else 'Unknown')
+    
+    df['Groups'] = df['Scenario_Name'].apply(lambda x: 
+        int(x.split('groups')[0].split()[-1]) if 'groups' in x else 0)
+    
+    df['Replicates'] = df['Scenario_Name'].apply(lambda x: 
+        int(x.split('reps')[0].split()[-1]) if 'reps' in x else 0)
+    
+    df['Days'] = df['Scenario_Name'].apply(lambda x: 
+        int(x.split('days')[0].split()[-1]) if 'days' in x else 0)
+    
+    # Calculate data points per scenario
+    df['Total_Data_Points'] = df.apply(lambda row: 
+        row['Groups'] * row['Replicates'] * row['Days'] * (1440 // 3 if row['Frequency'] == '3-min' else
+                                                          1440 // 15 if row['Frequency'] == '15-min' else
+                                                          1440 // 60 if row['Frequency'] == '60-min' else
+                                                          1), axis=1)
+    
+    # Reorder columns for better readability
+    columns_order = [
+        'Scenario_Number', 'Scenario_Name', 'Frequency', 'Groups', 'Replicates', 'Days',
+        'Total_Data_Points', 'Execution_Time_Seconds', 'Execution_Time_Minutes', 
+        'Status_Code', 'Status'
+    ]
+    df = df[columns_order]
+    
+    # Save to CSV
+    csv_path = os.path.join(OUTPUT_DIR, "scenario_benchmark_results.csv")
+    df.to_csv(csv_path, index=False)
+    print(f"Results exported to: {csv_path}")
+    print(f"Total scenarios tested: {len(df)}")
+    print(f"Successful scenarios: {len(df[df['Status'] == 'Success'])}")
+    print(f"Failed scenarios: {len(df[df['Status'] == 'Failed'])}")
+    
+    # Print summary statistics
+    if len(df[df['Status'] == 'Success']) > 0:
+        successful_df = df[df['Status'] == 'Success']
+        print(f"\nPerformance Summary (Successful scenarios only):")
+        print(f"Average execution time: {successful_df['Execution_Time_Seconds'].mean():.3f}s")
+        print(f"Fastest scenario: {successful_df['Execution_Time_Seconds'].min():.3f}s")
+        print(f"Slowest scenario: {successful_df['Execution_Time_Seconds'].max():.3f}s")
+        print(f"Total data points processed: {successful_df['Total_Data_Points'].sum():,}")
 
 if __name__ == "__main__":
     main()
