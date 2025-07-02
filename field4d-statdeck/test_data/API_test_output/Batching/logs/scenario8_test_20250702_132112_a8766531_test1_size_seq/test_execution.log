@@ -1,0 +1,82 @@
+2025-07-02 13:21:13,075 - MainThread - INFO - Starting batched test: Scenario 8 - Sequential by Size (10K points/batch)
+2025-07-02 13:21:13,075 - MainThread - INFO - Strategy: size, Batch size: 10000
+2025-07-02 13:21:13,075 - MainThread - INFO - Total data points: 230400
+2025-07-02 13:21:13,075 - MainThread - INFO - Created 24 batches
+2025-07-02 13:21:13,075 - MainThread - INFO - Processing batch 1/24 (10000 data points)
+2025-07-02 13:21:25,530 - MainThread - INFO - [SUCCESS] Batch 1: 12.451s
+2025-07-02 13:21:25,531 - MainThread - INFO - Processing batch 2/24 (10000 data points)
+2025-07-02 13:21:43,016 - MainThread - INFO - [SUCCESS] Batch 2: 17.478s
+2025-07-02 13:21:43,017 - MainThread - INFO - Processing batch 3/24 (10000 data points)
+2025-07-02 13:21:57,271 - MainThread - INFO - [SUCCESS] Batch 3: 14.246s
+2025-07-02 13:21:57,271 - MainThread - INFO - Processing batch 4/24 (10000 data points)
+2025-07-02 13:22:11,767 - MainThread - INFO - [SUCCESS] Batch 4: 14.458s
+2025-07-02 13:22:11,768 - MainThread - INFO - Processing batch 5/24 (10000 data points)
+2025-07-02 13:22:24,699 - MainThread - INFO - [SUCCESS] Batch 5: 12.930s
+2025-07-02 13:22:24,699 - MainThread - INFO - Processing batch 6/24 (10000 data points)
+2025-07-02 13:22:40,164 - MainThread - INFO - [SUCCESS] Batch 6: 15.461s
+2025-07-02 13:22:40,164 - MainThread - INFO - Processing batch 7/24 (10000 data points)
+2025-07-02 13:22:55,054 - MainThread - INFO - [SUCCESS] Batch 7: 14.885s
+2025-07-02 13:22:55,054 - MainThread - INFO - Processing batch 8/24 (10000 data points)
+2025-07-02 13:23:09,978 - MainThread - INFO - [SUCCESS] Batch 8: 14.913s
+2025-07-02 13:23:09,978 - MainThread - INFO - Processing batch 9/24 (10000 data points)
+2025-07-02 13:23:23,923 - MainThread - INFO - [SUCCESS] Batch 9: 13.944s
+2025-07-02 13:23:23,923 - MainThread - INFO - Processing batch 10/24 (10000 data points)
+2025-07-02 13:23:37,469 - MainThread - INFO - [SUCCESS] Batch 10: 13.539s
+2025-07-02 13:23:37,469 - MainThread - INFO - Processing batch 11/24 (10000 data points)
+2025-07-02 13:23:53,500 - MainThread - INFO - [SUCCESS] Batch 11: 16.027s
+2025-07-02 13:23:53,500 - MainThread - INFO - Processing batch 12/24 (10000 data points)
+2025-07-02 13:24:08,299 - MainThread - INFO - [SUCCESS] Batch 12: 14.790s
+2025-07-02 13:24:08,302 - MainThread - INFO - Processing batch 13/24 (10000 data points)
+2025-07-02 13:24:22,508 - MainThread - INFO - [SUCCESS] Batch 13: 14.199s
+2025-07-02 13:24:22,508 - MainThread - INFO - Processing batch 14/24 (10000 data points)
+2025-07-02 13:24:35,786 - MainThread - INFO - [SUCCESS] Batch 14: 13.275s
+2025-07-02 13:24:35,786 - MainThread - INFO - Processing batch 15/24 (10000 data points)
+2025-07-02 13:24:48,992 - MainThread - INFO - [SUCCESS] Batch 15: 13.203s
+2025-07-02 13:24:48,992 - MainThread - INFO - Processing batch 16/24 (10000 data points)
+2025-07-02 13:25:03,679 - MainThread - INFO - [SUCCESS] Batch 16: 14.679s
+2025-07-02 13:25:03,679 - MainThread - INFO - Processing batch 17/24 (10000 data points)
+2025-07-02 13:25:18,854 - MainThread - INFO - [SUCCESS] Batch 17: 15.175s
+2025-07-02 13:25:18,854 - MainThread - INFO - Processing batch 18/24 (10000 data points)
+2025-07-02 13:25:31,469 - MainThread - INFO - [SUCCESS] Batch 18: 12.615s
+2025-07-02 13:25:31,469 - MainThread - INFO - Processing batch 19/24 (10000 data points)
+2025-07-02 13:25:44,812 - MainThread - INFO - [SUCCESS] Batch 19: 13.340s
+2025-07-02 13:25:44,813 - MainThread - INFO - Processing batch 20/24 (10000 data points)
+2025-07-02 13:25:58,367 - MainThread - INFO - [SUCCESS] Batch 20: 13.549s
+2025-07-02 13:25:58,369 - MainThread - INFO - Processing batch 21/24 (10000 data points)
+2025-07-02 13:26:12,442 - MainThread - INFO - [SUCCESS] Batch 21: 14.071s
+2025-07-02 13:26:12,442 - MainThread - INFO - Processing batch 22/24 (10000 data points)
+2025-07-02 13:26:25,851 - MainThread - INFO - [SUCCESS] Batch 22: 13.406s
+2025-07-02 13:26:25,853 - MainThread - INFO - Processing batch 23/24 (10000 data points)
+2025-07-02 13:26:40,097 - MainThread - INFO - [SUCCESS] Batch 23: 14.239s
+2025-07-02 13:26:40,097 - MainThread - INFO - Processing batch 24/24 (400 data points)
+2025-07-02 13:26:40,332 - MainThread - INFO - [SUCCESS] Batch 24: 0.235s
+2025-07-02 13:26:40,339 - MainThread - INFO - [COMPLETED] Test completed: 327.257s total, 13.630s avg/batch
+2025-07-02 13:26:40,339 - MainThread - INFO -   Success rate: 100.0% (24/24)
+2025-07-02 13:26:40,339 - MainThread - INFO -   Throughput: 704 points/second
+2025-07-02 13:26:40,348 - MainThread - INFO - Starting batched test: Scenario 8 - Sequential by Size (5K points/batch)
+2025-07-02 13:26:40,349 - MainThread - INFO - Strategy: size, Batch size: 5000
+2025-07-02 13:26:40,349 - MainThread - INFO - Total data points: 230400
+2025-07-02 13:26:40,352 - MainThread - INFO - Created 47 batches
+2025-07-02 13:26:40,352 - MainThread - INFO - Processing batch 1/47 (5000 data points)
+2025-07-02 13:26:47,945 - MainThread - INFO - [SUCCESS] Batch 1: 7.587s
+2025-07-02 13:26:47,945 - MainThread - INFO - Processing batch 2/47 (5000 data points)
+2025-07-02 13:26:54,504 - MainThread - INFO - [SUCCESS] Batch 2: 6.554s
+2025-07-02 13:26:54,505 - MainThread - INFO - Processing batch 3/47 (5000 data points)
+2025-07-02 13:27:01,399 - MainThread - INFO - [SUCCESS] Batch 3: 6.894s
+2025-07-02 13:27:01,399 - MainThread - INFO - Processing batch 4/47 (5000 data points)
+2025-07-02 13:27:09,677 - MainThread - INFO - [SUCCESS] Batch 4: 8.276s
+2025-07-02 13:27:09,677 - MainThread - INFO - Processing batch 5/47 (5000 data points)
+2025-07-02 13:27:15,769 - MainThread - INFO - [SUCCESS] Batch 5: 6.082s
+2025-07-02 13:27:15,769 - MainThread - INFO - Processing batch 6/47 (5000 data points)
+2025-07-02 13:27:22,949 - MainThread - INFO - [SUCCESS] Batch 6: 7.179s
+2025-07-02 13:27:22,949 - MainThread - INFO - Processing batch 7/47 (5000 data points)
+2025-07-02 13:27:23,666 - MainThread - ERROR - [FAILED] Batch 7: 0.718s (status 500)
+2025-07-02 13:27:23,667 - MainThread - INFO - Processing batch 8/47 (5000 data points)
+2025-07-02 13:27:32,910 - MainThread - INFO - [SUCCESS] Batch 8: 9.243s
+2025-07-02 13:27:32,915 - MainThread - INFO - Processing batch 9/47 (5000 data points)
+2025-07-02 13:27:39,369 - MainThread - INFO - [SUCCESS] Batch 9: 6.454s
+2025-07-02 13:27:39,369 - MainThread - INFO - Processing batch 10/47 (5000 data points)
+2025-07-02 13:27:45,196 - MainThread - INFO - [SUCCESS] Batch 10: 5.820s
+2025-07-02 13:27:45,196 - MainThread - INFO - Processing batch 11/47 (5000 data points)
+2025-07-02 13:27:53,480 - MainThread - INFO - [SUCCESS] Batch 11: 8.282s
+2025-07-02 13:27:53,480 - MainThread - INFO - Processing batch 12/47 (5000 data points)

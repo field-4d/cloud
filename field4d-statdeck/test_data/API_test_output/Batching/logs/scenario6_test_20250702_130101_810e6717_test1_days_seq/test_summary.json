@@ -1,0 +1,21 @@
+{
+  "test_id": "scenario6_test_20250702_130101_810e6717_test1_days_seq",
+  "test_name": "Scenario 6 - Sequential by Days (7 days/batch)",
+  "strategy": "days",
+  "batch_size": 7,
+  "test_start_time": "2025-07-02T13:01:01.699905",
+  "test_end_time": "2025-07-02T13:01:40.209961",
+  "test_duration_seconds": 38.51005530357361,
+  "total_batches": 2,
+  "successful_batches": 2,
+  "failed_batches": 0,
+  "error_count": 0,
+  "success_rate": 100.0,
+  "total_time": 38.49521780014038,
+  "avg_batch_time": 19.24760890007019,
+  "total_data_points": 40320,
+  "results_count": 1344,
+  "throughput_points_per_second": 1047.4028283028176,
+  "concurrent": false,
+  "max_workers": 1
+}

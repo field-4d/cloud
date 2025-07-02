@@ -1,0 +1,16 @@
+2025-07-02 13:00:09,848 - MainThread - INFO - Starting batched test: Scenario 6 - Sequential by Days (7 days/batch)
+2025-07-02 13:00:09,850 - MainThread - INFO - Strategy: days, Batch size: 7
+2025-07-02 13:00:09,850 - MainThread - INFO - Total data points: 40320
+2025-07-02 13:00:09,867 - MainThread - INFO - Created 2 batches
+2025-07-02 13:00:09,867 - MainThread - INFO - Processing batch 1/2 (20160 data points)
+2025-07-02 13:00:19,967 - MainThread - ERROR - [FAILED] Batch 1: 10.099s (status 500)
+2025-07-02 13:00:19,967 - MainThread - INFO - Processing batch 2/2 (20160 data points)
+2025-07-02 13:00:39,224 - MainThread - INFO - [SUCCESS] Batch 2: 19.254s
+2025-07-02 13:00:39,230 - MainThread - INFO - [COMPLETED] Test completed: 29.357s total, 14.676s avg/batch
+2025-07-02 13:00:39,230 - MainThread - INFO -   Success rate: 50.0% (1/2)
+2025-07-02 13:00:39,230 - MainThread - INFO -   Throughput: 1374 points/second
+2025-07-02 13:00:39,231 - MainThread - INFO - Starting batched test: Scenario 6 - Sequential by Size (10K points/batch)
+2025-07-02 13:00:39,231 - MainThread - INFO - Strategy: size, Batch size: 10000
+2025-07-02 13:00:39,231 - MainThread - INFO - Total data points: 40320
+2025-07-02 13:00:39,232 - MainThread - INFO - Created 5 batches
+2025-07-02 13:00:39,232 - MainThread - INFO - Processing batch 1/5 (10000 data points)
