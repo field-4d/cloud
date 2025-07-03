@@ -2,7 +2,7 @@
 
 A high-performance FastAPI service for performing statistical testing on time-series group comparisons with intelligent batching and validation.
 
-## 🏗️ Application Architecture
+## Application Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -23,15 +23,15 @@ A high-performance FastAPI service for performing statistical testing on time-se
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 📊 Statistical Tests Supported
+## Statistical Tests Supported
 
 | Test Type | Status | Implementation | Description |
 |-----------|--------|----------------|-------------|
-| **Tukey's HSD** | ✅ **Active** | `run_anova_tukey()` | ANOVA with post-hoc Tukey's Honestly Significant Difference test |
-| **T-Test** | 🔄 **Pending** | `run_t_test()` | Independent samples t-test (placeholder) |
-| **Dunnett's Test** | 🔄 **Pending** | `run_dunnett()` | Multiple comparisons vs control (placeholder) |
+| **Tukey's HSD** | **Active** | `run_anova_tukey()` | ANOVA with post-hoc Tukey's Honestly Significant Difference test |
+| **T-Test** | **Pending** | `run_t_test()` | Independent samples t-test (placeholder) |
+| **Dunnett's Test** | **Pending** | `run_dunnett()` | Multiple comparisons vs control (placeholder) |
 
-## 🚀 API Endpoints
+## API Endpoints
 
 ### Health Check
 ```
@@ -90,13 +90,13 @@ POST /analyze/tukey
 ```
 POST /analyze/t-test
 ```
-Returns HTTP 202 (Accepted) with placeholder response.
+Returns HTTP 501 (Not Implemented) with placeholder response.
 
 #### 3. Dunnett's Test (Pending Implementation)
 ```
 POST /analyze/dunnett
 ```
-Returns HTTP 202 (Accepted) with placeholder response.
+Returns HTTP 501 (Not Implemented) with placeholder response.
 
 #### 4. Legacy Endpoint (Deprecated)
 ```
@@ -104,7 +104,7 @@ POST /analyze
 ```
 Backward compatibility endpoint - use specific test endpoints instead.
 
-## 📈 Data Flow Architecture
+## Data Flow Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -116,10 +116,10 @@ Backward compatibility endpoint - use specific test endpoints instead.
                        ┌─────────────────┐    ┌─────────────────┐
                        │ Validation Rules│    │ Statistical Tests│
                        │                 │    │                 │
-                       │ ≤ 50K: 10K max  │    │ • ANOVA         │
-                       │ ≤ 100K: 10K max │    │ • Tukey's HSD   │
-                       │ ≤ 500K: 5K max  │    │ • Group Stats   │
-                       │ > 500K: 3K max  │    │ • Letters Report│
+                       │ Max 15K batch   │    │ • ANOVA         │
+                       │ Simple rule     │    │ • Tukey's HSD   │
+                       │ Clear errors    │    │ • Group Stats   │
+                       │                 │    │ • Letters Report│
                        └─────────────────┘    └─────────────────┘
                                                        │
                                                        ▼
@@ -129,18 +129,54 @@ Backward compatibility endpoint - use specific test endpoints instead.
                                               └─────────────────┘
 ```
 
-## 🔧 Batch Validation Rules
+## Batch Size Validation
 
-The application implements intelligent batch size validation based on dataset size:
+The application implements a simple batch size validation rule:
 
-| Dataset Size | Maximum Batch Size | Rationale |
-|--------------|-------------------|-----------|
-| ≤ 50K points | 10,000 | Optimal performance for small datasets |
-| ≤ 100K points | 10,000 | Balanced processing for medium datasets |
-| ≤ 500K points | 5,000 | Memory management for large datasets |
-| > 500K points | 3,000 | Resource optimization for very large datasets |
+**Maximum batch size: 15,000 data points**
 
-## 📁 Project Structure
+Any batch larger than 15,000 points will be rejected with a clear error message that includes the recommended batch size for your dataset.
+
+### Recommended Batch Sizes
+
+For optimal performance, consider these recommended batch sizes based on your dataset characteristics:
+
+| Dataset Type | Recommended Batch Size | Use Case |
+|--------------|----------------------|----------|
+| Small datasets (< 50K total) | 10,000 | Quick analysis, development/testing |
+| Medium datasets (50K-200K total) | 8,000 | Balanced performance and memory usage |
+| Large datasets (200K-1M total) | 5,000 | Memory-efficient processing |
+| Very large datasets (> 1M total) | 3,000 | Resource-optimized processing |
+
+### Batch Splitting Strategy
+
+For datasets larger than 15,000 points:
+1. Split your data into batches of ≤ 15,000 points
+2. Send each batch as a separate API request
+3. Collect results from all successful batches
+4. Combine results on the client side
+
+**Example**: A 50,000-point dataset should be split into 4 batches:
+- Batch 1: 15,000 points
+- Batch 2: 15,000 points  
+- Batch 3: 15,000 points
+- Batch 4: 5,000 points
+
+### Error Message Example
+
+When you send a batch that's too large, you'll get a helpful error message like this:
+
+```
+Batch size validation failed:
+- Dataset size: 50,000 points
+- Maximum allowed: 15,000 points
+
+Recommended batch size for your dataset: 10,000 points
+
+Please split your data into batches of maximum 10,000 points.
+```
+
+## Project Structure
 
 ```
 field4d-statdeck/
@@ -163,7 +199,7 @@ field4d-statdeck/
 └── README.md                   # This file
 ```
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 - Python 3.8+
@@ -194,7 +230,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 | `MAX_REQUEST_SIZE` | `1000000` | Maximum request size in bytes (1MB) |
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing
 ```bash
@@ -210,14 +246,14 @@ curl -X POST http://localhost:8000/analyze/tukey \
 ### Automated Testing
 The project includes comprehensive test suites in the `test_data/` directory with various scenarios and batch sizes.
 
-## 📊 Performance Characteristics
+## Performance Characteristics
 
 - **Response Time**: < 2 seconds for batches up to 10K points
 - **Memory Usage**: Optimized for large datasets with intelligent batching
 - **Scalability**: Horizontal scaling ready with stateless design
 - **Validation**: Automatic batch size validation with clear error messages
 
-## 🔍 Key Features
+## Key Features
 
 ### 1. **Intelligent Batching**
 - Automatic batch size validation based on dataset size
@@ -240,7 +276,7 @@ The project includes comprehensive test suites in the `test_data/` directory wit
 - OpenAPI specification
 - Example requests and responses
 
-## 🚀 Deployment
+## Deployment
 
 ### Local Development
 ```bash
@@ -263,7 +299,7 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-## 📝 Data Format
+## Data Format
 
 ### Input Data Structure
 ```json
@@ -312,7 +348,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 }
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -320,11 +356,11 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 4. Add tests for new functionality
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🆘 Support
+## Support
 
 For issues and questions:
 - Check the API documentation at `/docs`

@@ -6,6 +6,22 @@ class DataPoint(BaseModel):
     label: str
     value: float
 
+# Base model for common fields
+class BaseTestRequest(BaseModel):
+    parameter: str
+    data: List[DataPoint]
+
+# Specific test models
+class TukeyTestRequest(BaseTestRequest):
+    alpha: float = 0.05
+
+class TTestRequest(BaseTestRequest):
+    alpha: float = 0.05
+
+class DunnettTestRequest(BaseTestRequest):
+    alpha: float = 0.05
+
+# Legacy model for backward compatibility
 class TestRequest(BaseModel):
     test_type: Literal["tukey", "t_test", "dunnett"]
     parameter: str
