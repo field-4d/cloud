@@ -28,8 +28,8 @@ A high-performance FastAPI service for performing statistical testing on time-se
 | Test Type | Status | Implementation | Description |
 |-----------|--------|----------------|-------------|
 | **Tukey's HSD** | **Active** | `run_anova_tukey()` | ANOVA with post-hoc Tukey's Honestly Significant Difference test |
-| **T-Test** | **Pending** | `run_t_test()` | Independent samples t-test (placeholder) |
-| **Dunnett's Test** | **Pending** | `run_dunnett()` | Multiple comparisons vs control (placeholder) |
+| **T-Test** | **Planned** | - | Independent samples t-test (to be implemented) |
+| **Dunnett's Test** | **Planned** | - | Multiple comparisons vs control (to be implemented) |
 
 ## API Endpoints
 
@@ -49,7 +49,6 @@ POST /analyze/tukey
 ```json
 {
   "parameter": "SoilMoisture",
-  "alpha": 0.05,
   "data": [
     {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
     {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},
@@ -86,19 +85,7 @@ POST /analyze/tukey
 }
 ```
 
-#### 2. T-Test (Pending Implementation)
-```
-POST /analyze/t-test
-```
-Returns HTTP 501 (Not Implemented) with placeholder response.
-
-#### 3. Dunnett's Test (Pending Implementation)
-```
-POST /analyze/dunnett
-```
-Returns HTTP 501 (Not Implemented) with placeholder response.
-
-#### 4. Legacy Endpoint (Deprecated)
+#### 2. Legacy Endpoint (Deprecated)
 ```
 POST /analyze
 ```
@@ -186,10 +173,9 @@ field4d-statdeck/
 │   ├── stat_engine.py           # Statistical analysis engine
 │   ├── test_models.py           # Pydantic data models
 │   └── config.py                # Configuration and validation rules
-├── Test_Python_file/            # Python test files and examples
+├── Test_Python_file/            # Test files and examples
 │   ├── simple_batch_validation_example.py  # Batch validation examples
-│   └── simple_endpoint_test.py  # Basic endpoint testing
-├── Test_Json_file/              # JSON test files and examples
+│   ├── simple_endpoint_test.py  # Basic endpoint testing
 │   ├── example_small_batch.json      # Small batch example (5K points)
 │   ├── example_medium_batch.json     # Medium batch example (12K points)
 │   └── example_large_batch_invalid.json  # Large batch example (20K points)
@@ -241,20 +227,18 @@ curl http://localhost:8000/health
 # Test Tukey endpoint with small batch
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @Test_Json_file/example_small_batch.json
+  -d @Test_Python_file/example_small_batch.json
 
 # Test with medium batch
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @Test_Json_file/example_medium_batch.json
+  -d @Test_Python_file/example_medium_batch.json
 ```
 
 ### Testing Examples
-The project includes test files in the `Test_Python_file/` directory:
+The project includes test files and examples in the `Test_Python_file/` directory:
 - `simple_batch_validation_example.py`: Demonstrates batch validation scenarios
 - `simple_endpoint_test.py`: Basic endpoint testing
-
-And example JSON files in `Test_Json_file/`:
 - `example_small_batch.json`: 5,000 data points (valid)
 - `example_medium_batch.json`: 12,000 data points (valid)
 - `example_large_batch_invalid.json`: 20,000 data points (invalid - for testing error messages)
@@ -330,20 +314,17 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```json
 {
   "parameter": "string",     // Parameter name (e.g., "SoilMoisture")
-  "test_type": "string",     // Test type (e.g., "tukey", "t_test", "dunnett")
   "data": [
     {
       "timestamp": "string", // ISO format timestamp
-      "group": "string",     // Group label (e.g., "Treatment_1")
-      "SoilMoisture": float, // Numeric measurement
-      "location": "string",  // Location identifier
-      "depth": integer       // Depth measurement
+      "label": "string",     // Group label (e.g., "Control", "Treatment")
+      "value": float         // Numeric measurement
     }
   ]
 }
 ```
 
-**Example**: See `Test_Json_file/example_small_batch.json` for a complete example with 5,000 data points.
+**Example**: See `Test_Python_file/example_small_batch.json` for a complete example with 5,000 data points.
 
 ### Running Test Examples
 

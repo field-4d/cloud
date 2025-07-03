@@ -26,12 +26,12 @@ def main():
     """Test all endpoints with small datasets."""
     print("=== Simple Endpoint Test ===\n")
     
-    # Small test dataset
+    # Small test dataset with correct format
     test_data = [
-        {"timestamp": "2024-01-01T10:00:00", "label": "control", "value": 10.5},
-        {"timestamp": "2024-01-01T10:00:00", "label": "treatment", "value": 12.0},
-        {"timestamp": "2024-01-01T10:15:00", "label": "control", "value": 10.8},
-        {"timestamp": "2024-01-01T10:15:00", "label": "treatment", "value": 11.9}
+        {"timestamp": "2024-01-01T10:00:00", "label": "Control", "value": 10.5},
+        {"timestamp": "2024-01-01T10:00:00", "label": "Treatment", "value": 12.0},
+        {"timestamp": "2024-01-01T10:15:00", "label": "Control", "value": 10.8},
+        {"timestamp": "2024-01-01T10:15:00", "label": "Treatment", "value": 11.9}
     ]
     
     # Test health endpoints
@@ -47,37 +47,18 @@ def main():
     
     # Test Tukey endpoint
     tukey_payload = {
-        "parameter": "test",
-        "data": test_data,
-        "alpha": 0.05,
-        "enable_batching": False
+        "parameter": "SoilMoisture",
+        "data": test_data
     }
     test_endpoint("/analyze/tukey", tukey_payload, 200)
     
-    # Test T-test endpoint (should return 202 as requested)
-    ttest_payload = {
-        "parameter": "test",
-        "data": test_data,
-        "alpha": 0.05,
-        "enable_batching": False
-    }
-    test_endpoint("/analyze/t-test", ttest_payload, 202)
-    
-    # Test Dunnett endpoint (should return 202 as requested)
-    dunnett_payload = {
-        "parameter": "test",
-        "data": test_data,
-        "alpha": 0.05,
-        "enable_batching": False
-    }
-    test_endpoint("/analyze/dunnett", dunnett_payload, 202)
+
     
     # Test legacy endpoint
     legacy_payload = {
         "test_type": "tukey",
-        "parameter": "test",
-        "data": test_data,
-        "enable_batching": False
+        "parameter": "SoilMoisture",
+        "data": test_data
     }
     test_endpoint("/analyze", legacy_payload, 200)
     

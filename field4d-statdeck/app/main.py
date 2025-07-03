@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from app.test_models import (
-    TestRequest, TukeyTestRequest, TTestRequest, DunnettTestRequest
+    TestRequest, TukeyTestRequest
 )
 from app import stat_engine
 from app.config import BatchValidationConfig, AppConfig
@@ -65,73 +65,7 @@ async def analyze_tukey(payload: TukeyTestRequest):
         logger.error(f"Tukey test failed: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Tukey test failed: {str(e)}")
 
-@app.post("/analyze/t-test")
-async def analyze_t_test(payload: TTestRequest):
-    """T-test endpoint."""
-    print(f"🔬 T-TEST ENDPOINT CALLED - Parameter: {payload.parameter}, Data points: {len(payload.data)}")
-    logger.info(f"T-test endpoint accessed - Parameter: {payload.parameter}, Data points: {len(payload.data)}")
-    
-    # Validate batch size
-    validation = BatchValidationConfig.validate_batch_size(len(payload.data))
-    if not validation['valid']:
-        raise HTTPException(
-            status_code=400, 
-            detail=validation['error_message']
-        )
-    
-    # Call the function to show it exists (even though it's empty)
-    data = [d.dict() for d in payload.data]
-    df = pd.DataFrame(data)
-    results = stat_engine.run_t_test(df, alpha=payload.alpha)
-    
-    # Return 501 Not Implemented for unimplemented endpoint
-    from fastapi import Response
-    return Response(
-        status_code=501,
-        content=json.dumps({
-            "error": "Not Implemented",
-            "message": "T-test endpoint is not yet implemented",
-            "parameter": payload.parameter,
-            "test_type": "t_test",
-            "data_points": len(payload.data),
-            "status": "pending_implementation"
-        }),
-        media_type="application/json"
-    )
 
-@app.post("/analyze/dunnett")
-async def analyze_dunnett(payload: DunnettTestRequest):
-    """Dunnett's test endpoint."""
-    print(f"📊 DUNNETT TEST ENDPOINT CALLED - Parameter: {payload.parameter}, Data points: {len(payload.data)}")
-    logger.info(f"Dunnett test endpoint accessed - Parameter: {payload.parameter}, Data points: {len(payload.data)}")
-    
-    # Validate batch size
-    validation = BatchValidationConfig.validate_batch_size(len(payload.data))
-    if not validation['valid']:
-        raise HTTPException(
-            status_code=400, 
-            detail=validation['error_message']
-        )
-    
-    # Call the function to show it exists (even though it's empty)
-    data = [d.dict() for d in payload.data]
-    df = pd.DataFrame(data)
-    results = stat_engine.run_dunnett(df, alpha=payload.alpha)
-    
-    # Return 501 Not Implemented for unimplemented endpoint
-    from fastapi import Response
-    return Response(
-        status_code=501,
-        content=json.dumps({
-            "error": "Not Implemented",
-            "message": "Dunnett test endpoint is not yet implemented",
-            "parameter": payload.parameter,
-            "test_type": "dunnett",
-            "data_points": len(payload.data),
-            "status": "pending_implementation"
-        }),
-        media_type="application/json"
-    )
 
 # Legacy endpoint for backward compatibility
 @app.post("/analyze")
@@ -154,9 +88,7 @@ async def analyze(payload: TestRequest):
     
     # Map test types to functions
     test_functions = {
-        "tukey": stat_engine.run_anova_tukey,
-        "t_test": stat_engine.run_t_test,
-        "dunnett": stat_engine.run_dunnett
+        "tukey": stat_engine.run_anova_tukey
     }
     
     if payload.test_type not in test_functions:
