@@ -78,10 +78,14 @@ def run_anova_tukey(df: pd.DataFrame, alpha=0.05):
 
 
 def run_t_test(df: pd.DataFrame, alpha=0.05):
+    print(f"T-TEST FUNCTION CALLED - DataFrame shape: {df.shape}, Alpha: {alpha}")
+    print(" T-test function exists but is not implemented yet")
     # TODO: Implement t-test per timestamp
     return []
 
 
 def run_dunnett(df: pd.DataFrame, alpha=0.05):
+    print(f"DUNNETT TEST FUNCTION CALLED - DataFrame shape: {df.shape}, Alpha: {alpha}")
+    print("Dunnett test function exists but is not implemented yet")
     # TODO: Implement Dunnett's test per timestamp
     return [] 
