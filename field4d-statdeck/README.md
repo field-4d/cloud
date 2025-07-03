@@ -186,16 +186,15 @@ field4d-statdeck/
 │   ├── stat_engine.py           # Statistical analysis engine
 │   ├── test_models.py           # Pydantic data models
 │   └── config.py                # Configuration and validation rules
-├── test_data/                   # Test datasets and results
-│   ├── API_test_output/         # API testing results
-│   │   ├── Batching/           # Batch processing tests
-│   │   ├── General/            # General API tests
-│   │   └── Optimized_Batching/ # Optimized batch tests
-│   ├── example_input.json      # Sample input data
-│   └── example_input_many_groups.json
-├── test_FastAPI/               # FastAPI testing utilities
+├── Test_Python_file/            # Python test files and examples
+│   ├── simple_batch_validation_example.py  # Batch validation examples
+│   └── simple_endpoint_test.py  # Basic endpoint testing
+├── Test_Json_file/              # JSON test files and examples
+│   ├── example_small_batch.json      # Small batch example (5K points)
+│   ├── example_medium_batch.json     # Medium batch example (12K points)
+│   └── example_large_batch_invalid.json  # Large batch example (20K points)
 ├── requirements.txt            # Python dependencies
-├── API_DOCUMENTATION.md        # Detailed API documentation
+├── general instruction.txt     # Quick start and performance notes
 └── README.md                   # This file
 ```
 
@@ -223,6 +222,8 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+**Quick Start**: See `general instruction.txt` for additional performance notes and quick commands.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -237,14 +238,26 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Test health endpoint
 curl http://localhost:8000/health
 
-# Test Tukey endpoint
+# Test Tukey endpoint with small batch
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @test_data/example_input.json
+  -d @Test_Json_file/example_small_batch.json
+
+# Test with medium batch
+curl -X POST http://localhost:8000/analyze/tukey \
+  -H "Content-Type: application/json" \
+  -d @Test_Json_file/example_medium_batch.json
 ```
 
-### Automated Testing
-The project includes comprehensive test suites in the `test_data/` directory with various scenarios and batch sizes.
+### Testing Examples
+The project includes test files in the `Test_Python_file/` directory:
+- `simple_batch_validation_example.py`: Demonstrates batch validation scenarios
+- `simple_endpoint_test.py`: Basic endpoint testing
+
+And example JSON files in `Test_Json_file/`:
+- `example_small_batch.json`: 5,000 data points (valid)
+- `example_medium_batch.json`: 12,000 data points (valid)
+- `example_large_batch_invalid.json`: 20,000 data points (invalid - for testing error messages)
 
 ## Performance Characteristics
 
@@ -252,6 +265,18 @@ The project includes comprehensive test suites in the `test_data/` directory wit
 - **Memory Usage**: Optimized for large datasets with intelligent batching
 - **Scalability**: Horizontal scaling ready with stateless design
 - **Validation**: Automatic batch size validation with clear error messages
+
+### Performance by Dataset Type
+Based on testing with various dataset sizes:
+
+| Dataset Type | Size | Response Time | Performance |
+|--------------|------|---------------|-------------|
+| Small daily datasets | 2 groups, 10 reps, 7 days | ~0.179s | Extremely fast |
+| Large daily datasets | 4 groups, 12 reps, 30 days | ~2.449s | Very fast |
+| High-frequency, short duration | 3-min, 3 groups, 8 reps, 1 day | ~12.693s | Reasonable |
+| High-frequency, long duration | 3-min, 4 groups, 4 reps, 30 days | ~361.226s | Slower (14,400 timestamps) |
+
+**Note**: High-frequency data with many timestamps will naturally take longer to process due to the increased computational complexity.
 
 ## Key Features
 
@@ -305,15 +330,29 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```json
 {
   "parameter": "string",     // Parameter name (e.g., "SoilMoisture")
-  "alpha": 0.05,            // Significance level (optional, default: 0.05)
+  "test_type": "string",     // Test type (e.g., "tukey", "t_test", "dunnett")
   "data": [
     {
       "timestamp": "string", // ISO format timestamp
-      "label": "string",     // Group label
-      "value": float         // Numeric measurement
+      "group": "string",     // Group label (e.g., "Treatment_1")
+      "SoilMoisture": float, // Numeric measurement
+      "location": "string",  // Location identifier
+      "depth": integer       // Depth measurement
     }
   ]
 }
+```
+
+**Example**: See `Test_Json_file/example_small_batch.json` for a complete example with 5,000 data points.
+
+### Running Test Examples
+
+```bash
+# Run batch validation examples
+python Test_Python_file/simple_batch_validation_example.py
+
+# Run basic endpoint tests
+python Test_Python_file/simple_endpoint_test.py
 ```
 
 ### Output Data Structure
