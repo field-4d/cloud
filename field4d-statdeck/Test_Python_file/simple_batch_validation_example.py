@@ -13,7 +13,7 @@ from typing import Dict, Any, List
 # Import the validation config from the app
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'app'))
 
 from config import BatchValidationConfig
 
@@ -23,10 +23,8 @@ def create_sample_data(n_points: int) -> List[Dict[str, Any]]:
     for i in range(n_points):
         data.append({
             "timestamp": f"2024-01-01T{i:02d}:00:00Z",
-            "group": f"Treatment_{(i % 4) + 1}",
-            "SoilMoisture": 50.0 + (i % 20),
-            "location": f"Plot_{(i % 10) + 1}",
-            "depth": 20
+            "label": f"Treatment_{(i % 4) + 1}",
+            "value": 50.0 + (i % 20)
         })
     return data
 
@@ -98,9 +96,12 @@ def demonstrate_batch_splitting(large_dataset_size: int):
 def create_example_files():
     """Create example JSON files for different batch sizes."""
     
+    # Get the current directory (Test_Python_file)
+    current_dir = os.path.dirname(__file__)
+    
     # Small dataset (valid)
     small_data = create_sample_data(5000)
-    with open("example_small_batch.json", "w") as f:
+    with open(os.path.join(current_dir, "example_small_batch.json"), "w") as f:
         json.dump({
             "parameter": "SoilMoisture",
             "test_type": "tukey",
@@ -110,7 +111,7 @@ def create_example_files():
     
     # Medium dataset (valid)
     medium_data = create_sample_data(12000)
-    with open("example_medium_batch.json", "w") as f:
+    with open(os.path.join(current_dir, "example_medium_batch.json"), "w") as f:
         json.dump({
             "parameter": "SoilMoisture",
             "test_type": "tukey",
@@ -120,7 +121,7 @@ def create_example_files():
     
     # Large dataset (invalid - too big)
     large_data = create_sample_data(20000)
-    with open("example_large_batch_invalid.json", "w") as f:
+    with open(os.path.join(current_dir, "example_large_batch_invalid.json"), "w") as f:
         json.dump({
             "parameter": "SoilMoisture",
             "test_type": "tukey",

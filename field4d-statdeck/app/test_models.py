@@ -15,14 +15,8 @@ class BaseTestRequest(BaseModel):
 class TukeyTestRequest(BaseTestRequest):
     alpha: float = 0.05
 
-class TTestRequest(BaseTestRequest):
-    alpha: float = 0.05
-
-class DunnettTestRequest(BaseTestRequest):
-    alpha: float = 0.05
-
 # Legacy model for backward compatibility
 class TestRequest(BaseModel):
-    test_type: Literal["tukey", "t_test", "dunnett"]
+    test_type: Literal["tukey"]
     parameter: str
     data: List[DataPoint] 
