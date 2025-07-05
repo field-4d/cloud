@@ -28,8 +28,13 @@ A high-performance FastAPI service for performing statistical testing on time-se
 | Test Type | Status | Implementation | Description |
 |-----------|--------|----------------|-------------|
 | **Tukey's HSD** | **Active** | `run_anova_tukey()` | ANOVA with post-hoc Tukey's Honestly Significant Difference test |
-| **T-Test** | **Planned** | - | Independent samples t-test (to be implemented) |
-| **Dunnett's Test** | **Planned** | - | Multiple comparisons vs control (to be implemented) |
+| **T-Test** | **Planned** | `run_t_test()` (placeholder) | Independent samples t-test (to be implemented) |
+| **Dunnett's Test** | **Planned** | `run_dunnett()` (placeholder) | Multiple comparisons vs control (to be implemented) |
+
+### Current Implementation Status
+- ✅ **Tukey's HSD**: Fully implemented with ANOVA, post-hoc testing, group statistics, and letters report
+- ⏳ **T-Test**: Function placeholder exists, implementation pending
+- ⏳ **Dunnett's Test**: Function placeholder exists, implementation pending
 
 ## API Endpoints
 
@@ -176,9 +181,15 @@ field4d-statdeck/
 ├── Test_Python_file/            # Test files and examples
 │   ├── simple_batch_validation_example.py  # Batch validation examples
 │   ├── simple_endpoint_test.py  # Basic endpoint testing
-│   ├── example_small_batch.json      # Small batch example (5K points)
-│   ├── example_medium_batch.json     # Medium batch example (12K points)
-│   └── example_large_batch_invalid.json  # Large batch example (20K points)
+│   ├── test_anova_api_batching_scenario5_only.py  # Comprehensive batching tests
+│   ├── API_test_output/         # Test results and logs
+│   │   └── Batching/           # Batching test results
+│   │       ├── generated_datasets/  # Generated test datasets
+│   │       ├── logs/           # Test execution logs
+│   │       └── scenario5_batching_results.csv  # Test results summary
+│   └── valid_Json/             # Example JSON files
+│       ├── example_input.json  # Basic example
+│       └── example_input_many_groups.json  # Multi-group example
 ├── requirements.txt            # Python dependencies
 ├── general instruction.txt     # Quick start and performance notes
 └── README.md                   # This file
@@ -224,24 +235,32 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Test health endpoint
 curl http://localhost:8000/health
 
-# Test Tukey endpoint with small batch
+# Test Tukey endpoint with example data
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @Test_Python_file/example_small_batch.json
+  -d @Test_Python_file/valid_Json/example_input.json
 
-# Test with medium batch
+# Test with multi-group example
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @Test_Python_file/example_medium_batch.json
+  -d @Test_Python_file/valid_Json/example_input_many_groups.json
 ```
 
 ### Testing Examples
-The project includes test files and examples in the `Test_Python_file/` directory:
+The project includes comprehensive test files and examples in the `Test_Python_file/` directory:
 - `simple_batch_validation_example.py`: Demonstrates batch validation scenarios
 - `simple_endpoint_test.py`: Basic endpoint testing
-- `example_small_batch.json`: 5,000 data points (valid)
-- `example_medium_batch.json`: 12,000 data points (valid)
-- `example_large_batch_invalid.json`: 20,000 data points (invalid - for testing error messages)
+- `test_anova_api_batching_scenario5_only.py`: Comprehensive batching tests with performance analysis
+- `valid_Json/example_input.json`: Basic example with 2 groups
+- `valid_Json/example_input_many_groups.json`: Multi-group example
+- `API_test_output/Batching/`: Contains test results, logs, and performance data
+
+### Test Results
+The `API_test_output/Batching/` directory contains:
+- Performance test results for different batch sizes (5K, 10K, 15K, 20K)
+- Detailed execution logs and summaries
+- Generated test datasets for reproducible testing
+- CSV summary of batching performance results
 
 ## Performance Characteristics
 
@@ -324,7 +343,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 }
 ```
 
-**Example**: See `Test_Python_file/example_small_batch.json` for a complete example with 5,000 data points.
+**Example**: See `Test_Python_file/valid_Json/example_input.json` for a basic example and `Test_Python_file/valid_Json/example_input_many_groups.json` for a multi-group example.
 
 ### Running Test Examples
 
@@ -334,6 +353,9 @@ python Test_Python_file/simple_batch_validation_example.py
 
 # Run basic endpoint tests
 python Test_Python_file/simple_endpoint_test.py
+
+# Run comprehensive batching tests
+python Test_Python_file/test_anova_api_batching_scenario5_only.py
 ```
 
 ### Output Data Structure

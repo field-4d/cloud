@@ -1,0 +1,25 @@
+{
+  "test_id": "T6",
+  "test_name": "Many Groups",
+  "groups": [
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5"
+  ],
+  "replicates": 3,
+  "days": 5,
+  "expected_points": 3600,
+  "actual_points": 36000,
+  "description": "Many treatment groups",
+  "success": false,
+  "start_time": "2025-07-03T12:28:06.563701",
+  "end_time": "2025-07-03T12:28:07.483200",
+  "elapsed_time": 0.9194986820220947,
+  "throughput": 39151.76900616259,
+  "results_count": 0,
+  "error_message": "{\"detail\":\"\\nBatch size validation failed:\\n- Dataset size: 36,000 points\\n- Maximum allowed: 15,000 points\\n\\nRecommended batch size for your dataset: 10,000 points\\n\\nPlease split your data into batches of maximum 10,000 points.\\n\"}",
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250703_122744_c7b38b3c\\T6\\T6_test_data.json",
+  "timestamp": "2025-07-03T12:28:07.483200"
+}

@@ -1,0 +1,22 @@
+{
+  "test_id": "T4",
+  "test_name": "High Reps",
+  "groups": [
+    "Control",
+    "Treatment"
+  ],
+  "replicates": 12,
+  "days": 2,
+  "expected_points": 1920,
+  "actual_points": 23040,
+  "description": "High replication study",
+  "success": false,
+  "start_time": "2025-07-03T12:28:03.624867",
+  "end_time": "2025-07-03T12:28:04.265771",
+  "elapsed_time": 0.6409034729003906,
+  "throughput": 35949.25129010946,
+  "results_count": 0,
+  "error_message": "{\"detail\":\"\\nBatch size validation failed:\\n- Dataset size: 23,040 points\\n- Maximum allowed: 15,000 points\\n\\nRecommended batch size for your dataset: 10,000 points\\n\\nPlease split your data into batches of maximum 10,000 points.\\n\"}",
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250703_122744_c7b38b3c\\T4\\T4_test_data.json",
+  "timestamp": "2025-07-03T12:28:04.265771"
+}
