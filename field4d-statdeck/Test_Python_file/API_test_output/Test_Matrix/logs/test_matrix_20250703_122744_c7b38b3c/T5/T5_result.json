@@ -1,0 +1,22 @@
+{
+  "test_id": "T5",
+  "test_name": "Long Term",
+  "groups": [
+    "A",
+    "B"
+  ],
+  "replicates": 4,
+  "days": 14,
+  "expected_points": 1344,
+  "actual_points": 53760,
+  "description": "Long-term study over 2 weeks",
+  "success": false,
+  "start_time": "2025-07-03T12:28:04.888336",
+  "end_time": "2025-07-03T12:28:06.162988",
+  "elapsed_time": 1.2746522426605225,
+  "throughput": 42176.20947952772,
+  "results_count": 0,
+  "error_message": "{\"detail\":\"\\nBatch size validation failed:\\n- Dataset size: 53,760 points\\n- Maximum allowed: 15,000 points\\n\\nRecommended batch size for your dataset: 8,000 points\\n\\nPlease split your data into batches of maximum 8,000 points.\\n\"}",
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250703_122744_c7b38b3c\\T5\\T5_test_data.json",
+  "timestamp": "2025-07-03T12:28:06.162988"
+}
