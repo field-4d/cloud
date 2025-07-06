@@ -201,7 +201,7 @@ def run_single_test(test_id, name, groups, replicates, days, expected_points, re
     
     # Prepare API request
     payload = {
-        "parameter": "SoilMoisture",
+        "parameter": "temperature",
         "data": data
     }
     
