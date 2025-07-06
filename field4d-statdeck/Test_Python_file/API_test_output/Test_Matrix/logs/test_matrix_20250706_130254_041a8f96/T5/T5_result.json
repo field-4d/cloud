@@ -1,0 +1,24 @@
+{
+  "test_id": "T5",
+  "test_name": "Long Term",
+  "groups": [
+    "A",
+    "B"
+  ],
+  "replicates": 2,
+  "days": 3,
+  "expected_points": 5760,
+  "actual_points": 5760,
+  "recommended_batch_size": 10000,
+  "description": "Long-term study over 3 days - small dataset",
+  "success": true,
+  "start_time": "2025-07-06T13:05:21.971071",
+  "end_time": "2025-07-06T13:05:51.104072",
+  "elapsed_time": 29.133000373840332,
+  "throughput": 197.71393011658802,
+  "results_count": 1440,
+  "error_message": null,
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_130254_041a8f96\\T5\\T5_test_data.json",
+  "timestamp": "2025-07-06T13:05:51.109689",
+  "response_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_130254_041a8f96\\T5\\T5_response.json"
+}

@@ -29,13 +29,15 @@ def test_login():
         )
         
         print(f"Status Code: {response.status_code}")
+        print("The esponse is:",response.json())
+
         print(f"Response: {json.dumps(response.json(), indent=2)}")
         
         if response.status_code == 200:
             data = response.json()
             if data.get("success"):
-                print("✅ Login successful!")
                 print(f"Token: {data.get('token')[:50]}...")
+                print("✅ Login successful!")
                 print(f"User: {data.get('user')}")
             else:
                 print("❌ Login failed!")
