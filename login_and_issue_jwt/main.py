@@ -12,6 +12,8 @@ TABLE_ID = "user_table"
 
 
 
+
+
 # JWT settings (keep secret in env!)
 JWT_SECRET = os.environ.get("JWT_SECRET", "REPLACE_THIS_WITH_A_STRONG_SECRET")
 JWT_ALGORITHM = "HS256"
