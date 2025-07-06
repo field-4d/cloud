@@ -1,0 +1,24 @@
+{
+  "test_id": "T8",
+  "test_name": "Validation",
+  "groups": [
+    "Control",
+    "Treatment"
+  ],
+  "replicates": 2,
+  "days": 1,
+  "expected_points": 1920,
+  "actual_points": 1920,
+  "recommended_batch_size": 10000,
+  "description": "Basic validation test - small dataset",
+  "success": true,
+  "start_time": "2025-07-06T13:07:02.040278",
+  "end_time": "2025-07-06T13:07:10.945650",
+  "elapsed_time": 8.905372858047485,
+  "throughput": 215.60018099241748,
+  "results_count": 480,
+  "error_message": null,
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_130254_041a8f96\\T8\\T8_test_data.json",
+  "timestamp": "2025-07-06T13:07:10.946584",
+  "response_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_130254_041a8f96\\T8\\T8_response.json"
+}

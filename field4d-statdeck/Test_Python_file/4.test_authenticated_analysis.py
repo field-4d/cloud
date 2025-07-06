@@ -12,8 +12,6 @@ from datetime import datetime
 
 # Configuration
 BASE_URL = "http://localhost:8000"
-TEST_EMAIL = "averbuch.nir@gmail.com"
-TEST_PASSWORD = "Aa123456"  # Replace with actual password
 
 # Path to test data
 SCRIPT_DIR = Path(__file__).parent
@@ -24,37 +22,65 @@ TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 OUTPUT_DIR = SCRIPT_DIR / "API_test_output" / f"authenticated_test"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-def login_and_get_token():
-    """Login and get JWT token."""
-    login_data = {
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
-    }
+def get_auth_token():
+    """Get authentication token either manually or via login."""
+    print("\n🔑 Authentication Options:")
+    print("1. Enter token manually")
+    print("2. Login with email/password")
     
-    try:
-        response = requests.post(
-            f"{BASE_URL}/auth/login",
-            json=login_data,
-            headers={"Content-Type": "application/json"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("success"):
-                print("✅ Login successful!")
-                return data.get("token")
-            else:
-                print(f"❌ Login failed: {data.get('error')}")
-                return None
+    choice = input("Choose option (1 or 2): ").strip()
+    
+    if choice == "1":
+        # Manual token input
+        token = input("Enter your JWT token: ").strip()
+        if token:
+            return token
         else:
-            print(f"❌ Login request failed with status {response.status_code}")
+            print("❌ No token provided")
             return None
+    
+    elif choice == "2":
+        # Login with credentials
+        email = input("Enter email: ").strip()
+        password = input("Enter password: ").strip()
+        
+        if not email or not password:
+            print("❌ Email and password required")
+            return None
+        
+        try:
+            login_data = {
+                "email": email,
+                "password": password
+            }
             
-    except requests.exceptions.ConnectionError:
-        print("❌ Could not connect to server. Make sure the server is running on localhost:8000")
-        return None
-    except Exception as e:
-        print(f"❌ Login error: {str(e)}")
+            response = requests.post(
+                f"{BASE_URL}/auth/login",
+                json=login_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    print("✅ Login successful!")
+                    return data.get("token")
+                else:
+                    print(f"❌ Login failed: {data.get('error')}")
+                    return None
+            else:
+                print(f"❌ Login request failed with status {response.status_code}")
+                return None
+                
+        except requests.exceptions.ConnectionError:
+            print("❌ Could not connect to server. Make sure the server is running on localhost:8000")
+            return None
+        except Exception as e:
+            print(f"❌ Login error: {str(e)}")
+            return None
+    
+    else:
+        print("❌ Invalid choice")
         return None
 
 def test_authenticated_analysis(token):
@@ -220,9 +246,9 @@ def main():
         print("Please make sure the example_input_many_groups.json file exists in the valid_Json folder.")
         return
     
-    # Step 1: Login and get token
-    print("🔑 Step 1: Login and get authentication token...")
-    token = login_and_get_token()
+    # Step 1: Get authentication token
+    print("🔑 Step 1: Get authentication token...")
+    token = get_auth_token()
     
     if not token:
         print("❌ Cannot proceed without valid token")

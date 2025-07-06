@@ -122,6 +122,7 @@ Content-Type: application/json
   "parameter": "SoilMoisture",
   "test_type": "tukey",
   "batch_size": 4,
+  "user": "user@example.com",
   "results": [
     {
       "timestamp": "2025-06-01",
@@ -250,22 +251,22 @@ field4d-statdeck/
 │   ├── main.py                  # FastAPI application entry point
 │   ├── stat_engine.py           # Statistical analysis engine
 │   ├── test_models.py           # Pydantic data models
-│   └── config.py                # Configuration and validation rules
+│   ├── config.py                # Configuration and validation rules
+│   └── auth/                    # Authentication system
+│       ├── __init__.py          # Auth package initialization
+│       ├── cloud_auth_service.py # Cloud Function integration
+│       ├── middleware.py        # JWT validation middleware
+│       └── models.py            # Auth data models
 ├── Test_Python_file/            # Test files and examples
-│   ├── simple_batch_validation_example.py  # Batch validation examples
+│   ├── test_cloud_auth.py       # Cloud Function auth testing
+│   ├── test_login.py            # Login endpoint testing
 │   ├── simple_endpoint_test.py  # Basic endpoint testing
-│   ├── test_anova_api_batching_scenario5_only.py  # Comprehensive batching tests
 │   ├── API_test_output/         # Test results and logs
-│   │   └── Batching/           # Batching test results
-│   │       ├── generated_datasets/  # Generated test datasets
-│   │       ├── logs/           # Test execution logs
-│   │       └── scenario5_batching_results.csv  # Test results summary
-│   └── valid_Json/             # Example JSON files
-│       ├── example_input.json  # Basic example
-│       └── example_input_many_groups.json  # Multi-group example
-├── requirements.txt            # Python dependencies
-├── general instruction.txt     # Quick start and performance notes
-└── README.md                   # This file
+│   └── valid_Json/              # Example JSON files
+│       ├── example_input.json   # Basic example
+│       └── example_input_many_groups.json # Multi-group example
+├── requirements.txt              # Python dependencies
+└── README.md                    # This file
 ```
 
 ## Installation & Setup
@@ -287,19 +288,26 @@ cd field4d-statdeck
 pip install -r requirements.txt
 ```
 
-3. **Run the application:**
+3. **Set up environment variables:**
+Create `app/auth/.env` file:
+```env
+CLOUD_FUNCTION_URL=https://your-region-your-project.cloudfunctions.net/login_and_issue_jwt
+JWT_SECRET_KEY=your-shared-jwt-secret-key
+LOG_LEVEL=INFO
+```
+
+4. **Run the application:**
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Quick Start**: See `general instruction.txt` for additional performance notes and quick commands.
-
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
-| `MAX_REQUEST_SIZE` | `1000000` | Maximum request size in bytes (1MB) |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CLOUD_FUNCTION_URL` | Yes | URL of your Cloud Function for authentication |
+| `JWT_SECRET_KEY` | Yes | Shared secret key for JWT token validation |
+| `LOG_LEVEL` | No | Logging level (DEBUG, INFO, WARNING, ERROR) |
 
 ## Testing
 
@@ -339,21 +347,27 @@ curl -X POST http://localhost:8000/analyze/tukey \
   }'
 ```
 
+### Interactive Testing
+For interactive testing with authentication options:
+
+```bash
+# Run the interactive test script
+python Test_Python_file/4.test_authenticated_analysis.py
+```
+
+This script provides two authentication options:
+1. **Manual token input** - Paste your JWT token directly
+2. **Login with credentials** - Enter email/password to get a fresh token
+
+The script will test both `/analyze/tukey` and legacy `/analyze` endpoints with authentication.
+
 ### Testing Examples
-The project includes comprehensive test files and examples in the `Test_Python_file/` directory:
-- `simple_batch_validation_example.py`: Demonstrates batch validation scenarios
+The project includes comprehensive test files and examples:
+- `4.test_authenticated_analysis.py`: Interactive authenticated analysis testing with manual token or login options
+- `test_login.py`: Tests login endpoint functionality
 - `simple_endpoint_test.py`: Basic endpoint testing
-- `test_anova_api_batching_scenario5_only.py`: Comprehensive batching tests with performance analysis
 - `valid_Json/example_input.json`: Basic example with 2 groups
 - `valid_Json/example_input_many_groups.json`: Multi-group example
-- `API_test_output/Batching/`: Contains test results, logs, and performance data
-
-### Test Results
-The `API_test_output/Batching/` directory contains:
-- Performance test results for different batch sizes (5K, 10K, 15K, 20K)
-- Detailed execution logs and summaries
-- Generated test datasets for reproducible testing
-- CSV summary of batching performance results
 
 ## Performance Characteristics
 
@@ -376,26 +390,27 @@ Based on testing with various dataset sizes:
 
 ## Key Features
 
-### 1. **Intelligent Batching**
+### 1. **Cloud Function Authentication**
+- External authentication service via Cloud Function
+- JWT token-based authentication with 1-hour expiration
+- Stateless design with no database queries on API requests
+- Secure password hashing (SHA256 + BASE64)
+
+### 2. **Intelligent Batching**
 - Automatic batch size validation based on dataset size
 - Clear error messages with recommended batch sizes
 - Performance optimization for different data scales
 
-### 2. **Comprehensive Statistical Analysis**
+### 3. **Comprehensive Statistical Analysis**
 - ANOVA with Tukey's HSD post-hoc testing
 - Group statistics (mean, standard error, sample size)
 - Letters report for significant differences
 - Per-timestamp analysis for time-series data
 
-### 3. **Robust Error Handling**
+### 4. **Robust Error Handling**
 - Detailed error messages for statistical failures
 - Input validation with Pydantic models
 - Graceful handling of edge cases
-
-### 4. **API Documentation**
-- Interactive Swagger UI at `/docs`
-- OpenAPI specification
-- Example requests and responses
 
 ## Deployment
 
@@ -436,27 +451,13 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 }
 ```
 
-**Example**: See `Test_Python_file/valid_Json/example_input.json` for a basic example and `Test_Python_file/valid_Json/example_input_many_groups.json` for a multi-group example.
-
-### Running Test Examples
-
-```bash
-# Run batch validation examples
-python Test_Python_file/simple_batch_validation_example.py
-
-# Run basic endpoint tests
-python Test_Python_file/simple_endpoint_test.py
-
-# Run comprehensive batching tests
-python Test_Python_file/test_anova_api_batching_scenario5_only.py
-```
-
 ### Output Data Structure
 ```json
 {
   "parameter": "string",
   "test_type": "string",
   "batch_size": integer,
+  "user": "string",
   "results": [
     {
       "timestamp": "string",
@@ -499,9 +500,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For issues and questions:
 - Check the API documentation at `/docs`
-- Review test examples in `test_data/`
+- Review test examples in `Test_Python_file/`
 - Open an issue on the repository
 
 ---
 
-**Field4D StatDeck** - Statistical analysis for time-series group comparisons with intelligent batching and validation. 
+**Field4D StatDeck** - Statistical analysis for time-series group comparisons with Cloud Function authentication and intelligent batching. 
