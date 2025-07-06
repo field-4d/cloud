@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from app.test_models import (
     TestRequest, TukeyTestRequest
 )
 from app import stat_engine
 from app.config import BatchValidationConfig, AppConfig
+from app.auth.models import LoginRequest, LoginResponse, User
+from app.auth.cloud_auth_service import cloud_auth
+from app.auth.middleware import get_current_user
 import pandas as pd
 import logging
 import json
@@ -35,9 +38,71 @@ def health():
         }
     }
 
+@app.post("/auth/login", response_model=LoginResponse)
+async def login(login_request: LoginRequest):
+    """
+    User login endpoint.
+    
+    Args:
+        login_request: Login credentials (email, password)
+        
+    Returns:
+        LoginResponse with token and user data on success
+    """
+    try:
+        # Authenticate via Cloud Function
+        token = cloud_auth.login_and_get_token(login_request.email, login_request.password)
+        
+        if token is None:
+            return LoginResponse(
+                success=False,
+                error="Invalid email or password"
+            )
+        
+        # Validate token to get user info
+        user_data = cloud_auth.validate_token(token)
+        if user_data is None:
+            return LoginResponse(
+                success=False,
+                error="Token validation failed"
+            )
+        
+        # Create user object
+        user = User(
+            email=user_data["email"],
+            created_at=None,  # Not available from token
+            last_login=None   # Not available from token
+        )
+        
+        return LoginResponse(
+            success=True,
+            token=token,
+            user=user
+        )
+        
+    except Exception as e:
+        logger.error(f"Login failed: {str(e)}")
+        return LoginResponse(
+            success=False,
+            error="Login failed. Please try again."
+        )
+
+@app.get("/auth/me", response_model=User)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """
+    Get current user information.
+    
+    Args:
+        current_user: Current authenticated user (from token)
+        
+    Returns:
+        User information
+    """
+    return current_user
+
 # Individual test endpoints
 @app.post("/analyze/tukey")
-async def analyze_tukey(payload: TukeyTestRequest):
+async def analyze_tukey(payload: TukeyTestRequest, current_user: User = Depends(get_current_user)):
     """ANOVA with Tukey's test endpoint."""
     data = [d.dict() for d in payload.data]
     
@@ -59,6 +124,7 @@ async def analyze_tukey(payload: TukeyTestRequest):
             "parameter": payload.parameter,
             "test_type": "tukey",
             "batch_size": len(data),
+            "user": current_user.email,
             "results": results
         }
     except Exception as e:
@@ -69,7 +135,7 @@ async def analyze_tukey(payload: TukeyTestRequest):
 
 # Legacy endpoint for backward compatibility
 @app.post("/analyze")
-async def analyze(payload: TestRequest):
+async def analyze(payload: TestRequest, current_user: User = Depends(get_current_user)):
     """
     Legacy endpoint for backward compatibility.
     This endpoint is deprecated - use specific test endpoints instead.
@@ -106,6 +172,7 @@ async def analyze(payload: TestRequest):
             "parameter": payload.parameter,
             "test_type": payload.test_type,
             "batch_size": len(data),
+            "user": current_user.email,
             "results": results
         }
     except Exception as e:

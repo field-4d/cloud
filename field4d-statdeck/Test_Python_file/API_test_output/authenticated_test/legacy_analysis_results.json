@@ -1,0 +1,491 @@
+{
+  "parameter": "SoilMoisture",
+  "test_type": "tukey",
+  "batch_size": 56,
+  "user": "averbuch.nir@gmail.com",
+  "results": [
+    {
+      "timestamp": "2025-06-01",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 17.6,
+          "standard_error": 0.40000000000000036,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 21.700000000000003,
+          "standard_error": 0.40000000000000036,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 19.950000000000003,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 22.75,
+          "standard_error": 0.25,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 2.2681,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 0.5181,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 3.3181,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -3.5819,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": -0.7819,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 0.9681,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    },
+    {
+      "timestamp": "2025-06-02",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 18.9,
+          "standard_error": 0.20000000000000104,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 24.15,
+          "standard_error": 0.25,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 21.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 25.0,
+          "standard_error": 0.1999999999999993,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 4.0807,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 1.7807,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 4.9307,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -3.4693,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": -0.3193,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 1.9807,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    },
+    {
+      "timestamp": "2025-06-03",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 19.75,
+          "standard_error": 0.25,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 24.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 22.8,
+          "standard_error": 0.3000000000000007,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 26.0,
+          "standard_error": 0.10000000000000142,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 3.8619,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 1.8119,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 5.0119,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -3.2881,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": -0.0881,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 1.9619,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    },
+    {
+      "timestamp": "2025-06-04",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 21.0,
+          "standard_error": 0.1999999999999993,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 26.0,
+          "standard_error": 0.1999999999999993,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 24.0,
+          "standard_error": 0.1999999999999993,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 26.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 3.9134,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 1.9134,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 4.7634,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -3.0866,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": -0.2366,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 1.7634,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    },
+    {
+      "timestamp": "2025-06-05",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 21.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 27.0,
+          "standard_error": 0.10000000000000142,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 25.1,
+          "standard_error": 0.20000000000000104,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 28.0,
+          "standard_error": 0.1999999999999993,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 4.1845,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 2.2845,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 5.1845,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -2.8655,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": 0.0345,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 1.9345,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    },
+    {
+      "timestamp": "2025-06-06",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 22.950000000000003,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 27.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 25.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 29.0,
+          "standard_error": 0.10000000000000142,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 4.0987,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 2.0987,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 5.2487,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -2.8013,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": 0.3487,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 2.3487,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    },
+    {
+      "timestamp": "2025-06-07",
+      "groups_tested": [
+        "Control",
+        "TreatmentA",
+        "TreatmentB",
+        "TreatmentC"
+      ],
+      "group_stats": {
+        "Control": {
+          "mean": 23.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentA": {
+          "mean": 29.049999999999997,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentB": {
+          "mean": 26.950000000000003,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        },
+        "TreatmentC": {
+          "mean": 29.85,
+          "standard_error": 0.15000000000000036,
+          "n": 2
+        }
+      },
+      "significant_differences": [
+        {
+          "comparison": "Control vs TreatmentA",
+          "p_value": 4.3364,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentB",
+          "p_value": 2.2364,
+          "reject_null": true
+        },
+        {
+          "comparison": "Control vs TreatmentC",
+          "p_value": 5.1364,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentB",
+          "p_value": -2.9636,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentA vs TreatmentC",
+          "p_value": -0.0636,
+          "reject_null": true
+        },
+        {
+          "comparison": "TreatmentB vs TreatmentC",
+          "p_value": 2.0364,
+          "reject_null": true
+        }
+      ],
+      "letters_report": {
+        "Control": "A",
+        "TreatmentA": "B",
+        "TreatmentB": "C",
+        "TreatmentC": "D"
+      }
+    }
+  ]
+}
