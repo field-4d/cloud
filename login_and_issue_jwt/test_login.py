@@ -9,8 +9,8 @@ def hash_password(password: str) -> str:
     return base64.b64encode(sha256_hash).decode("utf-8")
 
 # Input values (match what you inserted into BigQuery)
-email = "you_email"
-raw_password = "your_password"  # not hashed
+email = "nir.averbuch@mail.huji.ac.il"
+raw_password = "Aa123456"  # not hashed
 
 # Hash it using same logic as BigQuery
 hashed = hash_password(raw_password)
