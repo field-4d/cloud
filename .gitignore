@@ -1,5 +1,7 @@
 # Ignore everything
 *
+# Ignore all .env files
+.env
 
 # Keep these folders
 !process_files/
@@ -8,6 +10,9 @@
 !upload_To_bucket/
 !users-devices-permission/
 !F4D/
+!Field4D_Site/
+!field4d-statdeck/
+!login_and_issue_jwt/
 
 # Also keep their contents
 !process_files/**
@@ -16,6 +21,10 @@
 !upload_To_bucket/**
 !users-devices-permission/**
 !F4D/**
+!Field4D_Site/**
+!field4d-statdeck/**
+!/login_and_issue_jwt/** 
 
 # Keep .gitignore itself
 !.gitignore
+!README.md
