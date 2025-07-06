@@ -153,7 +153,7 @@ def test_authenticated_endpoint(token):
     
     # Test data
     test_data = {
-        "parameter": "SoilMoisture",
+        "parameter": "temperature",
         "data": [
             {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
             {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},

@@ -1,0 +1,24 @@
+{
+  "test_id": "T1",
+  "test_name": "Small Test",
+  "groups": [
+    "Control",
+    "Treatment"
+  ],
+  "replicates": 2,
+  "days": 1,
+  "expected_points": 1920,
+  "actual_points": 1920,
+  "recommended_batch_size": 10000,
+  "description": "Quick validation test - small dataset",
+  "success": true,
+  "start_time": "2025-07-06T13:14:25.353705",
+  "end_time": "2025-07-06T13:14:34.185016",
+  "elapsed_time": 8.83131194114685,
+  "throughput": 217.40824158348835,
+  "results_count": 480,
+  "error_message": null,
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_131425_f18604d3\\T1\\T1_test_data.json",
+  "timestamp": "2025-07-06T13:14:34.189896",
+  "response_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_131425_f18604d3\\T1\\T1_response.json"
+}

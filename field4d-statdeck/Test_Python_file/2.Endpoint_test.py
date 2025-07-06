@@ -132,7 +132,7 @@ def main():
     
     # Test Tukey endpoint (auth required)
     tukey_payload = {
-        "parameter": "SoilMoisture",
+        "parameter": "temperature",
         "data": test_data
     }
     test_endpoint("/analyze/tukey", tukey_payload, 200, auth_token)
@@ -140,7 +140,7 @@ def main():
     # Test legacy endpoint (auth required)
     legacy_payload = {
         "test_type": "tukey",
-        "parameter": "SoilMoisture",
+        "parameter": "temperature",
         "data": test_data
     }
     test_endpoint("/analyze", legacy_payload, 200, auth_token)
