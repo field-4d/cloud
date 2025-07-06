@@ -36,6 +36,53 @@ A high-performance FastAPI service for performing statistical testing on time-se
 - ⏳ **T-Test**: Function placeholder exists, implementation pending
 - ⏳ **Dunnett's Test**: Function placeholder exists, implementation pending
 
+## Authentication
+
+The API uses Cloud Function-based authentication with JWT tokens. Authentication is handled by the `login_and_issue_jwt` Cloud Function that validates credentials against BigQuery.
+
+### Cloud Function Integration
+- **Authentication Service**: External Cloud Function `login_and_issue_jwt`
+- **Database**: Google BigQuery user table
+- **Password Hashing**: SHA256 + BASE64 (client-side hashing required)
+- **Token Expiration**: 1 hour JWT tokens
+
+### Login Endpoint
+```
+POST /auth/login
+```
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "userpassword"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "user": {
+    "email": "user@example.com",
+    "created_at": null,
+    "last_login": null
+  }
+}
+```
+
+### Using Authentication
+Include the JWT token in the Authorization header for all API requests:
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+### Environment Variables Required
+```env
+CLOUD_FUNCTION_URL=https://your-cloud-function-url
+JWT_SECRET_KEY=your-shared-jwt-secret
+```
+
 ## API Endpoints
 
 ### Health Check
@@ -50,6 +97,12 @@ Returns service status and batch validation rules.
 ```
 POST /analyze/tukey
 ```
+**Headers:**
+```
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+```
+
 **Request Body:**
 ```json
 {
@@ -94,6 +147,26 @@ POST /analyze/tukey
 ```
 POST /analyze
 ```
+**Headers:**
+```
+Authorization: Bearer <your_jwt_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "parameter": "SoilMoisture",
+  "test_type": "tukey",
+  "data": [
+    {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
+    {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},
+    {"timestamp": "2025-06-02", "label": "Control", "value": 19.1},
+    {"timestamp": "2025-06-02", "label": "TreatmentA", "value": 24.4}
+  ]
+}
+```
+
 Backward compatibility endpoint - use specific test endpoints instead.
 
 ## Data Flow Architecture
@@ -235,15 +308,35 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Test health endpoint
 curl http://localhost:8000/health
 
-# Test Tukey endpoint with example data
+# Login to get authentication token
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "userpassword"}'
+
+# Test Tukey endpoint with authentication
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @Test_Python_file/valid_Json/example_input.json
+  -H "Authorization: Bearer your_jwt_token_here" \
+  -d '{
+    "parameter": "SoilMoisture",
+    "data": [
+      {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
+      {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3}
+    ]
+  }'
 
 # Test with multi-group example
 curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
-  -d @Test_Python_file/valid_Json/example_input_many_groups.json
+  -H "Authorization: Bearer your_jwt_token_here" \
+  -d '{
+    "parameter": "SoilMoisture",
+    "data": [
+      {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
+      {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},
+      {"timestamp": "2025-06-01", "label": "TreatmentB", "value": 22.1}
+    ]
+  }'
 ```
 
 ### Testing Examples
