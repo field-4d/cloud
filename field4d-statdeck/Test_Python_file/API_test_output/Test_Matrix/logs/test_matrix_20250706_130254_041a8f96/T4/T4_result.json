@@ -1,0 +1,23 @@
+{
+  "test_id": "T4",
+  "test_name": "High Reps",
+  "groups": [
+    "Control",
+    "Treatment"
+  ],
+  "replicates": 3,
+  "days": 2,
+  "expected_points": 5760,
+  "actual_points": 5760,
+  "recommended_batch_size": 10000,
+  "description": "High replication study - small dataset",
+  "success": false,
+  "start_time": "2025-07-06T13:05:20.981684",
+  "end_time": "2025-07-06T13:05:21.857083",
+  "elapsed_time": 0.8753986358642578,
+  "throughput": 6579.859465183316,
+  "results_count": 0,
+  "error_message": "('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))",
+  "test_data_file": "API_test_output/Test_Matrix\\logs\\test_matrix_20250706_130254_041a8f96\\T4\\T4_test_data.json",
+  "timestamp": "2025-07-06T13:05:21.857083"
+}
