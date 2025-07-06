@@ -106,7 +106,7 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "parameter": "SoilMoisture",
+  "parameter": "temperature",
   "data": [
     {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
     {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},
@@ -119,7 +119,7 @@ Content-Type: application/json
 **Response:**
 ```json
 {
-  "parameter": "SoilMoisture",
+  "parameter": "temperature",
   "test_type": "tukey",
   "batch_size": 4,
   "user": "user@example.com",
@@ -157,7 +157,7 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "parameter": "SoilMoisture",
+  "parameter": "temperature",
   "test_type": "tukey",
   "data": [
     {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
@@ -326,7 +326,7 @@ curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your_jwt_token_here" \
   -d '{
-    "parameter": "SoilMoisture",
+    "parameter": "temperature",
     "data": [
       {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
       {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3}
@@ -338,7 +338,7 @@ curl -X POST http://localhost:8000/analyze/tukey \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your_jwt_token_here" \
   -d '{
-    "parameter": "SoilMoisture",
+    "parameter": "temperature",
     "data": [
       {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
       {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},
