@@ -1,0 +1,21 @@
+{
+  "test_type": "tukey",
+  "parameter": "temperature", 
+  "data": [
+    {"timestamp": "2025-06-01", "label": "Control", "value": 18.0},
+    {"timestamp": "2025-06-01", "label": "Control", "value": 17.2},
+    {"timestamp": "2025-06-01", "label": "Control", "value": 17.8},
+    {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.3},
+    {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 22.1},
+    {"timestamp": "2025-06-01", "label": "TreatmentA", "value": 21.8},
+
+    {"timestamp": "2025-06-02", "label": "Control", "value": 19.1},
+    {"timestamp": "2025-06-02", "label": "Control", "value": 18.7},
+    {"timestamp": "2025-06-02", "label": "Control", "value": 18.9},
+    {"timestamp": "2025-06-02", "label": "TreatmentA", "value": 24.4},
+    {"timestamp": "2025-06-02", "label": "TreatmentA", "value": 23.9},
+    {"timestamp": "2025-06-02", "label": "TreatmentA", "value": 24.2}
+
+
+  ]
+}
