@@ -13,7 +13,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv('app/auth/.env')
 
-BASE_URL = "http://localhost:8000"
+# BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8080"
+
 CLOUD_FUNCTION_URL = os.getenv('CLOUD_FUNCTION_URL')
 CLOUD_FUNCTION_URL="https://us-central1-iucc-f4d.cloudfunctions.net/login_and_issue_jwt"
 

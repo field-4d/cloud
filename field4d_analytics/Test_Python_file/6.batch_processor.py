@@ -15,7 +15,8 @@ from typing import Dict, List, Any, Optional, Generator
 import math
 
 # Configuration
-BASE_URL = "http://localhost:8000"
+PORT = 8080  # Can be 8000 or 8080
+BASE_URL = f"http://localhost:{PORT}"
 
 # Global batch configuration
 BATCH_SIZE = 8_000  # Maximum records per batch (used for both simple and smart batching)
@@ -198,7 +199,7 @@ class BatchProcessor:
                     return False
                     
             except requests.exceptions.ConnectionError:
-                print("❌ Could not connect to server. Make sure the server is running on localhost:8000")
+                print(f"❌ Could not connect to server. Make sure the server is running on localhost:{PORT}")
                 return False
             except Exception as e:
                 print(f"❌ Login error: {str(e)}")

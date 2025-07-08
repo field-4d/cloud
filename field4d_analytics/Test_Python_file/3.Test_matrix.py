@@ -14,7 +14,11 @@ import pandas as pd
 import os
 import uuid
 
-API_URL = "http://127.0.0.1:8000/analyze/tukey"
+# Define port as a variable
+API_PORT = 8080  # Change this to 8000 or 8080 as needed
+
+# API URLs using the port variable
+API_URL = f"http://localhost:{API_PORT}/analyze/tukey"
 OUTPUT_DIR = "API_test_output/Test_Matrix"
 
 def get_auth_token():
@@ -51,7 +55,7 @@ def get_auth_token():
             }
             
             response = requests.post(
-                "http://127.0.0.1:8000/auth/login",
+                f"http://localhost:{API_PORT}/auth/login",
                 json=login_data,
                 headers={"Content-Type": "application/json"}
             )
@@ -509,7 +513,7 @@ def main():
     try:
         # Test API connectivity first
         print("🔍 Testing API connectivity...")
-        health_response = requests.get("http://127.0.0.1:8000/health", timeout=5)
+        health_response = requests.get(f"http://localhost:{API_PORT}/health", timeout=5)
         if health_response.status_code == 200:
             print("✅ API is running and accessible")
             health_data = health_response.json()
@@ -520,7 +524,7 @@ def main():
             return
     except Exception as e:
         print(f"❌ Cannot connect to API: {e}")
-        print("Please ensure the Field4D StatDeck server is running on http://127.0.0.1:8000")
+        print(f"Please ensure the Field4D StatDeck server is running on http://localhost:{API_PORT}")
         return
     
     # Run the test matrix

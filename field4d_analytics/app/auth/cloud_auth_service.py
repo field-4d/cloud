@@ -45,16 +45,16 @@ class CloudAuthService:
         
         return base64_hash
     
-    def login_and_get_token(self, email: str, password: str) -> Optional[str]:
+    def login_and_get_token(self, email: str, password: str) -> Optional[Dict[str, Any]]:
         """
-        Authenticate user via Cloud Function and get JWT token.
+        Authenticate user via Cloud Function and get response data.
         
         Args:
             email: User email
             password: Plain text password
             
         Returns:
-            JWT token if authentication successful, None otherwise
+            Dictionary with token and user data if successful, None otherwise
         """
         try:
             # Clean email and hash password
@@ -78,7 +78,7 @@ class CloudAuthService:
             if response.status_code == 200:
                 data = response.json()
                 if data.get("success"):
-                    return data.get("token")
+                    return data  # Return the full response data
                 else:
                     print(f"Authentication failed: {data.get('error', 'Unknown error')}")
                     return None

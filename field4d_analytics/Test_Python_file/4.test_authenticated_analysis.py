@@ -11,7 +11,8 @@ from pathlib import Path
 from datetime import datetime
 
 # Configuration
-BASE_URL = "http://localhost:8000"
+# BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8080"
 
 # Path to test data
 SCRIPT_DIR = Path(__file__).parent

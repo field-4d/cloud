@@ -51,27 +51,23 @@ async def login(login_request: LoginRequest):
     """
     try:
         # Authenticate via Cloud Function
-        token = cloud_auth.login_and_get_token(login_request.email, login_request.password)
+        auth_response = cloud_auth.login_and_get_token(login_request.email, login_request.password)
         
-        if token is None:
+        if auth_response is None:
             return LoginResponse(
                 success=False,
                 error="Invalid email or password"
             )
         
-        # Validate token to get user info
-        user_data = cloud_auth.validate_token(token)
-        if user_data is None:
-            return LoginResponse(
-                success=False,
-                error="Token validation failed"
-            )
+        # Extract data from Cloud Function response
+        token = auth_response.get("token")
+        user_data = auth_response.get("user", {})
         
-        # Create user object
+        # Create user object with data from Cloud Function
         user = User(
-            email=user_data["email"],
-            created_at=None,  # Not available from token
-            last_login=None   # Not available from token
+            email=user_data.get("email", login_request.email),
+            created_at=user_data.get("created_at"),
+            last_login=user_data.get("last_login")
         )
         
         return LoginResponse(
