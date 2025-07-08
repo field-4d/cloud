@@ -1,0 +1,35 @@
+.upload-container {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .upload_csv_button {
+    position: relative;
+    background-color: #22144b;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    z-index: 0;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+
+  }
+  
+  .upload_csv_button:hover {
+    background-color: #333; /* Adjust as needed */
+    color: #fff; /* Adjust as needed */
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+
+  }
+  
+  .hidden-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }

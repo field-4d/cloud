@@ -1,0 +1,12 @@
+[Unit]
+Description= FieldArr@y - Initializer (Creates a bucket with mac addres)
+After=influxdb.service
+
+[Service]
+WorkingDirectory=/home/pi/6to4/initializer
+ExecStart=/usr/bin/node /home/pi/6to4/initializer/createBucket.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

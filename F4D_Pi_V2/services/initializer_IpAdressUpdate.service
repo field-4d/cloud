@@ -1,0 +1,11 @@
+[Unit]
+Description=Update MAC address on boot
+After=influxdb.service mongod.service
+
+[Service]
+WorkingDirectory=/home/pi/6to4/initializer/IP_Check
+ExecStart=/usr/bin/python3 /home/pi/6to4/initializer/IP_Check/IP_Update.py
+# Restart=on-failure  # Uncomment this line if you want the service to restart on failure
+
+[Install]
+WantedBy=multi-user.target

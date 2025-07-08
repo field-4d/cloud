@@ -1,0 +1,11 @@
+[Unit]
+Description=Update MAC to Device Mapping on Boot
+After=influxdb.service mongod.service
+
+[Service]
+WorkingDirectory=/home/pi/6to4/initializer/MAC_Check
+ExecStart=/usr/bin/python3 /home/pi/6to4/initializer/MAC_Check/mac_to_device.py
+# Restart=on-failure  # Uncomment this line if you want the service to restart on failure
+
+[Install]
+WantedBy=multi-user.target
