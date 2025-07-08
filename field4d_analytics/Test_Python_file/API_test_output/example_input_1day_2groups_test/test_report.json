@@ -1,0 +1,32 @@
+{
+  "test_info": {
+    "timestamp": "20250707_174154",
+    "test_file": "example_input_many_groups.json",
+    "total_data_points": 960,
+    "parameter": "temperature",
+    "test_type": "tukey"
+  },
+  "authentication": {
+    "has_token": true,
+    "token_preview": "eyJhbGciOiJIUzI1NiIs..."
+  },
+  "results": {
+    "tukey": {
+      "success": true,
+      "duration": 10.71810269355774,
+      "status_code": 200,
+      "result_count": 480
+    },
+    "legacy": {
+      "success": true,
+      "duration": 5.273061752319336,
+      "status_code": 200,
+      "result_count": 480
+    }
+  },
+  "summary": {
+    "total_tests": 2,
+    "successful_tests": 2,
+    "failed_tests": 0
+  }
+}
