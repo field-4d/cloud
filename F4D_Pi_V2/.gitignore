@@ -1,0 +1,12 @@
+node_modules/
+**/.env
+
+#MongoUpload/credentials.json
+#credentials/big_query_ts.json
+#credentials/last_ts_cf.json
+
+# Ignore all files in the credentials folder
+MongoUpload/credentials/*
+
+# Allow the .gitkeep file
+!MongoUpload/credentials/.gitkeep

@@ -1,0 +1,15 @@
+.checkbox-wrapper {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.checkbox {
+  margin-right: 8px;
+}
+
+/* Optional: Add hover effect for better user experience */
+.checkbox-wrapper:hover {
+  background-color: #3c3939;
+  cursor: pointer;
+}

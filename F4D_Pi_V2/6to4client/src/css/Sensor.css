@@ -1,0 +1,127 @@
+/* 'card' equivalent */
+.sensor-element { 
+    width: 100%;
+    max-width: 15rem;
+    background-color: rgb(92, 92, 93);
+    color: rgb(0, 0, 0);
+    padding: 0.5rem;
+    border-radius: 1rem;
+    font-family: 'Work Sans', sans-serif;
+    border: 0.1px black solid;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    position: relative;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+
+
+}
+
+.alerts-button {
+    margin: 0.6rem;
+    padding: 0.5rem;
+    font-size: 14px;
+    color: rgb(46, 46, 47);
+    background-color: rgb(255, 255, 255);
+    border-radius: 0.5rem;
+    border: solid rgb(46, 46, 47) 2px;
+    cursor: pointer;
+}
+
+.alerts-button:hover{
+    color: rgba(46, 46, 47, 0.736);
+    background-color: rgba(255, 255, 255, 0.738);
+    border: solid rgba(46, 46, 47, 0.734) 2px;
+}
+
+.valid {
+    background-color: rgb(9, 127, 140);
+    transition: background-color 0.75s ease;
+  }
+  
+  .invalid {
+    background-color: orange;
+    transition: background-color 0.75s ease;
+  }
+  
+  .inactive {
+    background-color: rgb(135, 135, 144);
+    transition: background-color 0.75s ease;
+  }
+  
+  
+  
+
+  
+
+.animate {
+    background-color: pink;
+}
+
+h3, h4 {
+    margin: 0.2rem;
+}
+
+.small-text {
+    margin-left: 1rem;
+}
+
+.temperature-display {
+    float: right;
+    clear: both;
+    color: black;
+    background:rgb(235, 234, 232);
+    border-radius: 0.3rem;
+    padding: 0.3rem;
+}
+
+hr {
+    border: 1px solid rgb(235, 234, 232);
+}
+
+@keyframes pinging {
+    /* from {background-color: rgb(92, 92, 93);} */
+    to {background-color: pink;}
+}
+
+
+.indicator-light {
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 2px solid rgb(0, 0, 0);
+    border-radius: 50%;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s ease;
+    .indicator-text {
+        display: none;
+        position: relative;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        padding: 5px;
+        border-radius: 5px;
+      }
+    
+      /* Show the indicator-text when hovering on indicator-light */
+      &:hover .indicator-text {
+        display: block;
+      }
+}
+/* Sensor.css */
+.invalid-orange {
+    background-color: orange;
+    transition: background-color 0.75s ease;
+  }
+  
+  .last-seen-time {
+    margin-top: 0; /* Prevents extra spacing */
+    font-size: 0.9rem; /* Adjust if needed */
+    display: inline;
+
+}

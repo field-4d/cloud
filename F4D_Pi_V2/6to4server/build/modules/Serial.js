@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Port = void 0;
+// import SerialPort from 'serialport';
+const SerialPort = require("serialport");
+const Readline = SerialPort.parsers.Readline;
+const port = new SerialPort('/dev/ttyACM0', { baudRate: 115200 });
+const parser = new Readline();
+port.pipe(parser);
+exports.Port = parser;
