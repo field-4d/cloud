@@ -6,7 +6,8 @@ Simple endpoint test - just check if endpoints are responding.
 import requests
 import json
 
-BASE_URL = "http://localhost:8000"
+# BASE_URL = "http://localhost:8000" 
+BASE_URL = "http://localhost:8080"
 
 def get_auth_token():
     """Get authentication token either manually or via login."""

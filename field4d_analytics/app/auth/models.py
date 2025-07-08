@@ -10,8 +10,8 @@ class LoginRequest(BaseModel):
 class User(BaseModel):
     """User data model."""
     email: str
-    created_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
+    created_at: Optional[str] = None  # Changed to str to match Cloud Function response
+    last_login: Optional[str] = None   # Changed to str to match Cloud Function response
 
 class LoginResponse(BaseModel):
     """Login response model."""
