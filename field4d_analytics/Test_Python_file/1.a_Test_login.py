@@ -7,7 +7,10 @@ import requests
 import json
 
 # Test configuration
-BASE_URL = "http://localhost:8000"
+# BASE_URL = "http://localhost:8000" if requests.get("http://localhost:8000/health").status_code == 200 else "http://localhost:8080"
+BASE_URL = "http://localhost:8080"
+print(f"Testing API at: {BASE_URL}")
+
 TEST_EMAIL = "averbuch.nir@gmail.com"
 TEST_PASSWORD = "Aa123456"  # Replace with actual password
 
