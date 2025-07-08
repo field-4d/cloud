@@ -1,0 +1,94 @@
+.add-form-experiment {
+    background-color: rgb(9, 127, 140);
+    padding: 2rem;
+    margin: 1rem;
+    border-radius: 2.5rem;
+    margin-top: 10px;
+    height: auto; /* Adjust based on your form height */
+}
+
+.title-experiment {
+    color: rgb(0, 0, 0);
+    font-size: 25px;
+    justify-content: left;
+    font-weight: bold;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-bottom: 1rem; /* Add space between the title and the form */
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem; /* Adjust spacing between form groups */
+}
+
+.experiment-name,
+.experiment-location {
+    color: rgb(0, 0, 0);
+    font-size: 20px;
+    font-weight: bold;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-right: 1rem;
+}
+
+
+.add-info-experiment-name,
+.add-info-experiment-location {
+    padding: 0.5rem;
+    border-radius: 1.5rem;
+    width: 100%; /* Decrease the width of the box */
+    border: 1px solid rgb(0, 0, 0);
+}
+
+.add-button-experiment {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    padding: 0.5rem 1rem; /* Adjust padding */
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 20px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    bottom: 0.5;
+    right: 1rem;
+}
+
+.error-message {
+    color: red;
+    font-size: 12px; /* Adjust font size for better readability */
+    font-weight: bold;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-top: 1rem;
+}
+
+
+.remove-experiment-title {
+    color: rgb(0, 0, 0);
+    font-size: 20px;
+    font-weight: bold;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-bottom: 0.5em; /* Add space below the select box */
+
+}
+
+.remove-experiment-select {
+    padding: 0.5rem;
+    border-radius: 1.5rem;
+    width: 100%; /* Decrease the width of the box */
+    border: 1px solid rgb(0, 0, 0);
+    margin-bottom: 1em; /* Add space below the select box */
+
+}
+
+.remove-experiment-button {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    padding: 0.5rem 1rem; /* Adjust padding */
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 20px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    bottom: 0.5;
+    right: 1rem;
+}

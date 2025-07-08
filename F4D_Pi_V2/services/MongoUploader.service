@@ -1,0 +1,12 @@
+[Unit]
+Description = FieldArray Influx to Mongo Uploader (blackbox to Mongo Cloud Service)
+After=influxdb.service 
+
+[Service]
+WorkingDirectory=/home/pi/6to4/gapUpdater
+ExecStart=/usr/bin/python3 /home/pi/6to4/MongoUpload/main.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

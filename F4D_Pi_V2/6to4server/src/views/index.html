@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Sensor's Paradise</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <nav>
+    <div class="lightblue strip"></div>
+    <img class="logo" src="./logo-removebg-preview.png" alt="FieldArray" height="70">
+    <div class="lightblue strip"></div>
+
+    <ul class="counters">
+      <li class="counter-element">Total sensors: <span id="sensorsCount"></span></li>
+      <li class="counter-element">Named Sensors: <span id="namedSensorsCount"></span></li>
+      <li class="counter-element">Unnamed Sensors: <span id="unnamedSensorsCount"></span></li>
+    </ul>
+  </nav>
+
+  <ul id="sensors">
+    <li class="container-heading">Your Sensors:</li>
+    <!-- <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li>
+    <li>DUMMY<input type="text"><button>Add Name</button></li> -->
+  </ul>
+  
+  <script>var exports = {};</script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="sensors.js"></script>
+  <script type="module" src="parser.js"></script>
+
+  <script>
+    var socket = io();
+    var sensors = document.getElementById('sensors');
+    var sensorsList = new SensorsList();
+
+    var sensorsCounter = 0;
+    var unnamedSensorsCounter = 0;
+    var namedSensorsCounter = 0;
+    var sensorsCounterElement = document.getElementById("sensorsCount");
+    var unnamedSensorsCounterElement = document.getElementById("unnamedSensorsCount");
+    var namedSensorsCounterElement = document.getElementById("namedSensorsCount");
+    
+    sensorsCounterElement.innerHTML = sensorsCounter;
+    unnamedSensorsCounterElement.innerHTML = unnamedSensorsCounter;
+    namedSensorsCounterElement.innerHTML = namedSensorsCounter;
+
+    socket.on('New Sensor', function (ipv6) {
+      const sp = new Sensor(ipv6);
+      sensorsList.addSensor(sp);
+
+      const li = document.createElement('li');
+      li.innerHTML = `${ipv6}`+'<span class=""> <input autocomplete="off" type="text" id="'+`${ipv6}`+'"/> <button onclick="submitName('+`${ipv6}`+')">Add Name</button></span>';
+      li.id = ipv6+"li";
+      sensors.appendChild(li);
+
+      sensorsCounter++;
+      unnamedSensorsCounter++;
+      sensorsCounterElement.innerHTML = sensorsCounter;
+      unnamedSensorsCounterElement.innerHTML = unnamedSensorsCounter;
+    });
+
+    function isInList(ipv6){
+      return sensorsList.some((obj)=> {return obj.ipv6 === ipv6});
+    }
+
+    function submitName(ipv6){
+      var input = document.getElementById(ipv6.value);
+
+      //Find index of specific object using findIndex method.    
+      objIndex = sensorsList.sensors.findIndex((obj => obj.ipv6 == ipv6.id));
+
+      //Checks if the sensor has a name yet
+      if (sensorsList.sensors[objIndex].name){
+        alert('That sp already has a name');
+        return;
+      }
+
+      //Update object's name property.
+      sensorsList.sensors[objIndex].name = ipv6.value;
+
+      //Emit the sp to the server
+      socket.emit('addSpName',sensorsList.sensors[objIndex]);
+      alert('Name added');
+      ipv6.parentElement.innerHTML = " : " +ipv6.value;
+      unnamedSensorsCounter--;
+      namedSensorsCounter++;
+      unnamedSensorsCounterElement.innerHTML = unnamedSensorsCounter;
+      namedSensorsCounterElement.innerHTML = namedSensorsCounter;
+    }
+
+    // Ping animation
+    // When PING event is fired, the pingBlinkAnimation()
+    // function will be called
+
+    socket.on('Ping', function (ipv6) {
+      pingBlinkAnimation(ipv6);
+    });
+
+    function pingBlinkAnimation(ipv6){
+      var sensor = document.getElementById(ipv6+'li');
+      sensor.classList.toggle("pinged");
+      // sensor.classList.add("pinged");
+
+      // const myTimeout = setTimeout(removePing, 5000);
+      // function removePing(){
+      //   sensor.classList.remove("pinged");
+      // }
+    } 
+  </script>
+</body>
+</html>

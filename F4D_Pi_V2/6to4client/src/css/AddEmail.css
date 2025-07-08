@@ -1,0 +1,60 @@
+.add-form-mail {
+    background-color: rgb(9, 127, 140);
+    padding: 2rem;
+    margin: 1rem;
+    border-radius: 0.5rem;
+    /* display: flex; */
+    margin-top : 10px;
+    border-radius: 2.5rem;
+    font-size: 20px;
+
+
+    
+}
+
+
+.title-mail {
+    color: rgb(0, 0, 0);
+    font-size: px;
+    justify-content: left;
+    font-weight: bold;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+
+}
+
+.add-info-mail {
+    border: solid black 1px;
+    padding: 0.5rem; /* Adjust padding */
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    flex: 1;
+    margin-right: 0.5rem;
+    border-radius: 1.5rem;
+    height: 1.5rem; /* Increase box height */
+    font-size: 15px; /* Increase text size */
+    /* move down 0.5px */
+    margin-top: 2.5px;
+}
+
+.experiment-dropdown {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 15px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+}
+
+.add-experiment-mail{
+    background-color: rgb(0, 0, 0);
+    color: white;
+    /* move to the right 0.5px */
+    margin-left: 2.5px;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 15px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+}

@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Node",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": [
+      "es5",
+      "DOM",
+      "DOM.Iterable",
+      "ES2020"
+    ],
+    "allowJs": true,
+    "outDir": "build",
+    "rootDir": "src",
+    "strict": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": false,
+    "types": [
+      "node",
+      "jest"
+    ],
+    "typeRoots": [
+      "./src/types",
+      "./node_modules/@types"
+    ],
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/from6to4 copy.ts"
+    ]
+  // "baseUrl": "./src",
+  // "paths": {
+  //   "@modules/*": ["src/modules/*"]
+  // "@services/*": ["services/*"]
+  // }
+}

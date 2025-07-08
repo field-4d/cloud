@@ -1,0 +1,11 @@
+[Unit]
+Description=Update MAC address on boot
+Before=initializer.service
+
+[Service]
+WorkingDirectory=/home/pi/6to4/initializer
+ExecStart=/usr/bin/python /home/pi/6to4/initializer/Mac_Updater.py
+# Restart=on-failure  # This line is removed
+
+[Install]
+WantedBy=multi-user.target

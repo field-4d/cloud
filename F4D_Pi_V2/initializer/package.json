@@ -1,0 +1,19 @@
+{
+  "name": "initializer",
+  "version": "1.0.0",
+  "description": "runs on startup",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.33.2",
+    "@influxdata/influxdb-client-apis": "^1.33.2",
+    "debug": "^4.3.4",
+    "dotenv": "^16.3.1",
+    "influx": "^5.9.3",
+    "os": "^0.1.2"
+  }
+}

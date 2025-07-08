@@ -1,0 +1,20 @@
+.start_exp_button {
+    margin: 0.6rem;
+    padding: 0.5rem;
+    font-size: 18px;
+    color: white;
+    background-color: rgb(47, 137, 22);
+    border-radius: 0.5rem;
+    border: solid rgb(47, 173, 5) 1px;
+    cursor: pointer;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+
+}
+
+.start_exp_button:hover{
+    color: rgb(159, 156, 156);
+    background-color: rgb(27, 82, 12);
+    border: solid rgb(28, 106, 2) 1px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+
+}

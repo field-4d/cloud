@@ -1,0 +1,12 @@
+[Unit]
+Description= FieldArr@y - 6to4 Client
+After=influxdb.service mongod.service 6to4server.service
+
+[Service]
+WorkingDirectory=/home/pi/6to4/6to4client
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

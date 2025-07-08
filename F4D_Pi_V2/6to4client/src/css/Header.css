@@ -1,0 +1,21 @@
+.header-main {
+    text-align: center;
+    padding: 0.6rem 1rem;
+    margin: 0;
+    background-color: rgba(12, 78, 136, 0.369);
+    color: rgb(0, 0, 0);
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Updated font */
+    font-weight: bold;
+}
+
+.header-title {
+    font-size: 35px; /* Adjust the font size as needed */
+    margin-top: 20px; /* Adjust the margin to control the position */
+    text-align: center; /* Center the title */
+}
+
+.header-info {
+    margin-top: 10px; /* Adjust the margin to control the position */
+    text-align: left; /* Align the info to the left */
+    font-size: 20px; /* Adjust the font size as needed */
+}

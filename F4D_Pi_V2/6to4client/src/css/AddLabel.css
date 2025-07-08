@@ -1,0 +1,91 @@
+.add-form-label {
+    background-color: rgb(9, 127, 140);
+    padding: 2rem;
+    margin: 1rem;
+    border-radius: 2.5rem;
+    margin-top: 10px;
+    height: auto; /* Adjust based on your form height */
+}
+
+.title-label {
+    color: rgb(0, 0, 0);
+    font-size: 25px;
+    justify-content: left;
+    font-weight: bold;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-bottom: 1rem; /* Add space between the title and the form */
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem; /* Adjust spacing between form group and next element */
+}
+
+.experiment-dropdown {
+    width: 100%; /* Adjust width */
+    padding: 0.5rem;
+    border-radius: 1.5rem;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    height: 2.5rem; /* Adjust height */
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.add-info-label {
+    border: solid black 1px;
+    padding: 0.5rem; /* Adjust padding */
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    flex: 1;
+    margin-right: 0.5rem;
+    border-radius: 1.5rem;
+    height: 1.5rem; /* Increase box height */
+    font-size: 15px; /* Increase text size */
+}
+
+.add-button-label {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 18px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-top: 0.5rem; /* Adjust vertical positioning */
+    margin-bottom: 0.5rem; /* Adjust vertical positioning */
+}
+
+.add-button-label:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.remove-label-title {
+    font-size: 20px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-bottom: 0.5rem; /* Move to the bottom a bit */
+}
+
+.remove-label-select {
+    width: 50%; /* Decrease width */
+    padding: 0.5rem;
+    border-radius: 1.5rem;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    height: 2.5rem; /* Adjust height */
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.remove-all-label-button {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    font-size: 18px;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin-top: 0.5rem; /* Adjust vertical positioning */
+    margin-bottom: 0.5rem; /* Adjust vertical positioning */
+}
