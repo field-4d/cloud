@@ -18,6 +18,7 @@ auth_token_str.txt
 !field4d_analytics/
 !login_and_issue_jwt/
 !F4D_Pi_V2/
+!cloud_upload_alerts/
 
 # Also keep their contents
 !process_files/**
@@ -30,7 +31,7 @@ auth_token_str.txt
 !field4d_analytics/**
 !/login_and_issue_jwt/** 
 !/F4D_Pi_V2/**
-
+!/cloud_upload_alerts/**
 # Keep .gitignore itself
 !.gitignore
 !README.md
