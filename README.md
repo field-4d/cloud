@@ -34,13 +34,16 @@ Each of these folders includes its own `README.md` for further documentation.
 ## Project Structure Overview
 
 - `F4D/`: Core processing, analytics, and reporting logic for the Field4D initiative.
+- `F4D_Pi_V2/`: Newest VersionCore processing, analytics, and reporting logic for the Field4D initiative.
 - `fetch_google/`: Interfaces for cloud data extraction.
 - `process_files/`: Local data processing and reformatting.
 - `query_last_timestamp/`: Utilities to track data update state.
 - `update-labels/`: Cloud resource label automation.
 - `upload_To_bucket/`: Cloud export logic.
 - `users-devices-permission/`: User-device access control.
-
+- `field4d_analytics/`: FastAPI for statistics.
+- `login_and_issue_jwt/`: Isuue JWT token and handle login
+- `Field4D_Site/`: Field4d.com site front + back
 ---
 
 ## Key Scripts
