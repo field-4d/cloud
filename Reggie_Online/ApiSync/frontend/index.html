@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApiSync - Payload Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.connected {
+            background-color: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+        
+        .status-indicator.disconnected {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+        
+        .payload-list {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            min-height: 300px;
+        }
+        
+        .payload-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 5px;
+            animation: slideIn 0.3s ease-out;
+            min-width: 0; /* Allow items to shrink below their content size */
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* Blink animation - color configurable via CSS variable */
+        :root {
+            --blink-color: #10b981; /* Default green - user can change this */
+            --blink-bg-color: #d1fae5; /* Default light green background */
+        }
+        
+        @keyframes blink {
+            0%, 100% { 
+                opacity: 1;
+                background-color: #f8f9fa;
+            }
+            50% { 
+                opacity: 0.6;
+                background-color: var(--blink-bg-color);
+                border-left-color: var(--blink-color);
+            }
+        }
+        
+        .payload-item.valid {
+            animation: slideIn 0.3s ease-out, blink 0.6s ease-in-out 0.3s 3;
+        }
+        
+        /* Input for blink color customization */
+        .blink-color-config {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .payload-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .timestamp {
+            color: #6b7280;
+            font-size: 0.85em;
+        }
+        
+        .payload-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .payload-field {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .payload-label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .payload-value {
+            color: #111827;
+            font-size: 1em;
+            word-break: break-all;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 ApiSync Payload Monitor</h1>
+        
+        <div class="status-card">
+            <div>
+                <span id="statusIndicator" class="status-indicator disconnected"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <div style="margin-top: 15px;">
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 style="color: #374151; margin: 0; display: inline-block; margin-right: 10px;">Health Check</h2>
+                    <span id="healthEndpointTitle" style="color: #667eea; font-weight: 600; font-size: 1.1em; background: #f0f0ff; padding: 4px 12px; border-radius: 5px;">/health</span>
+                </div>
+                <button id="checkHealthBtn" onclick="checkHealth()">Check Health</button>
+            </div>
+            <div id="healthStatus" style="margin-top: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="healthIndicator" class="status-indicator disconnected"></span>
+                    <span id="healthStatusText" style="color: #6b7280;">Not checked yet</span>
+                </div>
+                <div id="healthResponse" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; display: none;">
+                    <pre id="healthResponseText" style="margin: 0; color: #111827; font-family: monospace;"></pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 style="color: #374151; margin: 0; display: inline-block; margin-right: 10px;">Received Payloads</h2>
+                    <span id="endpointTitle" style="color: #667eea; font-weight: 600; font-size: 1.1em; background: #f0f0ff; padding: 4px 12px; border-radius: 5px;">Ping</span>
+                </div>
+                <button id="clearBtn" onclick="clearPayloads()">Clear Payloads</button>
+            </div>
+            <div class="blink-color-config">
+                <label for="blinkColorPicker" style="font-weight: 600; color: #374151;">Blink Color (Valid Sensors):</label>
+                <input type="color" id="blinkColorPicker" value="#10b981" onchange="updateBlinkColor(this.value)">
+                <span id="blinkColorDisplay" style="color: #6b7280; font-size: 0.9em;">#10b981</span>
+            </div>
+            <div id="payloadList" class="payload-list">
+                <div class="empty-state">
+                    No payloads received yet. Connect to WebSocket to start monitoring.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let payloadCount = 0;
+        let displayedLLAs = new Map(); // Track displayed LLAs: LLA -> element
+        
+        function updateBlinkColor(color) {
+            // Update CSS variable
+            document.documentElement.style.setProperty('--blink-color', color);
+            
+            // Calculate lighter version for background (blend with white)
+            const rgb = hexToRgb(color);
+            const lightBg = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : '#d1fae5';
+            document.documentElement.style.setProperty('--blink-bg-color', lightBg);
+            
+            // Update display
+            document.getElementById('blinkColorDisplay').textContent = color;
+        }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+        
+        function findPayloadByLLA(LLA) {
+            // Find existing payload item by LLA
+            if (!LLA) return null;
+            
+            const payloadItems = document.querySelectorAll('.payload-item');
+            for (let item of payloadItems) {
+                // Check data attribute first (faster)
+                const dataLLA = item.getAttribute('data-lla');
+                if (dataLLA === LLA) {
+                    return item;
+                }
+                
+                // Fallback: search for LLA in the LLA field specifically
+                const payloadContent = item.querySelector('.payload-content');
+                if (payloadContent) {
+                    const fields = payloadContent.querySelectorAll('.payload-field');
+                    for (let field of fields) {
+                        const label = field.querySelector('.payload-label')?.textContent.trim();
+                        if (label === 'LLA') {
+                            const llaValue = field.querySelector('.payload-value')?.textContent.trim();
+                            if (llaValue === LLA) {
+                                return item;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function triggerBlink(element) {
+            // Remove and re-add 'valid' class to retrigger animation
+            element.classList.remove('valid');
+            // Force reflow
+            void element.offsetWidth;
+            element.classList.add('valid');
+        }
+        
+        function getWebSocketUrl() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            return `${protocol}//${host}/ws/ping`;
+        }
+        
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Already connected');
+                return;
+            }
+            
+            const url = getWebSocketUrl();
+            console.log('Connecting to:', url);
+            
+            ws = new WebSocket(url);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                updateStatus(true);
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            };
+            
+            ws.onmessage = (event) => {
+                console.log('Message received:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.payload) {
+                        displayPayload(data);
+                    }
+                } catch (e) {
+                    console.error('Error parsing message:', e);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                console.error('WebSocket error details:', {
+                    readyState: ws?.readyState,
+                    url: url
+                });
+                updateStatus(false);
+                alert('Failed to connect to WebSocket. Please check:\n1. Server is running\n2. URL is correct: ' + url);
+            };
+            
+            ws.onclose = (event) => {
+                console.log('WebSocket disconnected', {
+                    code: event.code,
+                    reason: event.reason,
+                    wasClean: event.wasClean
+                });
+                updateStatus(false);
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                
+                if (event.code !== 1000) {
+                    console.error('Unexpected WebSocket closure:', event.code, event.reason);
+                }
+            };
+        }
+        
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function updateStatus(connected) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                statusText.textContent = 'Connected';
+            } else {
+                indicator.className = 'status-indicator disconnected';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+        
+        async function checkHealth() {
+            const healthIndicator = document.getElementById('healthIndicator');
+            const healthStatusText = document.getElementById('healthStatusText');
+            const healthResponse = document.getElementById('healthResponse');
+            const healthResponseText = document.getElementById('healthResponseText');
+            const checkHealthBtn = document.getElementById('checkHealthBtn');
+            
+            // Disable button during check
+            checkHealthBtn.disabled = true;
+            checkHealthBtn.textContent = 'Checking...';
+            
+            // Reset indicator
+            healthIndicator.className = 'status-indicator disconnected';
+            healthStatusText.textContent = 'Checking...';
+            healthResponse.style.display = 'none';
+            
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'ok') {
+                    healthIndicator.className = 'status-indicator connected';
+                    healthStatusText.textContent = 'Healthy';
+                    healthStatusText.style.color = '#10b981';
+                    
+                    // Show response
+                    healthResponse.style.display = 'block';
+                    healthResponseText.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    healthIndicator.className = 'status-indicator disconnected';
+                    healthStatusText.textContent = 'Unhealthy';
+                    healthStatusText.style.color = '#ef4444';
+                    
+                    // Show response
+                    healthResponse.style.display = 'block';
+                    healthResponseText.textContent = JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                healthIndicator.className = 'status-indicator disconnected';
+                healthStatusText.textContent = 'Error';
+                healthStatusText.style.color = '#ef4444';
+                
+                // Show error
+                healthResponse.style.display = 'block';
+                healthResponseText.textContent = `Error: ${error.message}`;
+            } finally {
+                // Re-enable button
+                checkHealthBtn.disabled = false;
+                checkHealthBtn.textContent = 'Check Health';
+            }
+        }
+        
+        function clearPayloads() {
+            const payloadList = document.getElementById('payloadList');
+            
+            // Remove all payload items
+            const payloadItems = payloadList.querySelectorAll('.payload-item');
+            payloadItems.forEach(item => item.remove());
+            
+            // Clear LLA tracking
+            displayedLLAs.clear();
+            
+            // Remove existing empty state if present
+            const existingEmptyState = payloadList.querySelector('.empty-state');
+            if (existingEmptyState) {
+                existingEmptyState.remove();
+            }
+            
+            // Show empty state
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.textContent = 'No payloads received yet. Connect to WebSocket to start monitoring.';
+            payloadList.appendChild(emptyState);
+            
+            // Reset payload count
+            payloadCount = 0;
+        }
+        
+        function displayPayload(data) {
+            const payloadList = document.getElementById('payloadList');
+            const MAX_PAYLOADS = 10;
+            
+            // Remove empty state if exists
+            const emptyState = payloadList.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            const LLA = data.payload?.LLA;
+            
+            // Check if LLA already exists
+            const existingItem = findPayloadByLLA(LLA);
+            
+            if (existingItem) {
+                // LLA already exists - don't add duplicate
+                console.log(`[FRONTEND] LLA ${LLA} already displayed, skipping duplicate`);
+                
+                // Check if validation exists and is valid
+                const validation = data.payload?.validation;
+                const isValid = validation?.is_valid === true;
+                
+                // If valid and existing, trigger blink
+                if (isValid) {
+                    console.log(`[FRONTEND] Existing LLA ${LLA} is valid, triggering blink`);
+                    triggerBlink(existingItem);
+                    
+                    // Update timestamp in existing item
+                    const timestampEl = existingItem.querySelector('.timestamp');
+                    if (timestampEl) {
+                        timestampEl.textContent = data.timestamp || 'N/A';
+                    }
+                }
+                
+                return; // Don't add duplicate
+            }
+            
+            // Create new payload item
+            const payloadItem = document.createElement('div');
+            payloadItem.className = 'payload-item';
+            payloadItem.setAttribute('data-lla', LLA); // Store LLA as data attribute
+            
+            // Check if validation exists and is valid
+            const validation = data.payload?.validation;
+            const isValid = validation?.is_valid === true;
+            
+            // Add 'valid' class if validation is true (triggers blink animation)
+            if (isValid) {
+                payloadItem.classList.add('valid');
+            }
+            
+            // Build validation status HTML
+            let validationHtml = '';
+            if (validation) {
+                const validationIcon = isValid ? '✓' : '✗';
+                const validationColor = isValid ? '#10b981' : '#ef4444';
+                const validationText = validation.message || (isValid ? 'Valid' : 'Invalid');
+                validationHtml = `
+                    <div class="payload-field" style="background: ${isValid ? '#d1fae5' : '#fee2e2'};">
+                        <div class="payload-label">Validation</div>
+                        <div class="payload-value" style="color: ${validationColor}; font-weight: bold;">
+                            ${validationIcon} ${validationText}
+                            ${validation.error ? '<br><small style="color: #ef4444;">' + validation.error + '</small>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            payloadItem.innerHTML = `
+                <div class="payload-header">
+                    <strong>Payload #${++payloadCount}</strong>
+                    <span class="timestamp">${data.timestamp || 'N/A'}</span>
+                </div>
+                <div class="payload-content">
+                    <div class="payload-field">
+                        <div class="payload-label">Hostname</div>
+                        <div class="payload-value">${data.payload.hostname || 'N/A'}</div>
+                    </div>
+                    <div class="payload-field">
+                        <div class="payload-label">MAC Address</div>
+                        <div class="payload-value">${data.payload.mac_address || 'N/A'}</div>
+                    </div>
+                    <div class="payload-field">
+                        <div class="payload-label">Type</div>
+                        <div class="payload-value">${data.payload.type || 'N/A'}</div>
+                    </div>
+                    <div class="payload-field">
+                        <div class="payload-label">LLA</div>
+                        <div class="payload-value">${data.payload.LLA || 'N/A'}</div>
+                    </div>
+                    ${validationHtml}
+                </div>
+            `;
+            
+            // Track this LLA
+            displayedLLAs.set(LLA, payloadItem);
+            
+            // Append at the end (newest on the right, oldest on the left)
+            payloadList.appendChild(payloadItem);
+            
+            // Keep only the last MAX_PAYLOADS payloads - remove the oldest ones (leftmost)
+            const payloadItems = payloadList.querySelectorAll('.payload-item');
+            if (payloadItems.length > MAX_PAYLOADS) {
+                // Remove the oldest payloads (items before the last MAX_PAYLOADS)
+                // These are at the beginning of the NodeList (leftmost in grid)
+                const itemsToRemove = payloadItems.length - MAX_PAYLOADS;
+                for (let i = 0; i < itemsToRemove; i++) {
+                    const removedItem = payloadItems[i];
+                    const removedLLA = removedItem.getAttribute('data-lla');
+                    if (removedLLA) {
+                        displayedLLAs.delete(removedLLA);
+                    }
+                    removedItem.remove();
+                }
+            }
+            
+            // Oldest payloads appear on the left, newest on the right
+        }
+        
+        // Set up event listeners when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connectBtn) {
+                connectBtn.addEventListener('click', connectWebSocket);
+            }
+            
+            if (disconnectBtn) {
+                disconnectBtn.addEventListener('click', disconnectWebSocket);
+            }
+            
+            console.log('Event listeners attached');
+            console.log('WebSocket URL will be:', getWebSocketUrl());
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            disconnectWebSocket();
+        });
+    </script>
+</body>
+</html>
+
