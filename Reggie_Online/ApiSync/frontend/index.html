@@ -70,6 +70,68 @@
             border-radius: 5px;
             animation: slideIn 0.3s ease-out;
             min-width: 0; /* Allow items to shrink below their content size */
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        
+        .payload-item.active-exp {
+            background: linear-gradient(135deg, #f0fdf4 0%, #f8f9fa 100%);
+            border-left: 4px solid #10b981;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+        }
+        
+        .payload-item.inactive-exp {
+            background: linear-gradient(135deg, #f9fafb 0%, #f8f9fa 100%);
+            border-left: 4px solid #9ca3af;
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
+        }
+        
+        .payload-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .payload-item.active-exp:hover {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .payload-item.inactive-exp:hover {
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+        
+        .payload-item:active {
+            transform: translateY(0);
+        }
+        
+        .payload-exp-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .payload-exp-badge.active {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+        
+        .payload-exp-badge.inactive {
+            background: #6b7280;
+            color: white;
+            box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);
+        }
+        
+        .payload-exp-badge.invalid {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
         }
         
         @keyframes slideIn {
@@ -83,10 +145,11 @@
             }
         }
         
-        /* Blink animation - color configurable via CSS variable */
+        /* Blink animation - color and duration configurable via CSS variables */
         :root {
             --blink-color: #10b981; /* Default green - user can change this */
             --blink-bg-color: #d1fae5; /* Default light green background */
+            --blink-duration: 1.5s; /* Default blink duration - user can change this */
         }
         
         @keyframes blink {
@@ -102,7 +165,7 @@
         }
         
         .payload-item.valid {
-            animation: slideIn 0.3s ease-out, blink 0.6s ease-in-out 0.3s 3;
+            animation: slideIn 0.3s ease-out, blink var(--blink-duration, 1.5s) ease-in-out 0.3s 1;
         }
         
         /* Input for blink color customization */
@@ -182,6 +245,702 @@
             background: #9ca3af;
             cursor: not-allowed;
         }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+            position: relative;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .modal-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 2em;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .metadata-section {
+            margin-bottom: 25px;
+        }
+        
+        .metadata-section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .metadata-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .metadata-item-label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .metadata-item-value {
+            font-size: 1em;
+            color: #111827;
+            word-break: break-word;
+        }
+        
+        .metadata-empty {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            font-size: 1.1em;
+        }
+        
+        .metadata-loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+        
+        .metadata-error {
+            text-align: center;
+            padding: 40px;
+            color: #ef4444;
+            font-size: 1.1em;
+        }
+        
+        .experiment-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        .active-exp-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .inactive-exp-badge {
+            display: inline-block;
+            background: #9ca3af;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        /* Active/Inactive Visual Separation */
+        .modal-header.active-state {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-left: 5px solid #10b981;
+            padding: 20px 30px;
+            margin: -30px -30px 20px -30px;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .modal-header.inactive-state {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            border-left: 5px solid #9ca3af;
+            padding: 20px 30px;
+            margin: -30px -30px 20px -30px;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .status-banner {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .status-banner.active {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        .status-banner.inactive {
+            background: #6b7280;
+            color: white;
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+        }
+        
+        .metadata-section.active-section {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 2px solid #10b981;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+        }
+        
+        .metadata-section.inactive-section {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border: 2px solid #9ca3af;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.1);
+        }
+        
+        .metadata-section-title.active-title {
+            color: #10b981;
+            border-bottom: 2px solid #10b981;
+            font-weight: 700;
+        }
+        
+        .metadata-section-title.inactive-title {
+            color: #6b7280;
+            border-bottom: 2px solid #9ca3af;
+            font-weight: 700;
+        }
+        
+        .metadata-item.active-item {
+            background: white;
+            border-left: 4px solid #10b981;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+        }
+        
+        .metadata-item.inactive-item {
+            background: white;
+            border-left: 4px solid #9ca3af;
+            box-shadow: 0 2px 4px rgba(107, 114, 128, 0.1);
+        }
+        
+        .experiment-select-wrapper {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border: 2px solid #9ca3af;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .experiment-select-wrapper .metadata-section-title {
+            color: #6b7280;
+            border-bottom: 2px solid #9ca3af;
+        }
+        
+        #experimentSelect {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            border: 2px solid #9ca3af;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #experimentSelect:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        #experimentSelect:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .status-icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 1.2em;
+        }
+        
+        /* Editable Form Styles */
+        .editable-field {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+        }
+        
+        .editable-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .editable-field:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+        }
+        
+        .coordinates-input-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .save-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            margin-top: 20px;
+            width: 100%;
+        }
+        
+        .save-button:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        
+        .save-button:active {
+            transform: translateY(0);
+        }
+        
+        .save-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .save-button.saving {
+            background: #9ca3af;
+            cursor: wait;
+        }
+        
+        .form-section {
+            margin-bottom: 25px;
+        }
+        
+        .form-section-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        /* Type-specific styling for payload items */
+        .payload-item.payload-type-ping {
+            border-left: 4px solid #667eea;
+        }
+        
+        .payload-item.payload-type-last-package {
+            border-left: 4px solid #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #f8f9fa 100%);
+        }
+        
+        /* Type badges */
+        .type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 10px;
+        }
+        
+        .type-badge-ping {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+        }
+        
+        .type-badge-last-package {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Enhanced package data section */
+        .package-data-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .package-data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .package-data-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #10b981;
+        }
+        
+        .package-icon {
+            font-size: 1.2em;
+        }
+        
+        .package-label {
+            font-size: 0.85em;
+            color: #6b7280;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .package-value {
+            font-size: 1em;
+            color: #111827;
+            font-weight: 600;
+        }
+        
+        .package-value.battery-low {
+            color: #ef4444;
+        }
+        
+        .package-value.battery-medium {
+            color: #f59e0b;
+        }
+        
+        .package-value.battery-high {
+            color: #10b981;
+        }
+        
+        /* Experiment Management Styles */
+        .experiment-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .experiment-control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .experiment-control-group label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9em;
+        }
+        
+        #experimentSelect {
+            padding: 6px 12px;
+            border: 2px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            background: white;
+            min-width: 200px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        #experimentSelect:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        #experimentSelect:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        #experimentSelect:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .filter-radio-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-radio {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .filter-radio input[type="radio"] {
+            cursor: pointer;
+        }
+        
+        .filter-radio label {
+            cursor: pointer;
+            font-weight: 500;
+            color: #6b7280;
+            font-size: 0.85em;
+        }
+        
+        .filter-radio input[type="radio"]:checked + label {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .refresh-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .experiment-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #6b7280;
+        }
+        
+        .experiment-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .experiment-stat-value {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .sensors-list-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .sensors-list-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+        }
+        
+        .sensors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .sensor-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .sensor-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .sensor-card.active-exp {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        }
+        
+        .sensor-card.inactive-exp {
+            border-color: #9ca3af;
+            background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+        }
+        
+        .sensor-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .sensor-card-lla {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.95em;
+        }
+        
+        .sensor-card-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        
+        .sensor-card-badge.active {
+            background: #10b981;
+            color: white;
+        }
+        
+        .sensor-card-badge.inactive {
+            background: #9ca3af;
+            color: white;
+        }
+        
+        .sensor-card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.85em;
+        }
+        
+        .sensor-card-info-item {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .sensor-card-info-label {
+            color: #6b7280;
+        }
+        
+        .sensor-card-info-value {
+            color: #374151;
+            font-weight: 500;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -218,23 +977,177 @@
             </div>
         </div>
         
+        <!-- Experiment Management Card -->
+        <div class="status-card" id="experimentManagementCard">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 style="color: #374151; margin: 0; display: inline-block; margin-right: 10px;">Experiment Management</h2>
+                    <span style="color: #667eea; font-weight: 600; font-size: 1.1em; background: #f0f0ff; padding: 4px 12px; border-radius: 5px;">Sensors & Experiments</span>
+                </div>
+            </div>
+            
+            <!-- Email Input and Permissions Resolution -->
+            <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <label for="emailInput" style="font-weight: 600; color: #374151;">Email:</label>
+                    <input type="email" id="emailInput" placeholder="user@mail.com" style="flex: 1; min-width: 200px; padding: 8px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em;">
+                    <button id="resolvePermissionsBtn" class="refresh-btn" onclick="resolvePermissions()" style="white-space: nowrap;">
+                        <span id="resolveIcon">🔍</span>
+                        <span>Resolve Permissions</span>
+                    </button>
+                </div>
+                <div id="permissionsStatus" style="margin-top: 10px; font-size: 0.85em; color: #6b7280; display: none;"></div>
+            </div>
+            
+            <!-- Owner/MAC Selection Dropdowns -->
+            <div id="ownerMacSelection" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6; display: none;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div class="experiment-control-group">
+                        <label for="ownerSelect" style="font-weight: 600; color: #374151;">Owner:</label>
+                        <select id="ownerSelect" onchange="onOwnerSelected(this.value)" disabled style="padding: 6px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em; cursor: pointer; background: white; min-width: 200px;">
+                            <option value="">Select owner...</option>
+                        </select>
+                    </div>
+                    <div class="experiment-control-group">
+                        <label for="macAddressSelect" style="font-weight: 600; color: #374151;">MAC Address:</label>
+                        <select id="macAddressSelect" onchange="onMacAddressSelected(this.value)" disabled style="padding: 6px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em; cursor: pointer; background: white; min-width: 200px;">
+                            <option value="">Select owner first...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Owner/MAC Display (read-only, shows current selection) -->
+            <div id="ownerMacDisplay" style="margin-bottom: 15px; padding: 10px; background: #e9ecef; border-radius: 5px; display: none;">
+                <div style="display: flex; gap: 20px; font-size: 0.9em;">
+                    <div>
+                        <span style="font-weight: 600; color: #374151;">Selected Owner:</span>
+                        <span id="displayOwner" style="color: #6b7280; margin-left: 5px;">-</span>
+                    </div>
+                    <div>
+                        <span style="font-weight: 600; color: #374151;">Selected MAC Address:</span>
+                        <span id="displayMacAddress" style="color: #6b7280; margin-left: 5px;">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message when owner/mac not available -->
+            <div id="ownerMacMessage" style="margin-bottom: 15px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 5px; color: #92400e;">
+                <strong>ℹ️ Info:</strong> Enter your email and click "Resolve Permissions" to select owner and MAC address, or wait for auto-detection from WebSocket payloads.
+            </div>
+            
+            <!-- Experiment Controls -->
+            <div class="experiment-controls" id="experimentControls">
+                <div class="experiment-control-group">
+                    <label for="experimentSelect">Experiment:</label>
+                    <select id="experimentSelect" onchange="onExperimentSelected(this.value)" disabled>
+                        <option value="">Select owner and MAC address first</option>
+                    </select>
+                </div>
+                <div class="experiment-control-group">
+                    <div class="filter-radio-group">
+                        <div class="filter-radio">
+                            <input type="radio" id="filterAll" name="expFilter" value="all" checked onchange="onExperimentFilterChanged('all')">
+                            <label for="filterAll">All</label>
+                        </div>
+                        <div class="filter-radio">
+                            <input type="radio" id="filterActive" name="expFilter" value="active" onchange="onExperimentFilterChanged('active')">
+                            <label for="filterActive">Active</label>
+                        </div>
+                        <div class="filter-radio">
+                            <input type="radio" id="filterInactive" name="expFilter" value="inactive" onchange="onExperimentFilterChanged('inactive')">
+                            <label for="filterInactive">Inactive</label>
+                        </div>
+                    </div>
+                </div>
+                <button id="refreshExperimentsBtn" class="refresh-btn" onclick="refreshExperiments()" disabled>
+                    <span id="refreshIcon">🔄</span>
+                    <span>Refresh</span>
+                </button>
+                <div class="experiment-stats" id="experimentStats" style="display: none;">
+                    <div class="experiment-stat">
+                        <span>Total:</span>
+                        <span class="experiment-stat-value" id="statTotal">0</span>
+                    </div>
+                    <div class="experiment-stat">
+                        <span>Active:</span>
+                        <span class="experiment-stat-value" id="statActive" style="color: #10b981;">0</span>
+                    </div>
+                    <div class="experiment-stat">
+                        <span>Inactive:</span>
+                        <span class="experiment-stat-value" id="statInactive" style="color: #9ca3af;">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sensors List Section (shown when experiment is selected) -->
+            <div id="sensorsListSection" class="sensors-list-section" style="display: none;">
+                <div class="sensors-list-title" id="sensorsListTitle">Sensors for Selected Experiment</div>
+                <div id="sensorsList" class="sensors-grid">
+                    <!-- Sensors will be populated here -->
+                </div>
+            </div>
+        </div>
+        
         <div class="status-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <div>
                     <h2 style="color: #374151; margin: 0; display: inline-block; margin-right: 10px;">Received Payloads</h2>
                     <span id="endpointTitle" style="color: #667eea; font-weight: 600; font-size: 1.1em; background: #f0f0ff; padding: 4px 12px; border-radius: 5px;">Ping</span>
                 </div>
-                <button id="clearBtn" onclick="clearPayloads()">Clear Payloads</button>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="maxPayloadsSelect" style="font-weight: 600; color: #374151; font-size: 0.9em;">Max Payloads:</label>
+                        <select id="maxPayloadsSelect" onchange="updateMaxPayloads(this.value)" style="padding: 6px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em; cursor: pointer; background: white;">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <button id="clearBtn" onclick="clearPayloads()">Clear Payloads</button>
+                </div>
             </div>
             <div class="blink-color-config">
                 <label for="blinkColorPicker" style="font-weight: 600; color: #374151;">Blink Color (Valid Sensors):</label>
                 <input type="color" id="blinkColorPicker" value="#10b981" onchange="updateBlinkColor(this.value)">
                 <span id="blinkColorDisplay" style="color: #6b7280; font-size: 0.9em;">#10b981</span>
             </div>
+            <div class="blink-color-config">
+                <label for="blinkDurationInput" style="font-weight: 600; color: #374151;">Blink Duration (seconds):</label>
+                <input type="number" id="blinkDurationInput" min="0.5" max="5" step="0.1" value="1.5" onchange="updateBlinkDuration(this.value)" style="width: 80px; padding: 5px; border: 1px solid #d1d5db; border-radius: 5px;">
+                <span id="blinkDurationDisplay" style="color: #6b7280; font-size: 0.9em;">1.5s</span>
+            </div>
+            
             <div id="payloadList" class="payload-list">
                 <div class="empty-state">
                     No payloads received yet. Connect to WebSocket to start monitoring.
                 </div>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 style="color: #374151; margin: 0; display: inline-block; margin-right: 10px;">Error/Debug</h2>
+                    <span style="color: #ef4444; font-weight: 600; font-size: 1.1em; background: #fee2e2; padding: 4px 12px; border-radius: 5px;">Validation Errors</span>
+                </div>
+                <button id="clearErrorsBtn" onclick="clearErrors()">Clear Errors</button>
+            </div>
+            <div id="errorList" style="display: flex; flex-direction: column; gap: 10px; min-height: 100px;">
+                <div class="empty-state">
+                    No errors yet. Errors will appear here when validation fails.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Metadata Modal -->
+    <div id="metadataModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Sensor Metadata</h2>
+                <button class="modal-close" onclick="closeMetadataModal()">&times;</button>
+            </div>
+            <div id="modalBody">
+                <div class="metadata-loading">Loading metadata...</div>
             </div>
         </div>
     </div>
@@ -243,6 +1156,74 @@
         let ws = null;
         let payloadCount = 0;
         let displayedLLAs = new Map(); // Track displayed LLAs: LLA -> element
+        let errorList = []; // Track validation errors
+        let payloadDataMap = new Map(); // Track payload data: LLA -> {hostname, mac_address, LLA}
+        let payloadExpStatusMap = new Map(); // Track experiment status: LLA -> 'active' | 'inactive' | 'unknown'
+        let lastPackageMap = new Map(); // Track last_package data: LLA -> {temperature, humidity, solar_intensity, battery, ...}
+        
+        // Experiment management variables
+        let currentOwner = null;
+        let currentMacAddress = null;
+        let experimentsList = []; // Store all experiments
+        let filteredExperiments = []; // Store filtered experiments based on active status
+        let selectedExperiment = null; // Currently selected experiment name
+        let experimentFilter = 'all'; // 'all', 'active', 'inactive'
+        let resolvedPermissions = null; // Store resolved permissions from API
+        let selectedOwner = null; // Currently selected owner from dropdown
+        let selectedMacAddress = null; // Currently selected MAC address from dropdown
+        
+        // Max payloads configuration (scalable: easy to add more options)
+        const MAX_PAYLOADS_OPTIONS = [10, 15, 20];
+        const DEFAULT_MAX_PAYLOADS = 10;
+        
+        function getMaxPayloads() {
+            // Get from localStorage or use default
+            const saved = localStorage.getItem('maxPayloads');
+            const value = saved ? parseInt(saved, 10) : DEFAULT_MAX_PAYLOADS;
+            // Ensure it's a valid option
+            return MAX_PAYLOADS_OPTIONS.includes(value) ? value : DEFAULT_MAX_PAYLOADS;
+        }
+        
+        function setMaxPayloads(value) {
+            // Validate value is in options
+            const numValue = parseInt(value, 10);
+            if (MAX_PAYLOADS_OPTIONS.includes(numValue)) {
+                localStorage.setItem('maxPayloads', numValue.toString());
+                return numValue;
+            }
+            return getMaxPayloads();
+        }
+        
+        function updateMaxPayloads(value) {
+            const maxPayloads = setMaxPayloads(value);
+            console.log(`[CONFIG] Max payloads updated to: ${maxPayloads}`);
+            
+            // Enforce the new limit immediately
+            enforceMaxPayloads();
+        }
+        
+        function enforceMaxPayloads() {
+            const payloadList = document.getElementById('payloadList');
+            const maxPayloads = getMaxPayloads();
+            const payloadItems = payloadList.querySelectorAll('.payload-item');
+            
+            if (payloadItems.length > maxPayloads) {
+                // Remove the oldest payloads (items before the last maxPayloads)
+                const itemsToRemove = payloadItems.length - maxPayloads;
+                for (let i = 0; i < itemsToRemove; i++) {
+                    const removedItem = payloadItems[i];
+                    const removedLLA = removedItem.getAttribute('data-lla');
+                    if (removedLLA) {
+                        displayedLLAs.delete(removedLLA);
+                        payloadDataMap.delete(removedLLA);
+                        lastPackageMap.delete(removedLLA);
+                        payloadExpStatusMap.delete(removedLLA);
+                    }
+                    removedItem.remove();
+                }
+                console.log(`[CONFIG] Removed ${itemsToRemove} oldest payloads to enforce limit of ${maxPayloads}`);
+            }
+        }
         
         function updateBlinkColor(color) {
             // Update CSS variable
@@ -255,6 +1236,24 @@
             
             // Update display
             document.getElementById('blinkColorDisplay').textContent = color;
+        }
+        
+        function updateBlinkDuration(duration) {
+            // Validate and clamp duration
+            const durationNum = parseFloat(duration);
+            if (isNaN(durationNum) || durationNum < 0.5) {
+                duration = '0.5';
+                document.getElementById('blinkDurationInput').value = duration;
+            } else if (durationNum > 5) {
+                duration = '5';
+                document.getElementById('blinkDurationInput').value = duration;
+            }
+            
+            // Update CSS variable
+            document.documentElement.style.setProperty('--blink-duration', duration + 's');
+            
+            // Update display
+            document.getElementById('blinkDurationDisplay').textContent = duration + 's';
         }
         
         function hexToRgb(hex) {
@@ -333,7 +1332,10 @@
                 console.log('Message received:', event.data);
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.payload) {
+                    // Handle Last_Package type messages
+                    if (data.type === 'Last_Package') {
+                        handleLastPackage(data);
+                    } else if (data.payload) {
                         displayPayload(data);
                     }
                 } catch (e) {
@@ -465,9 +1467,507 @@
             payloadCount = 0;
         }
         
-        function displayPayload(data) {
+        function clearErrors() {
+            const errorListEl = document.getElementById('errorList');
+            
+            // Remove all error items
+            const errorItems = errorListEl.querySelectorAll('.error-item');
+            errorItems.forEach(item => item.remove());
+            
+            // Clear error list
+            errorList = [];
+            
+            // Remove existing empty state if present
+            const existingEmptyState = errorListEl.querySelector('.empty-state');
+            if (existingEmptyState) {
+                existingEmptyState.remove();
+            }
+            
+            // Show empty state
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.textContent = 'No errors yet. Errors will appear here when validation fails.';
+            errorListEl.appendChild(emptyState);
+        }
+        
+        function displayError(data) {
+            const errorListEl = document.getElementById('errorList');
+            const validation = data.payload?.validation;
+            
+            if (!validation) return;
+            
+            // Remove empty state if exists
+            const emptyState = errorListEl.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            // Create error item
+            const errorItem = document.createElement('div');
+            errorItem.className = 'error-item';
+            errorItem.style.cssText = `
+                background: #fee2e2;
+                border-left: 4px solid #ef4444;
+                padding: 15px;
+                border-radius: 5px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            const errorMessage = validation.message || 'Unknown error';
+            const errorDetail = validation.error || 'No additional details';
+            const lla = data.payload?.LLA || 'N/A';
+            const mac = data.payload?.mac_address || 'N/A';
+            const hostname = data.payload?.hostname || 'N/A';
+            
+            errorItem.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                    <div>
+                        <strong style="color: #991b1b;">Error Entry #${errorList.length + 1}</strong>
+                    </div>
+                    <span style="color: #6b7280; font-size: 0.85em;">${data.timestamp || 'N/A'}</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <strong style="color: #374151;">Message:</strong>
+                    <span style="color: #991b1b;">${errorMessage}</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <strong style="color: #374151;">Details:</strong>
+                    <span style="color: #6b7280; font-size: 0.9em;">${errorDetail}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; font-size: 0.85em;">
+                    <div>
+                        <strong style="color: #374151;">LLA:</strong>
+                        <span style="color: #6b7280;">${lla}</span>
+                    </div>
+                    <div>
+                        <strong style="color: #374151;">MAC:</strong>
+                        <span style="color: #6b7280;">${mac}</span>
+                    </div>
+                    <div>
+                        <strong style="color: #374151;">Hostname:</strong>
+                        <span style="color: #6b7280;">${hostname}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Add to beginning (newest errors on top)
+            errorListEl.insertBefore(errorItem, errorListEl.firstChild);
+            errorList.push({
+                timestamp: data.timestamp,
+                message: errorMessage,
+                error: errorDetail,
+                lla: lla,
+                mac: mac,
+                hostname: hostname
+            });
+            
+            // Keep only last 20 errors
+            const errorItems = errorListEl.querySelectorAll('.error-item');
+            if (errorItems.length > 20) {
+                errorItems[errorItems.length - 1].remove();
+                errorList.pop();
+            }
+        }
+        
+        function handleLastPackage(data) {
+            // Handle Last_Package WebSocket event
+            console.log('[LAST_PACKAGE] Received Last_Package event:', data);
+            
+            // Extract owner and mac_address from Last_Package data (if available)
+            const owner = data.owner || data.hostname || null;
+            const mac_address = data.mac_address || null;
+            
+            // Detect owner and mac_address from Last_Package data
+            if (owner && mac_address) {
+                detectOwnerAndMac({ owner, mac_address });
+            }
+            
+            const updatedLLAs = data.updated_llas || [];
+            const registeredLLAs = data.registered_llas || []; // Also process registered sensors
+            const allProcessedLLAs = [...updatedLLAs, ...registeredLLAs]; // Combine both lists
+            const sensorsData = data.sensors || {}; // LLA -> package_data mapping
+            const timestamp = data.timestamp || new Date().toISOString();
+            
+            // Use owner as hostname for backward compatibility
+            const hostname = owner;
+            
+            // Process each sensor - each unique LLA gets its own component (like Ping)
+            // Process both updated and registered sensors
+            allProcessedLLAs.forEach(lla => {
+                // Find existing payload item by LLA
+                const existingItem = findPayloadByLLA(lla);
+                const packageData = sensorsData[lla] || {};
+                
+                if (existingItem) {
+                    // Check if existing item is a Last_Package type
+                    const payloadFields = existingItem.querySelectorAll('.payload-field');
+                    let isLastPackageType = false;
+                    payloadFields.forEach(field => {
+                        const label = field.querySelector('.payload-label')?.textContent.trim();
+                        const value = field.querySelector('.payload-value')?.textContent.trim();
+                        if (label === 'Type' && value === 'Last_Package') {
+                            isLastPackageType = true;
+                        }
+                    });
+                    
+                    if (isLastPackageType) {
+                        // Existing Last_Package item - just update payload info (timestamp and Last Package data)
+                        // NO BLINK - component already exists
+                        console.log(`[LAST_PACKAGE] Updating existing Last_Package item for LLA: ${lla} (no blink)`);
+                        lastPackageMap.set(lla, packageData);
+                        
+                        // Update timestamp only
+                        const timestampEl = existingItem.querySelector('.timestamp');
+                        if (timestampEl) {
+                            timestampEl.textContent = timestamp;
+                        }
+                        
+                        // Update owner and mac_address if available
+                        if (hostname || mac_address) {
+                            const payloadData = payloadDataMap.get(lla);
+                            if (payloadData) {
+                                if (hostname) {
+                                    payloadData.owner = hostname;
+                                    payloadData.hostname = hostname;  // Keep for backward compatibility
+                                }
+                                if (mac_address) payloadData.mac_address = mac_address;
+                                payloadDataMap.set(lla, payloadData);
+                                
+                                // Update owner/mac display in UI
+                                const payloadFields = existingItem.querySelectorAll('.payload-field');
+                                payloadFields.forEach(field => {
+                                    const label = field.querySelector('.payload-label')?.textContent.trim();
+                                    if (label === 'Hostname' && hostname) {
+                                        field.querySelector('.payload-value').textContent = hostname;
+                                    } else if (label === 'MAC Address' && mac_address) {
+                                        field.querySelector('.payload-value').textContent = mac_address;
+                                    }
+                                });
+                            }
+                        }
+                        
+                        // Update Last Package data display
+                        const packageFields = [];
+                        if (packageData.temperature !== undefined && packageData.temperature !== null) {
+                            packageFields.push(`🌡️ Temp: ${packageData.temperature}`);
+                        }
+                        if (packageData.humidity !== undefined && packageData.humidity !== null) {
+                            packageFields.push(`💧 Humidity: ${packageData.humidity}`);
+                        }
+                        if (packageData.solar_intensity !== undefined && packageData.solar_intensity !== null) {
+                            packageFields.push(`☀️ Solar: ${packageData.solar_intensity}`);
+                        }
+                        if (packageData.battery !== undefined && packageData.battery !== null) {
+                            packageFields.push(`🔋 Battery: ${packageData.battery}`);
+                        }
+                        
+                        // Add any other fields
+                        Object.keys(packageData).forEach(key => {
+                            if (!['temperature', 'humidity', 'solar_intensity', 'battery'].includes(key)) {
+                                packageFields.push(`${key}: ${packageData[key]}`);
+                            }
+                        });
+                        
+                        // Find and update the Last Package display section (replace, don't add new)
+                        // Remove any existing Last Package display sections first
+                        const existingPackageDisplays = existingItem.querySelectorAll('.last-package-display');
+                        existingPackageDisplays.forEach(display => display.remove());
+                        
+                        // Also remove any inline Last Package payload-fields (legacy format)
+                        const payloadFields = existingItem.querySelectorAll('.payload-field');
+                        payloadFields.forEach(field => {
+                            const label = field.querySelector('.payload-label')?.textContent.trim();
+                            if (label === 'Last Package') {
+                                field.remove();
+                            }
+                        });
+                        
+                        // Create new Last Package display section with updated data
+                        const payloadContent = existingItem.querySelector('.payload-content');
+                        if (payloadContent && packageFields.length > 0) {
+                            const packageDisplay = document.createElement('div');
+                            packageDisplay.className = 'last-package-display';
+                            packageDisplay.style.marginTop = '10px';
+                            packageDisplay.style.paddingTop = '10px';
+                            packageDisplay.style.borderTop = '1px solid #e5e7eb';
+                            packageDisplay.innerHTML = `
+                                <div class="payload-field" style="background: #eff6ff; border-left: 3px solid #3b82f6;">
+                                    <div class="payload-label" style="font-weight: 600; color: #1e40af;">Last Package</div>
+                                    <div class="payload-value" style="color: #1e3a8a; font-size: 0.9em;">
+                                        ${packageFields.join(' | ')}
+                                    </div>
+                                </div>
+                            `;
+                            payloadContent.appendChild(packageDisplay);
+                        }
+                        
+                        // NO BLINK - component already exists, just update data
+                        
+                        console.log(`[LAST_PACKAGE] Updated existing Last_Package item for LLA: ${lla} (timestamp and data only, no blink)`);
+                    } else {
+                        // Existing Ping item - update last_package data in it and trigger blink
+                        lastPackageMap.set(lla, packageData);
+                        
+                        // Update Last Seen timestamp in the UI
+                        const timestampEl = existingItem.querySelector('.timestamp');
+                        if (timestampEl) {
+                            timestampEl.textContent = timestamp;
+                        }
+                        
+                        // Trigger blink animation (like when Ping updates)
+                        triggerBlink(existingItem);
+                        
+                        // Remove any existing Last Package display sections first (replace, don't add new)
+                        const existingPackageDisplays = existingItem.querySelectorAll('.last-package-display');
+                        existingPackageDisplays.forEach(display => display.remove());
+                        
+                        // Also remove any inline Last Package payload-fields (legacy format)
+                        const payloadFields = existingItem.querySelectorAll('.payload-field');
+                        payloadFields.forEach(field => {
+                            const label = field.querySelector('.payload-label')?.textContent.trim();
+                            if (label === 'Last Package') {
+                                field.remove();
+                            }
+                        });
+                        
+                        // Build package fields for display
+                        const packageFields = [];
+                        if (packageData.temperature !== undefined && packageData.temperature !== null) {
+                            packageFields.push(`🌡️ Temp: ${packageData.temperature}`);
+                        }
+                        if (packageData.humidity !== undefined && packageData.humidity !== null) {
+                            packageFields.push(`💧 Humidity: ${packageData.humidity}`);
+                        }
+                        if (packageData.solar_intensity !== undefined && packageData.solar_intensity !== null) {
+                            packageFields.push(`☀️ Solar: ${packageData.solar_intensity}`);
+                        }
+                        if (packageData.battery !== undefined && packageData.battery !== null) {
+                            packageFields.push(`🔋 Battery: ${packageData.battery}`);
+                        }
+                        
+                        // Add any other fields
+                        Object.keys(packageData).forEach(key => {
+                            if (!['temperature', 'humidity', 'solar_intensity', 'battery'].includes(key)) {
+                                packageFields.push(`${key}: ${packageData[key]}`);
+                            }
+                        });
+                        
+                        // Create new Last Package display section with updated data (replace old one)
+                        const payloadContent = existingItem.querySelector('.payload-content');
+                        if (payloadContent && packageFields.length > 0) {
+                            const packageDisplay = document.createElement('div');
+                            packageDisplay.className = 'last-package-display';
+                            packageDisplay.style.marginTop = '10px';
+                            packageDisplay.style.paddingTop = '10px';
+                            packageDisplay.style.borderTop = '1px solid #e5e7eb';
+                            packageDisplay.innerHTML = `
+                                <div class="payload-field" style="background: #eff6ff; border-left: 3px solid #3b82f6;">
+                                    <div class="payload-label" style="font-weight: 600; color: #1e40af;">Last Package</div>
+                                    <div class="payload-value" style="color: #1e3a8a; font-size: 0.9em;">
+                                        ${packageFields.join(' | ')}
+                                    </div>
+                                </div>
+                            `;
+                            payloadContent.appendChild(packageDisplay);
+                        }
+                        
+                        console.log(`[LAST_PACKAGE] Updated Ping item with package data for LLA: ${lla} and triggered blink`);
+                    }
+                } else {
+                    // NEW SENSOR: Create new Last_Package item for this LLA (like Ping - each LLA gets its own)
+                    console.log(`[LAST_PACKAGE] Creating new Last_Package item for sensor: ${lla}`);
+                    createPayloadFromLastPackage(lla, packageData, timestamp, hostname, mac_address);
+                }
+            });
+            
+            // Log errors if any
+            if (data.errors && data.errors.length > 0) {
+                console.warn('[LAST_PACKAGE] Errors:', data.errors);
+            }
+        }
+        
+        function createPayloadFromLastPackage(lla, packageData, timestamp, hostname = null, mac_address = null) {
+            // Create a new payload item for a sensor discovered via Last_Package
+            // Each unique LLA gets its own component (like Ping format)
+            // Now with owner/mac_address support for metadata access
+            
+            // Detect owner and mac_address if provided
+            if (hostname && mac_address) {
+                detectOwnerAndMac({ owner: hostname, mac_address });
+            }
+            
             const payloadList = document.getElementById('payloadList');
-            const MAX_PAYLOADS = 10;
+            const MAX_PAYLOADS = getMaxPayloads();
+            
+            // Remove any existing Last_Package payload item for THIS specific LLA only
+            // (Each unique LLA should have its own component, but only one per LLA)
+            const existingItemForLLA = findPayloadByLLA(lla);
+            if (existingItemForLLA) {
+                // Check if it's a Last_Package type item
+                const payloadFields = existingItemForLLA.querySelectorAll('.payload-field');
+                let isLastPackageItem = false;
+                
+                payloadFields.forEach(field => {
+                    const label = field.querySelector('.payload-label')?.textContent.trim();
+                    const value = field.querySelector('.payload-value')?.textContent.trim();
+                    if (label === 'Type' && value === 'Last_Package') {
+                        isLastPackageItem = true;
+                    }
+                });
+                
+                if (isLastPackageItem) {
+                    // Remove the existing Last_Package item for this LLA
+                    displayedLLAs.delete(lla);
+                    payloadDataMap.delete(lla);
+                    lastPackageMap.delete(lla);
+                    existingItemForLLA.remove();
+                    console.log(`[LAST_PACKAGE] Removed existing Last_Package payload item for LLA: ${lla}`);
+                }
+            }
+            
+            // Remove empty state if exists
+            const emptyState = payloadList.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            // Create new payload item with type-specific styling
+            const payloadItem = document.createElement('div');
+            payloadItem.className = 'payload-item payload-type-last-package';
+            payloadItem.setAttribute('data-lla', lla);
+            
+            // Add 'valid' class to trigger blink animation (like ping)
+            payloadItem.classList.add('valid');
+            
+            // Store package data
+            lastPackageMap.set(lla, packageData);
+            
+            // Build Last Package display fields (backup style - compact single field)
+            const packageFields = [];
+            if (packageData.temperature !== undefined && packageData.temperature !== null) {
+                packageFields.push(`🌡️ Temp: ${packageData.temperature}`);
+            }
+            if (packageData.humidity !== undefined && packageData.humidity !== null) {
+                packageFields.push(`💧 Humidity: ${packageData.humidity}`);
+            }
+            if (packageData.solar_intensity !== undefined && packageData.solar_intensity !== null) {
+                packageFields.push(`☀️ Solar: ${packageData.solar_intensity}`);
+            }
+            if (packageData.battery !== undefined && packageData.battery !== null) {
+                packageFields.push(`🔋 Battery: ${packageData.battery}`);
+            }
+            
+            // Add any other fields
+            Object.keys(packageData).forEach(key => {
+                if (!['temperature', 'humidity', 'solar_intensity', 'battery'].includes(key)) {
+                    packageFields.push(`${key}: ${packageData[key]}`);
+                }
+            });
+            
+            // Format Last_Package payload with unified structure and type badge
+            payloadItem.innerHTML = `
+                <div class="payload-header">
+                    <div>
+                        <span class="type-badge type-badge-last-package">📦 Last Package</span>
+                        <strong>Payload #${++payloadCount}</strong>
+                    </div>
+                    <span class="timestamp">${timestamp || 'N/A'}</span>
+                </div>
+                <div class="payload-content">
+                    <div class="payload-field">
+                        <div class="payload-label">Hostname</div>
+                        <div class="payload-value">${hostname || 'N/A'}</div>
+                    </div>
+                    <div class="payload-field">
+                        <div class="payload-label">MAC Address</div>
+                        <div class="payload-value">${mac_address || 'N/A'}</div>
+                    </div>
+                    <div class="payload-field">
+                        <div class="payload-label">Type</div>
+                        <div class="payload-value">Last_Package</div>
+                    </div>
+                    <div class="payload-field">
+                        <div class="payload-label">LLA</div>
+                        <div class="payload-value">${lla || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Add Last Package display section (same structure as updates, using .last-package-display)
+            if (packageFields.length > 0) {
+                const payloadContent = payloadItem.querySelector('.payload-content');
+                if (payloadContent) {
+                    const packageDisplay = document.createElement('div');
+                    packageDisplay.className = 'last-package-display';
+                    packageDisplay.style.marginTop = '10px';
+                    packageDisplay.style.paddingTop = '10px';
+                    packageDisplay.style.borderTop = '1px solid #e5e7eb';
+                    packageDisplay.innerHTML = `
+                        <div class="payload-field" style="background: #eff6ff; border-left: 3px solid #3b82f6;">
+                            <div class="payload-label" style="font-weight: 600; color: #1e40af;">Last Package</div>
+                            <div class="payload-value" style="color: #1e3a8a; font-size: 0.9em;">
+                                ${packageFields.join(' | ')}
+                            </div>
+                        </div>
+                    `;
+                    payloadContent.appendChild(packageDisplay);
+                }
+            }
+            
+            // Store payload data with owner/mac for metadata access
+            payloadDataMap.set(lla, {
+                owner: hostname,  // hostname parameter is actually owner
+                hostname: hostname,  // Keep for backward compatibility
+                mac_address: mac_address,
+                LLA: lla
+            });
+            
+            // Add click handler for metadata access (now enabled with owner/mac)
+            payloadItem.addEventListener('click', () => {
+                const payloadData = payloadDataMap.get(lla);
+                const owner = payloadData?.owner || payloadData?.hostname;
+                if (owner && payloadData?.mac_address) {
+                    fetchMetadataForLLA(owner, payloadData.mac_address, lla);
+                } else {
+                    // Show a message that metadata is not available
+                    alert(`Metadata not available for LLA: ${lla}\nHostname and MAC address are required to fetch metadata.\n\nThis sensor was discovered via Last_Package, but hostname/MAC were not provided in the payload.`);
+                }
+            });
+            
+            // Track this LLA
+            displayedLLAs.set(lla, payloadItem);
+            
+            // Append at the end (newest on the right, oldest on the left)
+            payloadList.appendChild(payloadItem);
+            
+            // Enforce max payloads limit
+            enforceMaxPayloads();
+            
+            console.log(`[LAST_PACKAGE] Created new payload item for sensor ${lla} with blink animation`);
+        }
+        
+        function displayPayload(data) {
+            const validation = data.payload?.validation;
+            const isValid = validation?.is_valid === true;
+            const message = validation?.message || '';
+            
+            // Detect owner and mac_address from payload
+            if (data.payload) {
+                detectOwnerAndMac(data.payload);
+            }
+            
+            // Check if we should display this payload
+            // Show only if: validation is True OR message is "LLA not found in metadata"
+            const shouldDisplay = isValid || message.includes('LLA not found in metadata');
+            
+            // If not should display, show error in Error/Debug dashboard instead
+            if (!shouldDisplay) {
+                displayError(data);
+                return; // Don't show in Received Payloads
+            }
+            
+            const payloadList = document.getElementById('payloadList');
+            const MAX_PAYLOADS = getMaxPayloads();
             
             // Remove empty state if exists
             const emptyState = payloadList.querySelector('.empty-state');
@@ -484,9 +1984,14 @@
                 // LLA already exists - don't add duplicate
                 console.log(`[FRONTEND] LLA ${LLA} already displayed, skipping duplicate`);
                 
-                // Check if validation exists and is valid
-                const validation = data.payload?.validation;
-                const isValid = validation?.is_valid === true;
+                // Update payload data
+                const owner = data.payload?.owner || data.payload?.hostname;
+                payloadDataMap.set(LLA, {
+                    owner: owner,
+                    hostname: owner,  // Keep for backward compatibility
+                    mac_address: data.payload.mac_address,
+                    LLA: LLA
+                });
                 
                 // If valid and existing, trigger blink
                 if (isValid) {
@@ -500,6 +2005,11 @@
                     }
                 }
                 
+                // Ensure click handler is attached
+                existingItem.onclick = () => {
+                    fetchMetadataForLLA(owner, data.payload.mac_address, LLA);
+                };
+                
                 return; // Don't add duplicate
             }
             
@@ -508,13 +2018,25 @@
             payloadItem.className = 'payload-item';
             payloadItem.setAttribute('data-lla', LLA); // Store LLA as data attribute
             
-            // Check if validation exists and is valid
-            const validation = data.payload?.validation;
-            const isValid = validation?.is_valid === true;
-            
             // Add 'valid' class if validation is true (triggers blink animation)
             if (isValid) {
                 payloadItem.classList.add('valid');
+            }
+            
+            // Determine experiment status (no badge, just styling)
+            if (!isValid) {
+                payloadExpStatusMap.set(LLA, 'unknown');
+            } else {
+                // Check if we already know the status
+                const expStatus = payloadExpStatusMap.get(LLA);
+                if (expStatus === 'active') {
+                    payloadItem.classList.add('active-exp');
+                } else if (expStatus === 'inactive') {
+                    payloadItem.classList.add('inactive-exp');
+                } else {
+                    // Unknown status - will be checked when metadata is fetched
+                    payloadExpStatusMap.set(LLA, 'unknown');
+                }
             }
             
             // Build validation status HTML
@@ -534,9 +2056,24 @@
                 `;
             }
             
+            // Determine type badge
+            const payloadType = data.payload?.type || 'Ping';
+            const typeBadgeClass = payloadType.toLowerCase() === 'last_package' ? 'type-badge-last-package' : 'type-badge-ping';
+            const typeBadgeText = payloadType.toLowerCase() === 'last_package' ? '📦 Last Package' : 'Ping';
+            
+            // Add type-specific class
+            if (payloadType.toLowerCase() === 'last_package') {
+                payloadItem.classList.add('payload-type-last-package');
+            } else {
+                payloadItem.classList.add('payload-type-ping');
+            }
+            
             payloadItem.innerHTML = `
                 <div class="payload-header">
-                    <strong>Payload #${++payloadCount}</strong>
+                    <div>
+                        <span class="type-badge ${typeBadgeClass}">${typeBadgeText}</span>
+                        <strong>Payload #${++payloadCount}</strong>
+                    </div>
                     <span class="timestamp">${data.timestamp || 'N/A'}</span>
                 </div>
                 <div class="payload-content">
@@ -560,29 +2097,716 @@
                 </div>
             `;
             
+            // Store payload data for metadata fetching
+            const owner = data.payload?.owner || data.payload?.hostname;
+            payloadDataMap.set(LLA, {
+                owner: owner,
+                hostname: owner,  // Keep for backward compatibility
+                mac_address: data.payload.mac_address,
+                LLA: LLA
+            });
+            
+            // Add click handler to fetch metadata
+            payloadItem.addEventListener('click', () => {
+                fetchMetadataForLLA(owner, data.payload.mac_address, LLA);
+            });
+            
             // Track this LLA
             displayedLLAs.set(LLA, payloadItem);
             
             // Append at the end (newest on the right, oldest on the left)
             payloadList.appendChild(payloadItem);
             
-            // Keep only the last MAX_PAYLOADS payloads - remove the oldest ones (leftmost)
-            const payloadItems = payloadList.querySelectorAll('.payload-item');
-            if (payloadItems.length > MAX_PAYLOADS) {
-                // Remove the oldest payloads (items before the last MAX_PAYLOADS)
-                // These are at the beginning of the NodeList (leftmost in grid)
-                const itemsToRemove = payloadItems.length - MAX_PAYLOADS;
-                for (let i = 0; i < itemsToRemove; i++) {
-                    const removedItem = payloadItems[i];
-                    const removedLLA = removedItem.getAttribute('data-lla');
-                    if (removedLLA) {
-                        displayedLLAs.delete(removedLLA);
+            // Enforce max payloads limit
+            enforceMaxPayloads();
+            
+            // Oldest payloads appear on the left, newest on the right
+        }
+        
+        // Experiment Management Functions
+        
+        function detectOwnerAndMac(payload) {
+            /**
+             * Extract owner and mac_address from WebSocket payload and store globally.
+             * Auto-populates dropdowns if permissions are already resolved.
+             * @param {Object} payload - WebSocket payload data
+             */
+            const owner = payload?.owner || payload?.hostname;
+            const mac_address = payload?.mac_address;
+            
+            if (owner && mac_address) {
+                // Store in localStorage for persistence
+                localStorage.setItem('currentOwner', owner);
+                localStorage.setItem('currentMacAddress', mac_address);
+                
+                // If permissions are resolved, try to auto-select matching owner/MAC
+                if (resolvedPermissions && resolvedPermissions.length > 0) {
+                    const matchingOwner = resolvedPermissions.find(og => og.owner === owner);
+                    if (matchingOwner && matchingOwner.mac_addresses.includes(mac_address)) {
+                        // Auto-select in dropdowns
+                        const ownerSelect = document.getElementById('ownerSelect');
+                        const macSelect = document.getElementById('macAddressSelect');
+                        
+                        if (ownerSelect && ownerSelect.value !== owner) {
+                            ownerSelect.value = owner;
+                            onOwnerSelected(owner);
+                        }
+                        
+                        if (macSelect && macSelect.value !== mac_address) {
+                            macSelect.value = mac_address;
+                            onMacAddressSelected(mac_address);
+                        }
+                        
+                        console.log(`[EXPERIMENTS] Auto-selected Owner: ${owner}, MAC: ${mac_address} from WebSocket`);
+                        return; // Already handled by dropdown selection
                     }
-                    removedItem.remove();
+                }
+                
+                // Fallback: Update global variables if they changed (when permissions not resolved)
+                if (currentOwner !== owner || currentMacAddress !== mac_address) {
+                    currentOwner = owner;
+                    currentMacAddress = mac_address;
+                    
+                    console.log(`[EXPERIMENTS] Detected Owner: ${owner}, MAC: ${mac_address}`);
+                    
+                    // Update owner/mac display
+                    updateOwnerMacDisplay(owner, mac_address);
+                    
+                    // Fetch experiments if not already loaded
+                    if (experimentsList.length === 0) {
+                        fetchExperiments(owner, mac_address);
+                    }
+                }
+            }
+        }
+        
+        function updateOwnerMacDisplay(owner, mac_address) {
+            /**
+             * Update the owner and MAC address display in the experiment management card.
+             * @param {string} owner - Owner identifier
+             * @param {string} mac_address - MAC address
+             */
+            const ownerDisplay = document.getElementById('displayOwner');
+            const macDisplay = document.getElementById('displayMacAddress');
+            const ownerMacDisplay = document.getElementById('ownerMacDisplay');
+            const ownerMacMessage = document.getElementById('ownerMacMessage');
+            
+            if (owner && mac_address) {
+                if (ownerDisplay) ownerDisplay.textContent = owner;
+                if (macDisplay) macDisplay.textContent = mac_address;
+                if (ownerMacDisplay) ownerMacDisplay.style.display = 'block';
+                if (ownerMacMessage) ownerMacMessage.style.display = 'none';
+                
+                // Enable experiment controls
+                const select = document.getElementById('experimentSelect');
+                const refreshBtn = document.getElementById('refreshExperimentsBtn');
+                if (select) select.disabled = false;
+                if (refreshBtn) refreshBtn.disabled = false;
+            } else {
+                if (ownerMacDisplay) ownerMacDisplay.style.display = 'none';
+                if (ownerMacMessage) ownerMacMessage.style.display = 'block';
+                
+                // Disable experiment controls
+                const select = document.getElementById('experimentSelect');
+                const refreshBtn = document.getElementById('refreshExperimentsBtn');
+                if (select) {
+                    select.disabled = true;
+                    select.innerHTML = '<option value="">Select owner and MAC address first</option>';
+                }
+                if (refreshBtn) refreshBtn.disabled = true;
+            }
+        }
+        
+        async function resolvePermissions() {
+            /**
+             * Resolve permissions for the entered email and populate owner/MAC dropdowns.
+             */
+            const emailInput = document.getElementById('emailInput');
+            const resolveBtn = document.getElementById('resolvePermissionsBtn');
+            const resolveIcon = document.getElementById('resolveIcon');
+            const permissionsStatus = document.getElementById('permissionsStatus');
+            const ownerMacSelection = document.getElementById('ownerMacSelection');
+            
+            const email = emailInput?.value?.trim();
+            
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+            
+            // Show loading state
+            if (resolveBtn) {
+                resolveBtn.disabled = true;
+            }
+            if (resolveIcon) {
+                resolveIcon.innerHTML = '<span class="loading-spinner"></span>';
+            }
+            if (permissionsStatus) {
+                permissionsStatus.style.display = 'block';
+                permissionsStatus.textContent = 'Resolving permissions...';
+                permissionsStatus.style.color = '#667eea';
+            }
+            
+            try {
+                const url = `/GCP-FS/permissions/resolve?email=${encodeURIComponent(email)}`;
+                console.log('[PERMISSIONS] Resolving permissions for email:', email);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('No permissions found for this email');
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.owners && data.owners.length > 0) {
+                    resolvedPermissions = data.owners;
+                    console.log(`[PERMISSIONS] Resolved ${resolvedPermissions.length} owner(s) for email: ${email}`);
+                    
+                    // Show owner/MAC selection section
+                    if (ownerMacSelection) {
+                        ownerMacSelection.style.display = 'block';
+                    }
+                    
+                    // Populate owner dropdown
+                    const ownerSelect = document.getElementById('ownerSelect');
+                    if (ownerSelect) {
+                        ownerSelect.innerHTML = '<option value="">Select owner...</option>';
+                        resolvedPermissions.forEach(ownerGroup => {
+                            const option = document.createElement('option');
+                            option.value = ownerGroup.owner;
+                            option.textContent = `${ownerGroup.owner} (${ownerGroup.mac_addresses.length} MAC${ownerGroup.mac_addresses.length !== 1 ? 's' : ''})`;
+                            ownerSelect.appendChild(option);
+                        });
+                        ownerSelect.disabled = false;
+                    }
+                    
+                    // Clear MAC dropdown
+                    const macSelect = document.getElementById('macAddressSelect');
+                    if (macSelect) {
+                        macSelect.innerHTML = '<option value="">Select owner first...</option>';
+                        macSelect.disabled = true;
+                    }
+                    
+                    // Clear experiment dropdown
+                    const expSelect = document.getElementById('experimentSelect');
+                    if (expSelect) {
+                        expSelect.innerHTML = '<option value="">Select MAC address first...</option>';
+                        expSelect.disabled = true;
+                    }
+                    
+                    // Clear sensors list
+                    clearSensorsList();
+                    
+                    // Reset selected values
+                    selectedOwner = null;
+                    selectedMacAddress = null;
+                    currentOwner = null;
+                    currentMacAddress = null;
+                    
+                    // Update status
+                    if (permissionsStatus) {
+                        permissionsStatus.textContent = `✅ Found ${resolvedPermissions.length} owner(s). Select owner and MAC address to view experiments.`;
+                        permissionsStatus.style.color = '#10b981';
+                    }
+                    
+                    // Auto-select if only one owner with one MAC
+                    if (resolvedPermissions.length === 1 && resolvedPermissions[0].mac_addresses.length === 1) {
+                        const singleOwner = resolvedPermissions[0];
+                        if (ownerSelect) {
+                            ownerSelect.value = singleOwner.owner;
+                            onOwnerSelected(singleOwner.owner);
+                            if (macSelect) {
+                                macSelect.value = singleOwner.mac_addresses[0];
+                                onMacAddressSelected(singleOwner.mac_addresses[0]);
+                            }
+                        }
+                    }
+                } else {
+                    throw new Error('No owners found in permissions response');
+                }
+            } catch (error) {
+                console.error('[PERMISSIONS] Error resolving permissions:', error);
+                if (permissionsStatus) {
+                    permissionsStatus.textContent = `❌ Error: ${error.message}`;
+                    permissionsStatus.style.color = '#ef4444';
+                }
+                alert(`Failed to resolve permissions: ${error.message}`);
+            } finally {
+                if (resolveBtn) {
+                    resolveBtn.disabled = false;
+                }
+                if (resolveIcon) {
+                    resolveIcon.textContent = '🔍';
+                }
+            }
+        }
+        
+        function onOwnerSelected(owner) {
+            /**
+             * Handle owner selection from dropdown.
+             * @param {string} owner - Selected owner identifier
+             */
+            selectedOwner = owner;
+            selectedMacAddress = null; // Reset MAC selection
+            
+            const macSelect = document.getElementById('macAddressSelect');
+            const expSelect = document.getElementById('experimentSelect');
+            
+            if (!owner || !resolvedPermissions) {
+                if (macSelect) {
+                    macSelect.innerHTML = '<option value="">Select owner first...</option>';
+                    macSelect.disabled = true;
+                }
+                return;
+            }
+            
+            // Find selected owner in resolved permissions
+            const ownerGroup = resolvedPermissions.find(og => og.owner === owner);
+            
+            if (!ownerGroup || !ownerGroup.mac_addresses || ownerGroup.mac_addresses.length === 0) {
+                console.warn(`[PERMISSIONS] No MAC addresses found for owner: ${owner}`);
+                if (macSelect) {
+                    macSelect.innerHTML = '<option value="">No MAC addresses found</option>';
+                    macSelect.disabled = true;
+                }
+                return;
+            }
+            
+            // Populate MAC dropdown
+            if (macSelect) {
+                macSelect.innerHTML = '<option value="">Select MAC address...</option>';
+                ownerGroup.mac_addresses.forEach(mac => {
+                    const option = document.createElement('option');
+                    option.value = mac;
+                    option.textContent = mac;
+                    macSelect.appendChild(option);
+                });
+                macSelect.disabled = false;
+            }
+            
+            // Clear experiment dropdown
+            if (expSelect) {
+                expSelect.innerHTML = '<option value="">Select MAC address first...</option>';
+                expSelect.disabled = true;
+            }
+            
+            // Clear sensors list
+            clearSensorsList();
+            
+            // Clear current owner/MAC until MAC is selected
+            currentOwner = null;
+            currentMacAddress = null;
+            updateOwnerMacDisplay(null, null);
+            
+            console.log(`[PERMISSIONS] Owner selected: ${owner}, ${ownerGroup.mac_addresses.length} MAC address(es) available`);
+        }
+        
+        function onMacAddressSelected(mac_address) {
+            /**
+             * Handle MAC address selection from dropdown.
+             * @param {string} mac_address - Selected MAC address
+             */
+            selectedMacAddress = mac_address;
+            
+            if (!selectedOwner || !mac_address) {
+                console.warn('[PERMISSIONS] Cannot proceed: missing owner or MAC address');
+                return;
+            }
+            
+            // Update current owner/MAC for experiment fetching
+            currentOwner = selectedOwner;
+            currentMacAddress = mac_address;
+            
+            // Update display
+            updateOwnerMacDisplay(selectedOwner, mac_address);
+            
+            // Enable experiment dropdown
+            const expSelect = document.getElementById('experimentSelect');
+            if (expSelect) {
+                expSelect.disabled = false;
+            }
+            
+            // Clear experiment selection and sensors list
+            selectedExperiment = null;
+            if (expSelect) {
+                expSelect.value = '';
+            }
+            clearSensorsList();
+            
+            // Fetch experiments for selected owner/MAC
+            fetchExperiments(selectedOwner, mac_address);
+            
+            console.log(`[PERMISSIONS] MAC address selected: ${mac_address} for owner: ${selectedOwner}`);
+        }
+        
+        async function fetchExperiments(owner, mac_address) {
+            /**
+             * Fetch experiments from the API endpoint.
+             * Uses selected owner/MAC from dropdowns, or falls back to auto-detected values.
+             * @param {string} owner - Owner identifier (optional, uses selectedOwner if not provided)
+             * @param {string} mac_address - MAC address (optional, uses selectedMacAddress if not provided)
+             */
+            // Use provided parameters or fall back to selected values
+            const effectiveOwner = owner || selectedOwner || currentOwner;
+            const effectiveMac = mac_address || selectedMacAddress || currentMacAddress;
+            
+            if (!effectiveOwner || !effectiveMac) {
+                console.warn('[EXPERIMENTS] Cannot fetch experiments: missing owner or mac_address');
+                return;
+            }
+            
+            // Update current values
+            currentOwner = effectiveOwner;
+            currentMacAddress = effectiveMac;
+            
+            const select = document.getElementById('experimentSelect');
+            const refreshBtn = document.getElementById('refreshExperimentsBtn');
+            
+            // Show loading state
+            if (select) {
+                select.disabled = true;
+                select.innerHTML = '<option value="">Loading experiments...</option>';
+            }
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                const icon = document.getElementById('refreshIcon');
+                if (icon) {
+                    icon.innerHTML = '<span class="loading-spinner"></span>';
                 }
             }
             
-            // Oldest payloads appear on the left, newest on the right
+            try {
+                const url = `/GCP-FS/metadata/experiments?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}`;
+                console.log('[EXPERIMENTS] Fetching experiments from:', url);
+                console.log('owner:', effectiveOwner);
+                console.log('mac_address:', effectiveMac);
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.experiments) {
+                    experimentsList = data.experiments;
+                    console.log(`[EXPERIMENTS] Loaded ${experimentsList.length} experiments`);
+                    
+                    // Update statistics
+                    updateExperimentStats();
+                    
+                    // Populate dropdown with filtered experiments
+                    populateExperimentDropdown();
+                } else {
+                    throw new Error(data.message || 'Failed to fetch experiments');
+                }
+            } catch (error) {
+                console.error('[EXPERIMENTS] Error fetching experiments:', error);
+                if (select) {
+                    select.innerHTML = '<option value="">Error loading experiments</option>';
+                }
+                alert(`Failed to load experiments: ${error.message}`);
+            } finally {
+                if (select) {
+                    select.disabled = false;
+                }
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    const icon = document.getElementById('refreshIcon');
+                    if (icon) {
+                        icon.textContent = '🔄';
+                    }
+                }
+            }
+        }
+        
+        function updateExperimentStats() {
+            /**
+             * Update experiment statistics display.
+             */
+            const total = experimentsList.length;
+            const active = experimentsList.reduce((sum, exp) => sum + (exp.active_count || 0), 0);
+            const inactive = experimentsList.reduce((sum, exp) => sum + (exp.inactive_count || 0), 0);
+            
+            const statsEl = document.getElementById('experimentStats');
+            if (statsEl) {
+                statsEl.style.display = 'flex';
+            }
+            
+            const statTotal = document.getElementById('statTotal');
+            const statActive = document.getElementById('statActive');
+            const statInactive = document.getElementById('statInactive');
+            
+            if (statTotal) statTotal.textContent = total;
+            if (statActive) statActive.textContent = active;
+            if (statInactive) statInactive.textContent = inactive;
+        }
+        
+        function populateExperimentDropdown() {
+            /**
+             * Populate the experiment dropdown with filtered experiments.
+             */
+            const select = document.getElementById('experimentSelect');
+            if (!select) return;
+            
+            // Filter experiments based on current filter
+            filteredExperiments = experimentsList.filter(exp => {
+                if (experimentFilter === 'all') return true;
+                if (experimentFilter === 'active') return (exp.active_count || 0) > 0;
+                if (experimentFilter === 'inactive') return (exp.inactive_count || 0) > 0;
+                return true;
+            });
+            
+            // Clear and populate dropdown
+            select.innerHTML = '<option value="">All Experiments</option>';
+            
+            if (filteredExperiments.length === 0) {
+                const filterText = experimentFilter === 'active' ? 'active' : experimentFilter === 'inactive' ? 'inactive' : '';
+                select.innerHTML = `<option value="">No ${filterText ? filterText + ' ' : ''}experiments found</option>`;
+                return;
+            }
+            
+            // Sort experiments: named experiments first, then unnamed
+            const sortedExperiments = [...filteredExperiments].sort((a, b) => {
+                const aName = a.exp_name || '';
+                const bName = b.exp_name || '';
+                if (aName && !bName) return -1;
+                if (!aName && bName) return 1;
+                return aName.localeCompare(bName);
+            });
+            
+            sortedExperiments.forEach(exp => {
+                const option = document.createElement('option');
+                // Handle empty exp_name - use empty string for API calls, but display as "Unnamed"
+                const expName = exp.exp_name || '';
+                option.value = expName; // Use empty string for empty exp_name
+                const displayName = expName || 'Unnamed';
+                option.textContent = `${displayName} (${exp.total_sensors} sensors)`;
+                select.appendChild(option);
+            });
+            
+            // Restore selected experiment if it still exists in filtered list
+            if (selectedExperiment !== null) {
+                const stillExists = filteredExperiments.some(exp => {
+                    const expName = exp.exp_name || '';
+                    return expName === selectedExperiment;
+                });
+                if (stillExists) {
+                    select.value = selectedExperiment;
+                } else {
+                    selectedExperiment = null;
+                    // Clear sensors list if selected experiment is no longer in filtered list
+                    clearSensorsList();
+                }
+            }
+        }
+        
+        function onExperimentFilterChanged(filter) {
+            /**
+             * Handle experiment filter change.
+             * @param {string} filter - Filter value: 'all', 'active', or 'inactive'
+             */
+            experimentFilter = filter;
+            populateExperimentDropdown();
+            
+            // Clear selection if current selection doesn't match filter
+            if (selectedExperiment !== null) {
+                const selectedExp = filteredExperiments.find(exp => {
+                    const expName = exp.exp_name || '';
+                    return expName === selectedExperiment;
+                });
+                if (!selectedExp) {
+                    selectedExperiment = null;
+                    const select = document.getElementById('experimentSelect');
+                    if (select) select.value = '';
+                    clearSensorsList();
+                }
+            }
+        }
+        
+        function onExperimentSelected(expName) {
+            /**
+             * Handle experiment selection from dropdown.
+             * @param {string} expName - Selected experiment name (empty string for "All Experiments" or empty exp_name)
+             */
+            // Store the selected value (can be empty string for unnamed experiments)
+            selectedExperiment = expName === '' ? null : expName;
+            
+            if (expName === '') {
+                // "All Experiments" selected - clear sensors list
+                clearSensorsList();
+                return;
+            }
+            
+            // Fetch sensors for selected experiment (expName can be empty string for unnamed)
+            if (currentOwner && currentMacAddress) {
+                fetchSensorsForExperiment(currentOwner, currentMacAddress, expName);
+            } else {
+                console.warn('[EXPERIMENTS] Cannot fetch sensors: missing owner or mac_address');
+                alert('Owner and MAC address are required. Please wait for WebSocket payload or refresh the page.');
+            }
+        }
+        
+        async function fetchSensorsForExperiment(owner, mac_address, exp_name) {
+            /**
+             * Fetch sensors for a specific experiment.
+             * Uses selected owner/MAC from dropdowns, or falls back to provided/auto-detected values.
+             * @param {string} owner - Owner identifier (optional, uses selectedOwner if not provided)
+             * @param {string} mac_address - MAC address (optional, uses selectedMacAddress if not provided)
+             * @param {string} exp_name - Experiment name
+             */
+            // Use provided parameters or fall back to selected values
+            const effectiveOwner = owner || selectedOwner || currentOwner;
+            const effectiveMac = mac_address || selectedMacAddress || currentMacAddress;
+            
+            if (!effectiveOwner || !effectiveMac) {
+                console.warn('[EXPERIMENTS] Cannot fetch sensors: missing owner or mac_address');
+                alert('Owner and MAC address are required. Please select from dropdowns or wait for WebSocket payload.');
+                return;
+            }
+            
+            const sensorsListSection = document.getElementById('sensorsListSection');
+            const sensorsList = document.getElementById('sensorsList');
+            const sensorsListTitle = document.getElementById('sensorsListTitle');
+            
+            // Show loading state
+            if (sensorsListSection) {
+                sensorsListSection.style.display = 'block';
+            }
+            if (sensorsListTitle) {
+                sensorsListTitle.textContent = `Loading sensors for "${exp_name || 'Unnamed'}"...`;
+            }
+            if (sensorsList) {
+                sensorsList.innerHTML = '<div class="metadata-loading">Loading sensors...</div>';
+            }
+            
+            try {
+                // Handle empty exp_name - use empty string, not null
+                const expNameParam = exp_name || '';
+                const url = `/GCP-FS/metadata/sensors?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}&exp_name=${encodeURIComponent(expNameParam)}`;
+                console.log('[EXPERIMENTS] Fetching sensors from:', url);
+                console.log('[EXPERIMENTS] Owner:', effectiveOwner);
+                console.log('[EXPERIMENTS] MAC:', effectiveMac);
+                console.log('[EXPERIMENTS] Exp Name:', expNameParam || '(empty string)');
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    displaySensorsList(data.data, exp_name);
+                } else {
+                    throw new Error(data.message || 'Failed to fetch sensors');
+                }
+            } catch (error) {
+                console.error('[EXPERIMENTS] Error fetching sensors:', error);
+                if (sensorsListTitle) {
+                    sensorsListTitle.textContent = `Error loading sensors for "${exp_name || 'Unnamed'}"`;
+                }
+                if (sensorsList) {
+                    sensorsList.innerHTML = `<div class="metadata-error">Error: ${error.message}</div>`;
+                }
+            }
+        }
+        
+        function displaySensorsList(sensors, exp_name) {
+            /**
+             * Display sensors in a grid layout.
+             * @param {Array} sensors - Array of sensor objects
+             * @param {string} exp_name - Experiment name
+             */
+            const sensorsList = document.getElementById('sensorsList');
+            const sensorsListTitle = document.getElementById('sensorsListTitle');
+            
+            if (!sensorsList) return;
+            
+            if (sensorsListTitle) {
+                sensorsListTitle.textContent = `Sensors for "${exp_name}" (${sensors.length} sensor${sensors.length !== 1 ? 's' : ''})`;
+            }
+            
+            if (sensors.length === 0) {
+                sensorsList.innerHTML = '<div class="metadata-empty">No sensors found for this experiment.</div>';
+                return;
+            }
+            
+            // Clear existing content
+            sensorsList.innerHTML = '';
+            
+            // Create sensor cards
+            sensors.forEach(sensor => {
+                const card = document.createElement('div');
+                const isActive = sensor.Active_Exp === true;
+                card.className = `sensor-card ${isActive ? 'active-exp' : 'inactive-exp'}`;
+                
+                card.innerHTML = `
+                    <div class="sensor-card-header">
+                        <div class="sensor-card-lla">${sensor.LLA || 'N/A'}</div>
+                        <div class="sensor-card-badge ${isActive ? 'active' : 'inactive'}">
+                            ${isActive ? 'Active' : 'Inactive'}
+                        </div>
+                    </div>
+                    <div class="sensor-card-info">
+                        <div class="sensor-card-info-item">
+                            <span class="sensor-card-info-label">Label:</span>
+                            <span class="sensor-card-info-value">${sensor.Label || 'N/A'}</span>
+                        </div>
+                        <div class="sensor-card-info-item">
+                            <span class="sensor-card-info-label">Location:</span>
+                            <span class="sensor-card-info-value">${sensor.Location || 'N/A'}</span>
+                        </div>
+                        <div class="sensor-card-info-item">
+                            <span class="sensor-card-info-label">Exp Name:</span>
+                            <span class="sensor-card-info-value">${sensor.Exp_Name || 'N/A'}</span>
+                        </div>
+                        ${sensor.Last_Seen ? `
+                        <div class="sensor-card-info-item">
+                            <span class="sensor-card-info-label">Last Seen:</span>
+                            <span class="sensor-card-info-value">${formatDate(sensor.Last_Seen)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Add click handler to open metadata modal
+                card.addEventListener('click', () => {
+                    fetchMetadataForLLA(sensor.Owner, sensor.Mac_Address, sensor.LLA);
+                });
+                
+                sensorsList.appendChild(card);
+            });
+        }
+        
+        function clearSensorsList() {
+            /**
+             * Clear the sensors list display.
+             */
+            const sensorsListSection = document.getElementById('sensorsListSection');
+            if (sensorsListSection) {
+                sensorsListSection.style.display = 'none';
+            }
+        }
+        
+        function refreshExperiments() {
+            /**
+             * Refresh the experiments list.
+             * Uses selected owner/MAC from dropdowns, or falls back to auto-detected values.
+             */
+            const effectiveOwner = selectedOwner || currentOwner;
+            const effectiveMac = selectedMacAddress || currentMacAddress;
+            
+            if (effectiveOwner && effectiveMac) {
+                fetchExperiments(effectiveOwner, effectiveMac);
+            } else {
+                alert('Cannot refresh: Owner and MAC address not selected. Please select from dropdowns or wait for WebSocket payload.');
+            }
         }
         
         // Set up event listeners when page loads
@@ -598,14 +2822,531 @@
                 disconnectBtn.addEventListener('click', disconnectWebSocket);
             }
             
+            // Initialize max payloads dropdown
+            const maxPayloadsSelect = document.getElementById('maxPayloadsSelect');
+            if (maxPayloadsSelect) {
+                // Clear existing options
+                maxPayloadsSelect.innerHTML = '';
+                
+                // Populate options dynamically from MAX_PAYLOADS_OPTIONS (scalable)
+                MAX_PAYLOADS_OPTIONS.forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.toString();
+                    optionElement.textContent = option.toString();
+                    maxPayloadsSelect.appendChild(optionElement);
+                });
+                
+                // Set current value from localStorage
+                const currentMax = getMaxPayloads();
+                maxPayloadsSelect.value = currentMax.toString();
+                console.log(`[CONFIG] Max payloads initialized to: ${currentMax}`);
+            }
+            
             console.log('Event listeners attached');
             console.log('WebSocket URL will be:', getWebSocketUrl());
+            
+            // Load owner and mac_address from localStorage if available
+            const savedOwner = localStorage.getItem('currentOwner');
+            const savedMac = localStorage.getItem('currentMacAddress');
+            if (savedOwner && savedMac) {
+                currentOwner = savedOwner;
+                currentMacAddress = savedMac;
+                console.log(`[EXPERIMENTS] Loaded from localStorage - Owner: ${currentOwner}, MAC: ${currentMacAddress}`);
+                
+                // Update owner/mac display
+                updateOwnerMacDisplay(currentOwner, currentMacAddress);
+                
+                // Fetch experiments automatically
+                fetchExperiments(currentOwner, currentMacAddress);
+            } else {
+                // Show message that owner/mac not available yet
+                updateOwnerMacDisplay(null, null);
+            }
+            
+            // Automatically connect on page load
+            console.log('Auto-connecting WebSocket...');
+            connectWebSocket();
         });
         
         // Clean up on page unload
         window.addEventListener('beforeunload', () => {
             disconnectWebSocket();
         });
+        
+        // Metadata Modal Functions
+        async function fetchMetadataForLLA(hostname, mac_address, lla) {
+            if (!hostname || !mac_address || !lla) {
+                console.error('[METADATA] Missing required parameters:', {hostname, mac_address, lla});
+                openMetadataModal(lla, null, 'Missing required parameters');
+                return;
+            }
+            
+            // Open modal with loading state
+            openMetadataModal(lla, null, 'loading');
+            
+            try {
+                const url = `/GCP-FS/metadata/active?owner=${encodeURIComponent(hostname)}&mac_address=${encodeURIComponent(mac_address)}&lla=${encodeURIComponent(lla)}`;
+                console.log('[METADATA] Fetching metadata from:', url);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        // LLA not found
+                        openMetadataModal(lla, null, 'not_found');
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    // Filter for Active_Exp = True (current state)
+                    const activeMetadata = data.data.filter(item => item.Active_Exp === true);
+                    
+                    // Update payload card visual status
+                    updatePayloadCardStatus(lla, activeMetadata.length > 0);
+                    
+                    if (activeMetadata.length > 0) {
+                        // Show active experiments
+                        openMetadataModal(lla, activeMetadata, 'active');
+                    } else {
+                        // No active experiments - show history (inactive experiments)
+                        const inactiveMetadata = data.data.filter(item => item.Active_Exp === false);
+                        if (inactiveMetadata.length > 0) {
+                            openMetadataModal(lla, inactiveMetadata, 'inactive');
+                        } else {
+                            // Has metadata but no active or inactive experiments (shouldn't happen)
+                            openMetadataModal(lla, data.data, 'no_active');
+                        }
+                    }
+                } else {
+                    // No metadata found
+                    updatePayloadCardStatus(lla, false);
+                    openMetadataModal(lla, null, 'not_found');
+                }
+            } catch (error) {
+                console.error('[METADATA] Error fetching metadata:', error);
+                openMetadataModal(lla, null, 'error', error.message);
+            }
+        }
+        
+        function openMetadataModal(lla, metadata, state = 'loading', errorMessage = null) {
+            const modal = document.getElementById('metadataModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const modalHeader = modal.querySelector('.modal-header');
+            
+            // Remove existing state classes
+            modalHeader.classList.remove('active-state', 'inactive-state');
+            
+            // Set title
+            modalTitle.textContent = `Sensor Metadata - ${lla || 'Unknown'}`;
+            
+            // Show modal
+            modal.classList.add('active');
+            
+            // Display based on state
+            if (state === 'loading') {
+                modalBody.innerHTML = '<div class="metadata-loading">Loading metadata...</div>';
+            } else if (state === 'not_found') {
+                modalBody.innerHTML = '<div class="metadata-empty">No metadata yet</div>';
+            } else if (state === 'error') {
+                modalBody.innerHTML = `<div class="metadata-error">Error: ${errorMessage || 'Failed to fetch metadata'}</div>`;
+            } else if (typeof state === 'string' && state.includes('Missing')) {
+                modalBody.innerHTML = `<div class="metadata-error">${state}</div>`;
+            } else if (state === 'no_active') {
+                // Has metadata but no active experiments
+                modalHeader.classList.add('inactive-state');
+                displayMetadataInModal(metadata, false);
+            } else if (state === 'active') {
+                // Has active metadata - show current state
+                modalHeader.classList.add('active-state');
+                displayMetadataInModal(metadata, true, true);
+            } else if (state === 'inactive') {
+                // Has inactive metadata - show history with dropdown
+                modalHeader.classList.add('inactive-state');
+                displayMetadataInModal(metadata, false, false);
+            }
+        }
+        
+        function closeMetadataModal() {
+            const modal = document.getElementById('metadataModal');
+            modal.classList.remove('active');
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', (event) => {
+            const modal = document.getElementById('metadataModal');
+            if (event.target === modal) {
+                closeMetadataModal();
+            }
+        });
+        
+        // Close modal with ESC key
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeMetadataModal();
+            }
+        });
+        
+        function displayMetadataInModal(metadata, hasActiveExp, isActive = true) {
+            const modalBody = document.getElementById('modalBody');
+            
+            if (!metadata || metadata.length === 0) {
+                modalBody.innerHTML = '<div class="metadata-empty">No metadata available</div>';
+                return;
+            }
+            
+            if (isActive) {
+                // Display active experiments directly (current state)
+                displayActiveExperiments(metadata, modalBody);
+            } else {
+                // Display inactive experiments with dropdown (history)
+                displayInactiveExperiments(metadata, modalBody);
+            }
+        }
+        
+        function displayActiveExperiments(metadata, modalBody) {
+            // Group by experiment
+            const experiments = {};
+            metadata.forEach(item => {
+                const expKey = `${item.Exp_ID}_${item.Exp_Name}`;
+                if (!experiments[expKey]) {
+                    experiments[expKey] = [];
+                }
+                experiments[expKey].push(item);
+            });
+            
+            let html = `
+                <div class="status-banner active">
+                    <span class="status-icon">✅</span>
+                    CURRENT STATE
+                </div>
+            `;
+            
+            // Display each experiment
+            Object.keys(experiments).forEach(expKey => {
+                const items = experiments[expKey];
+                const firstItem = items[0];
+                
+                html += renderExperimentSection(firstItem, items, true);
+            });
+            
+            modalBody.innerHTML = html;
+        }
+        
+        function displayInactiveExperiments(metadata, modalBody) {
+            // For inactive experiments, show editable form
+            // Get the first item to extract common experiment info
+            const firstItem = metadata[0];
+            if (!firstItem) {
+                modalBody.innerHTML = '<div class="metadata-empty">No metadata available</div>';
+                return;
+            }
+            
+            // Get LLA, owner, and mac_address from payload data map
+            const lla = firstItem.LLA;
+            const payloadData = payloadDataMap.get(lla);
+            const owner = payloadData?.owner || payloadData?.hostname || '';
+            const mac_address = payloadData?.mac_address || '';
+            
+            // Render editable form
+            let html = `
+                <div class="status-banner inactive">
+                    <span class="status-icon">✏️</span>
+                    EDIT METADATA
+                </div>
+                <form id="metadataEditForm" onsubmit="saveMetadataChanges(event, '${owner}', '${mac_address}', '${lla}')">
+            `;
+            
+            // Experiment Information Section (editable)
+            html += `
+                <div class="form-section">
+                    <div class="form-section-title">Experiment Information</div>
+                    <div class="metadata-grid">
+                        <div class="metadata-item inactive-item">
+                            <div class="metadata-item-label">Experiment ID</div>
+                            <input type="text" class="editable-field" value="${firstItem.Exp_ID || ''}" disabled>
+                        </div>
+                        <div class="metadata-item inactive-item">
+                            <div class="metadata-item-label">Experiment Name</div>
+                            <input type="text" class="editable-field" name="exp_name" value="${firstItem.Exp_Name || ''}" placeholder="Enter experiment name">
+                        </div>
+                        <div class="metadata-item inactive-item">
+                            <div class="metadata-item-label">Experiment Location</div>
+                            <input type="text" class="editable-field" name="exp_location" value="${firstItem.Exp_Location || ''}" placeholder="Enter experiment location">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Sensor Details Section (editable)
+            metadata.forEach((item, index) => {
+                html += `
+                    <div class="form-section">
+                        <div class="form-section-title">Sensor Details - ${item.LLA || 'N/A'}</div>
+                        <div class="metadata-grid">
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">LLA</div>
+                                <input type="text" class="editable-field" value="${item.LLA || ''}" disabled>
+                            </div>
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">Sensor Location</div>
+                                <input type="text" class="editable-field" name="location_${index}" value="${item.Location || ''}" placeholder="Enter sensor location">
+                            </div>
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">Label</div>
+                                <input type="text" class="editable-field" name="label_${index}" value="${item.Label || ''}" placeholder="Enter label">
+                            </div>
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">Coordinates</div>
+                                <div class="coordinates-input-group">
+                                    <input type="number" class="editable-field" name="coord_x_${index}" value="${item.Coordinates_X ?? ''}" placeholder="X" step="0.01">
+                                    <input type="number" class="editable-field" name="coord_y_${index}" value="${item.Coordinates_Y ?? ''}" placeholder="Y" step="0.01">
+                                    <input type="number" class="editable-field" name="coord_z_${index}" value="${item.Coordinates_Z ?? ''}" placeholder="Z" step="0.01">
+                                </div>
+                            </div>
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">Last Seen</div>
+                                <input type="text" class="editable-field" value="${formatDate(item.Last_Seen) || 'N/A'}" disabled>
+                            </div>
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">Frequency</div>
+                                <input type="text" class="editable-field" value="${item.Frequency || 'N/A'}" disabled>
+                            </div>
+                            <div class="metadata-item inactive-item">
+                                <div class="metadata-item-label">RFID</div>
+                                <input type="text" class="editable-field" value="${item.RFID || 'N/A'}" disabled>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    <button type="submit" class="save-button" id="saveMetadataBtn">Save Changes</button>
+                </form>
+            `;
+            
+            modalBody.innerHTML = html;
+        }
+        
+        function renderExperimentSection(firstItem, items, isActive) {
+            const sectionClass = isActive ? 'active-section' : 'inactive-section';
+            const titleClass = isActive ? 'active-title' : 'inactive-title';
+            const itemClass = isActive ? 'active-item' : 'inactive-item';
+            
+            let html = `
+                <div class="metadata-section ${sectionClass}">
+                    <div class="metadata-section-title ${titleClass}">
+                        <span class="experiment-badge">${firstItem.Exp_ID}_${firstItem.Exp_Name}</span>
+                        ${isActive ? '<span class="active-exp-badge">Active</span>' : '<span class="inactive-exp-badge">Inactive</span>'}
+                    </div>
+                    <div class="metadata-grid">
+                        <div class="metadata-item ${itemClass}">
+                            <div class="metadata-item-label">Experiment ID</div>
+                            <div class="metadata-item-value">${firstItem.Exp_ID || 'N/A'}</div>
+                        </div>
+                        <div class="metadata-item ${itemClass}">
+                            <div class="metadata-item-label">Experiment Name</div>
+                            <div class="metadata-item-value">${firstItem.Exp_Name || 'N/A'}</div>
+                        </div>
+                        <div class="metadata-item ${itemClass}">
+                            <div class="metadata-item-label">Experiment Location</div>
+                            <div class="metadata-item-value">${firstItem.Exp_Location || 'N/A'}</div>
+                        </div>
+                        <div class="metadata-item ${itemClass}">
+                            <div class="metadata-item-label">Experiment Started</div>
+                            <div class="metadata-item-value">${formatDate(firstItem.Exp_Started_At) || 'N/A'}</div>
+                        </div>
+                        <div class="metadata-item ${itemClass}">
+                            <div class="metadata-item-label">Experiment Ended</div>
+                            <div class="metadata-item-value">${formatDate(firstItem.Exp_Ended_At) || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Display sensor details for each LLA in this experiment
+            items.forEach(item => {
+                html += `
+                    <div class="metadata-section ${sectionClass}">
+                        <div class="metadata-section-title ${titleClass}">Sensor Details - ${item.LLA || 'N/A'}</div>
+                        <div class="metadata-grid">
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">LLA</div>
+                                <div class="metadata-item-value">${item.LLA || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Label</div>
+                                <div class="metadata-item-value">${item.Label || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Location</div>
+                                <div class="metadata-item-value">${item.Location || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Frequency</div>
+                                <div class="metadata-item-value">${item.Frequency || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Coordinates</div>
+                                <div class="metadata-item-value">X: ${item.Coordinates_X ?? 'N/A'}, Y: ${item.Coordinates_Y ?? 'N/A'}, Z: ${item.Coordinates_Z ?? 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">RFID</div>
+                                <div class="metadata-item-value">${item.RFID || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Status</div>
+                                <div class="metadata-item-value">
+                                    ${item.isActive ? '<span style="color: #10b981;">Active</span>' : '<span style="color: #ef4444;">Inactive</span>'}
+                                    ${item.isValid ? ' | <span style="color: #10b981;">Valid</span>' : ' | <span style="color: #ef4444;">Invalid</span>'}
+                                </div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Last Seen</div>
+                                <div class="metadata-item-value">${formatDate(item.Last_Seen) || 'N/A'}</div>
+                            </div>
+                            ${item.LabelOptions && item.LabelOptions.length > 0 ? `
+                                <div class="metadata-item ${itemClass}">
+                                    <div class="metadata-item-label">Label Options</div>
+                                    <div class="metadata-item-value">${item.LabelOptions.join(', ')}</div>
+                                </div>
+                            ` : ''}
+                            ${item.Alerts ? `
+                                <div class="metadata-item ${itemClass}">
+                                    <div class="metadata-item-label">Alerts</div>
+                                    <div class="metadata-item-value" style="color: #ef4444;">${item.Alerts}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return null;
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        function updatePayloadCardStatus(lla, hasActiveExp) {
+            const payloadItem = findPayloadByLLA(lla);
+            if (!payloadItem) return;
+            
+            // Remove existing status classes
+            payloadItem.classList.remove('active-exp', 'inactive-exp');
+            
+            // Update status in map
+            payloadExpStatusMap.set(lla, hasActiveExp ? 'active' : 'inactive');
+            
+            // Add appropriate class (no badge)
+            if (hasActiveExp) {
+                payloadItem.classList.add('active-exp');
+            } else {
+                payloadItem.classList.add('inactive-exp');
+            }
+        }
+        
+        async function saveMetadataChanges(event, hostname, mac_address, lla) {
+            event.preventDefault();
+            
+            const saveButton = document.getElementById('saveMetadataBtn');
+            const form = event.target;
+            
+            // Disable button and show saving state
+            saveButton.disabled = true;
+            saveButton.classList.add('saving');
+            saveButton.textContent = 'Saving...';
+            
+            try {
+                // Collect form data
+                const formData = new FormData(form);
+                const updates = {};
+                
+                // Collect experiment-level updates
+                const expName = formData.get('exp_name');
+                const expLocation = formData.get('exp_location');
+                if (expName !== null) updates.exp_name = expName;
+                if (expLocation !== null) updates.exp_location = expLocation;
+                
+                // Collect sensor-specific updates (by index)
+                // Since we're updating a single sensor document, take the first sensor's values
+                let index = 0;
+                if (formData.has(`location_${index}`)) {
+                    const location = formData.get(`location_${index}`);
+                    const label = formData.get(`label_${index}`);
+                    const coordX = formData.get(`coord_x_${index}`);
+                    const coordY = formData.get(`coord_y_${index}`);
+                    const coordZ = formData.get(`coord_z_${index}`);
+                    
+                    if (location !== null) updates.location = location;
+                    if (label !== null) updates.label = label;
+                    
+                    // Build coordinates object if any coordinate is provided
+                    const coordinates = {};
+                    if (coordX !== null && coordX !== '') coordinates.x = parseFloat(coordX);
+                    if (coordY !== null && coordY !== '') coordinates.y = parseFloat(coordY);
+                    if (coordZ !== null && coordZ !== '') coordinates.z = parseFloat(coordZ);
+                    
+                    if (Object.keys(coordinates).length > 0) {
+                        updates.coordinates = coordinates;
+                    }
+                }
+                
+                // Send update to backend endpoint
+                const response = await fetch('/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        owner: hostname,
+                        mac_address: mac_address,
+                        lla: lla,
+                        updates: updates
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to save changes');
+                }
+                
+                // Show success message
+                alert('Metadata changes saved successfully!');
+                
+                // Reload metadata to show updated values
+                fetchMetadataForLLA(hostname, mac_address, lla);
+                
+            } catch (error) {
+                console.error('[METADATA] Error saving changes:', error);
+                alert('Failed to save changes: ' + error.message);
+            } finally {
+                // Re-enable button
+                saveButton.disabled = false;
+                saveButton.classList.remove('saving');
+                saveButton.textContent = 'Save Changes';
+            }
+        }
     </script>
 </body>
 </html>

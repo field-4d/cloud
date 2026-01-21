@@ -6,15 +6,17 @@ import logging
 from datetime import datetime
 
 # Configure logging with timestamps
+# Force configuration to ensure our format is used
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    force=True  # Force reconfiguration even if logging was already configured
 )
 
 # Import routers
 from .api.get_endpoints import router as get_router
-from .api.bigquery_endpoints import router as bq_router
+from .api.firestore_endpoints import router as fs_router
 from .api.websocket_endpoints import websocket_ping
 
 app = FastAPI(title="ApiSync", version="1.0.0")
@@ -30,7 +32,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(get_router)
-app.include_router(bq_router)
+app.include_router(fs_router)  # Firestore endpoints
 
 # Register WebSocket endpoints
 app.websocket("/ws/ping")(websocket_ping)
