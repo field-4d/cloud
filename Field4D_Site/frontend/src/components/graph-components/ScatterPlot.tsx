@@ -40,6 +40,13 @@ interface ScatterPlotProps {
   errorType?: 'STD' | 'SE';
 }
 
+// Artifact thresholds per parameter (case-insensitive matching) - same as in VisualizationPanel
+const ARTIFACT_THRESHOLDS: Record<string, number> = {
+  temperature: -40,
+  humidity: -999,
+  // Add more as needed
+};
+
 const defaultGetSensorColor = (sensor: string, selectedSensors: string[]) => {
   // Extended color palette with 64 distinct colors
   const colors = [
@@ -180,9 +187,20 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         paramData.forEach(d => {
           const ts = String(d.timestamp);
           if (!byTimestamp[ts]) byTimestamp[ts] = [];
-          byTimestamp[ts].push(Number(d.value));
+          const numValue = Number(d.value);
+          
+          // Check if this is an artifact value (before filtering)
+          const paramLower = String(d.parameter).toLowerCase();
+          const artifactThreshold = ARTIFACT_THRESHOLDS[paramLower];
+          const isArtifact = artifactThreshold !== undefined && numValue === artifactThreshold;
+          
+          // Only include valid numeric values (exclude NaN, null, undefined, and artifact values)
+          if (!isNaN(numValue) && numValue !== null && numValue !== undefined && !isArtifact) {
+            byTimestamp[ts].push(numValue);
+          }
         });
         // 3. For each timestamp, compute mean and error (STD or SE)
+        // Note: byTimestamp already contains only valid values (filtered in step 2)
         const timestamps = Object.keys(byTimestamp).sort();
         const means = timestamps.map(ts => {
           const vals = byTimestamp[ts];
@@ -192,6 +210,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         const errors = timestamps.map(ts => {
           const vals = byTimestamp[ts];
           if (!vals || vals.length === 0) return null;
+          if (vals.length === 1) return null; // Need at least 2 values for error calculation
           const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
           const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
           const std = Math.sqrt(variance);
@@ -212,22 +231,42 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           },
         });
         // 5. If group has >3 sensors, add error shaded area
+        // Only include timestamps where we have valid mean and error calculations
         if (sensorsInGroup.length > 3) {
-          const upper = means.map((m, i) => (m !== null && errors[i] !== null) ? m + errors[i] : null);
-          const lower = means.map((m, i) => (m !== null && errors[i] !== null) ? m - errors[i] : null);
-          plotData.push({
-            x: [...timestamps.map(ts => String(ts)), ...timestamps.slice().reverse().map(ts => String(ts))],
-            y: [...upper, ...lower.slice().reverse()],
-            type: 'scatter',
-            mode: 'lines',
-            fill: 'toself',
-            fillcolor: labelColor(label) + '22', // semi-transparent
-            line: { color: 'rgba(0,0,0,0)' },
-            name: `${label} ±${errorType}`,
-            yaxis: paramIdx === 0 ? 'y' : 'y2',
-            showlegend: false,
-            hoverinfo: 'skip',
+          // Build arrays with only valid error band points (no nulls)
+          const errorBandX: string[] = [];
+          const errorBandUpper: number[] = [];
+          const errorBandLower: number[] = [];
+          
+          timestamps.forEach((ts, i) => {
+            const m = means[i];
+            const err = errors[i];
+            const vals = byTimestamp[ts] || [];
+            
+            // Only include if we have valid mean, error, and at least 2 values
+            if (m !== null && err !== null && vals.length >= 2) {
+              errorBandX.push(String(ts));
+              errorBandUpper.push(m + err);
+              errorBandLower.push(m - err);
+            }
           });
+          
+          // Only create error band if we have at least one valid point
+          if (errorBandX.length > 0) {
+            plotData.push({
+              x: [...errorBandX, ...errorBandX.slice().reverse()],
+              y: [...errorBandUpper, ...errorBandLower.slice().reverse()],
+              type: 'scatter',
+              mode: 'lines',
+              fill: 'toself',
+              fillcolor: labelColor(label) + '22', // semi-transparent
+              line: { color: 'rgba(0,0,0,0)' },
+              name: `${label} ±${errorType}`,
+              yaxis: paramIdx === 0 ? 'y' : 'y2',
+              showlegend: false,
+              hoverinfo: 'skip',
+            });
+          }
         }
       });
     }

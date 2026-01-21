@@ -13,8 +13,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv('app/auth/.env')
 
-# BASE_URL = "http://localhost:8000"
-BASE_URL = "http://localhost:8080"
+# Server URLs
+LOCAL_URL = "http://localhost:8080"
+CLOUD_URL = "https://field4d-analytics-1000435921680.us-central1.run.app"
+BASE_URL = LOCAL_URL  # Default to local
 
 CLOUD_FUNCTION_URL = os.getenv('CLOUD_FUNCTION_URL')
 CLOUD_FUNCTION_URL="https://us-central1-iucc-f4d.cloudfunctions.net/login_and_issue_jwt"
@@ -31,6 +33,22 @@ def hash_password(password: str) -> str:
     base64_hash = base64.b64encode(sha256_hash).decode('utf-8')
     
     return base64_hash
+
+def select_server():
+    """Let user select which server to use."""
+    global BASE_URL
+    print("\n🌐 Select Server:")
+    print("1. Local Server (localhost:8080)")
+    print("2. Cloud Server (field4d-analytics)")
+    
+    choice = input("Choose option (1 or 2): ").strip()
+    
+    if choice == "2":
+        BASE_URL = CLOUD_URL
+        print(f"✅ Using Cloud Server: {BASE_URL}")
+    else:
+        BASE_URL = LOCAL_URL
+        print(f"✅ Using Local Server: {BASE_URL}")
 
 def test_cloud_function_direct():
     """Test direct Cloud Function call."""
@@ -200,6 +218,9 @@ def main():
     """Main test function."""
     print("🧪 Cloud Function Authentication Test")
     print("=" * 50)
+    
+    # Select server
+    select_server()
     
     # Test 1: Direct Cloud Function call
     token1 = test_cloud_function_direct()

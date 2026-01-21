@@ -216,4 +216,90 @@ button:focus-visible {
 .modebar-container {
   margin-top: 12px !important;  /* Space between mode bar and plot content */
 }
+
+/* Experiment dropdown styling for better visual separation */
+select optgroup {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #8ac6bb;
+  background-color: #f0f9f7;
+  padding: 4px 8px;
+  margin-top: 4px;
+}
+
+select optgroup[label="Active Experiments"] {
+  color: #059669;
+  /* background-color: #d1fae5; */
+  border-top: 2px solid #10b981;
+  padding-top: 6px;
+}
+
+select optgroup[label="Inactive Experiments"] {
+  color: #6b7280;
+  background-color: #f3f4f6;
+  border-top: 1px solid #d1d5db;
+  padding-top: 6px;
+  margin-top: 8px;
+}
+
+select option {
+  padding: 6px 12px;
+  color: #374151;
+}
+
+select option:disabled {
+  color: #9ca3af;
+  font-style: italic;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 4px 8px;
+  cursor: default;
+}
+
+/* Improved scrolling for experiment dropdown */
+select.experiment-select {
+  /* Native dropdown already has built-in scrolling */
+}
+
+/* When size attribute is used (list box mode), style it appropriately */
+select.experiment-select[size] {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* Ensure experiment dropdown always opens downward */
+.experiment-select-wrapper {
+  position: relative;
+}
+
+.experiment-select-wrapper > div {
+  position: relative;
+  z-index: 10;
+}
+
+/* Custom scrollbar styling for experiment select */
+select.experiment-select::-webkit-scrollbar {
+  width: 10px;
+}
+
+select.experiment-select::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+select.experiment-select::-webkit-scrollbar-thumb {
+  background: #8ac6bb;
+  border-radius: 4px;
+  border: 2px solid #f1f5f9;
+}
+
+select.experiment-select::-webkit-scrollbar-thumb:hover {
+  background: #7ab6ab;
+}
+
+/* Firefox scrollbar styling */
+select.experiment-select {
+  scrollbar-width: thin;
+  scrollbar-color: #8ac6bb #f1f5f9;
+}
  

@@ -40,6 +40,16 @@ A powerful web application for real-time visualization and analysis of sensor da
 ### Advanced Analytics
 - 🟢 **Outlier Filtering Toggle**: Enable or disable IQR-based outlier filtering for all visualizations (Scatter, Box, Histogram). Toggle is available next to the Parameters selection and above the Histogram plot. When enabled, outliers are hidden from graphs and CSV export. Toggle state is persisted for user convenience. (See `src/components/Advanced-function/OutlierToggle.tsx`)
 - 📁 **Advanced-function Folder**: New folder for advanced analytic tools, starting with OutlierToggle. Designed for future extensibility (e.g., z-score filtering, more toggles).
+- 🔬 **Analytics Service Integration**: New health monitoring system for external analytics service
+  - **Health Check Button**: Interactive component in Advanced Analytics tab to test endpoint connectivity
+  - **Real-time Status**: Shows service health, version, and response time
+  - **Batch Validation Info**: Displays recommended batch sizes for different data volumes
+  - **CORS-safe Implementation**: Uses backend proxy to avoid cross-origin issues
+  - **Environment Configuration**: Flexible setup using `GCP_ANALYTICS_URL` environment variable
+- 📊 **Enhanced Data Processing**: Improved label-based data filtering
+  - **Label Filtering**: DataSelector component filters data by selected labels from "Include Labels"
+  - **Array-based Labels**: Improved data structure with array-based label storage
+  - **Performance Optimization**: Early filtering reduces data volume and improves performance
 
 ## 🛠️ Tech Stack
 

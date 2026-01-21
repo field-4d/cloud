@@ -4,7 +4,7 @@
  * Handles form state, validation, and login logic.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authenticateUser } from '../utils/authUtils';
 import { useNavigate } from 'react-router-dom';
 import { logger } from '../config/logger';
@@ -22,6 +22,16 @@ interface FormErrors {
   password?: string;
   confirmPassword?: string;
 }
+
+interface LoginAttempt {
+  timestamp: number;
+  email: string;
+}
+
+// Configuration constants
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
+const ATTEMPT_WINDOW = 60 * 60 * 1000; // 1 hour window to count attempts
 
 /**
  * Auth
@@ -44,7 +54,150 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [lockTimeRemaining, setLockTimeRemaining] = useState(0);
-  const [loginAttempts, setLoginAttempts] = useState<{ timestamp: number; email: string }[]>([]);
+  const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>([]);
+
+  /**
+   * Load login attempts and lock state from localStorage on component mount
+   */
+  useEffect(() => {
+    const savedAttempts = localStorage.getItem('loginAttempts');
+    const savedLockState = localStorage.getItem('lockState');
+    
+    if (savedAttempts) {
+      try {
+        const attempts: LoginAttempt[] = JSON.parse(savedAttempts);
+        setLoginAttempts(attempts);
+      } catch (error) {
+        logger.error('Failed to parse saved login attempts:', error);
+        localStorage.removeItem('loginAttempts');
+      }
+    }
+    
+    if (savedLockState) {
+      try {
+        const lockState = JSON.parse(savedLockState);
+        const now = Date.now();
+        
+        // Check if lock is still valid
+        if (lockState.lockEndTime && lockState.lockEndTime > now) {
+          setIsLocked(true);
+          setLockTimeRemaining(lockState.lockEndTime - now);
+          logger.info('Lock state restored from localStorage', { 
+            lockEndTime: lockState.lockEndTime, 
+            remaining: lockState.lockEndTime - now 
+          });
+        } else {
+          // Lock expired, clear it
+          localStorage.removeItem('lockState');
+          logger.info('Expired lock state cleared from localStorage');
+        }
+      } catch (error) {
+        logger.error('Failed to parse saved lock state:', error);
+        localStorage.removeItem('lockState');
+      }
+    }
+    
+    // Debug log for current state
+    logger.info('Auth component initialized', { 
+      savedAttempts: savedAttempts ? JSON.parse(savedAttempts).length : 0,
+      savedLockState: !!savedLockState,
+      isLocked: false // Will be set by the lock check effect
+    });
+  }, []);
+
+  /**
+   * Check if account should be locked and manage lock state
+   */
+  useEffect(() => {
+    // Skip if loginAttempts is still empty (initial load)
+    if (loginAttempts.length === 0) {
+      return;
+    }
+
+    const checkLockStatus = () => {
+      const now = Date.now();
+      const recentAttempts = loginAttempts.filter(
+        attempt => now - attempt.timestamp < ATTEMPT_WINDOW
+      );
+
+      if (recentAttempts.length >= MAX_LOGIN_ATTEMPTS) {
+        const oldestAttempt = Math.min(...recentAttempts.map(a => a.timestamp));
+        const lockEndTime = oldestAttempt + LOCK_DURATION;
+        const remaining = lockEndTime - now;
+
+        if (remaining > 0) {
+          setIsLocked(true);
+          setLockTimeRemaining(remaining);
+          // Save lock state to localStorage
+          localStorage.setItem('lockState', JSON.stringify({
+            lockEndTime: lockEndTime,
+            lockedAt: now
+          }));
+          logger.info('Account locked due to too many attempts', { 
+            attempts: recentAttempts.length, 
+            lockEndTime, 
+            remaining 
+          });
+        } else {
+          // Lock expired, clear old attempts and lock state
+          const validAttempts = loginAttempts.filter(
+            attempt => now - attempt.timestamp < ATTEMPT_WINDOW
+          );
+          setLoginAttempts(validAttempts);
+          setIsLocked(false);
+          setLockTimeRemaining(0);
+          localStorage.setItem('loginAttempts', JSON.stringify(validAttempts));
+          localStorage.removeItem('lockState');
+          logger.info('Lock expired, account unlocked');
+        }
+      } else {
+        setIsLocked(false);
+        setLockTimeRemaining(0);
+        localStorage.removeItem('lockState');
+      }
+    };
+
+    checkLockStatus();
+  }, [loginAttempts]);
+
+  /**
+   * Save login attempts to localStorage whenever they change
+   */
+  useEffect(() => {
+    localStorage.setItem('loginAttempts', JSON.stringify(loginAttempts));
+  }, [loginAttempts]);
+
+  /**
+   * Handle lock countdown timer independently
+   */
+  useEffect(() => {
+    if (!isLocked) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLockTimeRemaining(prev => {
+        const newRemaining = prev - 1000;
+        if (newRemaining <= 0) {
+          // Lock expired, check if we should unlock
+          const now = Date.now();
+          const recentAttempts = loginAttempts.filter(
+            attempt => now - attempt.timestamp < ATTEMPT_WINDOW
+          );
+          
+          if (recentAttempts.length < MAX_LOGIN_ATTEMPTS) {
+            setIsLocked(false);
+            localStorage.removeItem('lockState');
+            logger.info('Lock expired, account unlocked');
+          }
+          return 0;
+        }
+        return newRemaining;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isLocked, loginAttempts]);
 
   /**
    * validateEmail
@@ -84,7 +237,9 @@ export default function Auth() {
     // Check if login is locked
     if (isLogin && isLocked) {
       const minutes = Math.ceil(lockTimeRemaining / 60000);
-      setAuthError(`Too many login attempts. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`);
+      const seconds = Math.ceil((lockTimeRemaining % 60000) / 1000);
+      setAuthError(`Too many login attempts. Please try again in ${minutes}:${seconds.toString().padStart(2, '0')}.`);
+      logger.info('Login blocked due to lock', { isLocked, lockTimeRemaining, minutes, seconds });
       setLoading(false);
       return;
     }
@@ -123,6 +278,11 @@ export default function Auth() {
 
       if (response.success) {
         logger.info('Authentication successful for:', formData.email);
+        // Clear login attempts and lock state on successful login
+        setLoginAttempts([]);
+        localStorage.removeItem('loginAttempts');
+        localStorage.removeItem('lockState');
+        
         localStorage.setItem('userData', JSON.stringify({
           ...response.userData,
           timestamp: Date.now()
@@ -134,10 +294,23 @@ export default function Auth() {
         
         // Add failed attempt for login only
         if (isLogin) {
-          setLoginAttempts(prev => [...prev, {
+          const newAttempt: LoginAttempt = {
             timestamp: Date.now(),
             email: formData.email
-          }]);
+          };
+          setLoginAttempts(prev => [...prev, newAttempt]);
+          
+          // Check if this should trigger a lock
+          const recentAttempts = [...loginAttempts, newAttempt].filter(
+            attempt => Date.now() - attempt.timestamp < ATTEMPT_WINDOW
+          );
+          
+          if (recentAttempts.length >= MAX_LOGIN_ATTEMPTS) {
+            setAuthError(`Too many failed login attempts. Account locked for ${Math.ceil(LOCK_DURATION / 60000)} minutes.`);
+          } else {
+            const remainingAttempts = MAX_LOGIN_ATTEMPTS - recentAttempts.length;
+            setAuthError(`${response.message} (${remainingAttempts} attempts remaining)`);
+          }
         }
       }
     } catch (err) {
@@ -146,10 +319,23 @@ export default function Auth() {
       
       // Add failed attempt for login only
       if (isLogin) {
-        setLoginAttempts(prev => [...prev, {
+        const newAttempt: LoginAttempt = {
           timestamp: Date.now(),
           email: formData.email
-        }]);
+        };
+        setLoginAttempts(prev => [...prev, newAttempt]);
+        
+        // Check if this should trigger a lock
+        const recentAttempts = [...loginAttempts, newAttempt].filter(
+          attempt => Date.now() - attempt.timestamp < ATTEMPT_WINDOW
+        );
+        
+        if (recentAttempts.length >= MAX_LOGIN_ATTEMPTS) {
+          setAuthError(`Too many failed login attempts. Account locked for ${Math.ceil(LOCK_DURATION / 60000)} minutes.`);
+        } else {
+          const remainingAttempts = MAX_LOGIN_ATTEMPTS - recentAttempts.length;
+          setAuthError(`An error occurred during authentication (${remainingAttempts} attempts remaining)`);
+        }
       }
     } finally {
       setLoading(false);
@@ -182,6 +368,25 @@ export default function Auth() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {isLogin && isLocked && (
+            <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Account Temporarily Locked
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>Too many failed login attempts. Please wait before trying again.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {authError && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="text-sm text-red-700">{authError}</div>
@@ -221,16 +426,17 @@ export default function Auth() {
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
                 </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  className="input-field pl-10"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
+                                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    disabled={isLogin && isLocked}
+                    className={`input-field pl-10 ${isLogin && isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    placeholder="Email address"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
               </div>
               {errors.email && <p className="error-message">{errors.email}</p>}
             </div>
@@ -243,20 +449,22 @@ export default function Auth() {
                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  className="input-field pl-10"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
+                                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    disabled={isLogin && isLocked}
+                    className={`input-field pl-10 ${isLogin && isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
                 <button
                   type="button"
+                  disabled={isLogin && isLocked}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className={`absolute inset-y-0 right-0 pr-3 flex items-center ${isLogin && isLocked ? 'cursor-not-allowed' : ''}`}
                 >
                   {showPassword ? (
                     <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -318,16 +526,28 @@ export default function Auth() {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#8ac6bb] hover:bg-[#7ab6ab] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8ac6bb] disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || (isLogin && isLocked)}
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed ${
+                isLogin && isLocked
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : 'text-white bg-[#8ac6bb] hover:bg-[#7ab6ab] focus:ring-[#8ac6bb] disabled:opacity-50'
+              }`}
             >
               {loading ? (
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
+              ) : isLogin && isLocked ? (
+                <svg className="h-5 w-5 text-gray-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
               ) : null}
-              {isLogin ? 'Sign in' : 'Create Account'}
+              {isLogin && isLocked 
+                ? `Account Locked (${Math.ceil(lockTimeRemaining / 60000)}:${Math.ceil((lockTimeRemaining % 60000) / 1000).toString().padStart(2, '0')})`
+                : isLogin ? 'Sign in' 
+                : 'Create Account'
+              }
             </button>
           </div>
 

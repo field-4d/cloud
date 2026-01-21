@@ -112,7 +112,7 @@ const OutlierToggle: React.FC<OutlierToggleProps> = ({
             <span className="text-sm font-medium text-gray-700">Outlier Filtering</span>
           )}
           {enabled && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+            <span className="px-2 py-0.5 text-base font-medium bg-yellow-100 text-yellow-800 rounded-full">
               Active
             </span>
           )}
@@ -139,7 +139,7 @@ const OutlierToggle: React.FC<OutlierToggleProps> = ({
             />
           </button>
           {showToggleTooltip && (
-            <div className="absolute z-10 bottom-full right-0 mb-2 w-48 bg-gray-800 text-white text-xs rounded py-1 px-2">
+            <div className="absolute z-10 bottom-full right-0 mb-2 w-48 bg-gray-800 text-white text-base rounded py-1 px-2">
               Press to {enabled ? 'disable' : 'enable'} outlier filtering
               <div className="w-2 h-2 bg-gray-800 transform rotate-45 absolute right-4 -bottom-1"></div>
             </div>
@@ -155,7 +155,7 @@ const OutlierToggle: React.FC<OutlierToggleProps> = ({
             <select
               value={method}
               onChange={(e) => onMethodChange?.(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-base focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
               disabled={disabled}
             >
               {availableMethods.map(m => (
@@ -174,7 +174,7 @@ const OutlierToggle: React.FC<OutlierToggleProps> = ({
                 </svg>
               </button>
               {showMethodTooltip && (
-                <div className="absolute z-10 left-full ml-2 top-1/2 -translate-y-1/2 w-64 bg-gray-800 text-white text-xs rounded py-1 px-2">
+                <div className="absolute z-10 left-full ml-2 top-1/2 -translate-y-1/2 w-64 bg-gray-800 text-white text-base rounded py-1 px-2">
                   {currentMethod.description}
                   <div className="w-2 h-2 bg-gray-800 transform rotate-45 absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1"></div>
                 </div>
@@ -197,7 +197,7 @@ const OutlierToggle: React.FC<OutlierToggleProps> = ({
                   </svg>
                 </button>
                 {showThresholdTooltip && (
-                  <div className="absolute z-10 bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-xs rounded py-1 px-2">
+                  <div className="absolute z-10 bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-base rounded py-1 px-2">
                     {method === 'IQR' 
                       ? 'Multiplier for IQR range (Q1-k×IQR to Q3+k×IQR)'
                       : 'Number of standard deviations from the mean'}

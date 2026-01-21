@@ -5,6 +5,9 @@
 **/.env
 # token files
 auth_token_str.txt
+# Never commit service account / credential keys
+**/firestore-import-key.json
+**/*-import-key.json
 # dont uplad .cursor files
 .cursor/
 

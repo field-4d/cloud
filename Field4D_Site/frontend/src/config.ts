@@ -26,4 +26,7 @@ export const API_ENDPOINTS = {
   PERMISSIONS: `${API_BASE_URL}/api/permissions`,
   EXPERIMENT_SUMMARY: `${API_BASE_URL}/api/experiment-summary`,
   FETCH_DATA: `${API_BASE_URL}/api/fetch-data`,
-}; 
+};
+
+// Analytics API endpoints
+export const API_ENDPOINTS_ANALYTICS = 'https://field4d-analytics-1000435921680.us-central1.run.app'; 

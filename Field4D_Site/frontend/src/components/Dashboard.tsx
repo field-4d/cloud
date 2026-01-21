@@ -4,7 +4,7 @@
  * Handles system/experiment selection, data fetching, and visualization.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Plot from 'react-plotly.js';
 import { useNavigate } from 'react-router-dom';
 import DataSelector from './DataSelector';
@@ -38,7 +38,7 @@ type SensorType = 'temperature' | 'humidity' | 'solar_radiation' | 'wind_speed' 
 
 const SENSOR_OPTIONS: { value: SensorType; label: string }[] = [
   { value: 'temperature', label: 'Temperature' },
-  { value: 'humidity', label: 'Humidity' },
+  { value: 'humidity', label: 'relative humidity' },
   { value: 'solar_radiation', label: 'Solar Radiation' },
   { value: 'wind_speed', label: 'Wind Speed' },
   { value: 'co2', label: 'CO2 Concentration' },
@@ -84,7 +84,6 @@ const Dashboard: React.FC = () => {
   const [experimentSummaries, setExperimentSummaries] = useState<ExperimentSummary[]>([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [showSystemDetails, setShowSystemDetails] = useState(false);
   const [selectedExperiment, setSelectedExperiment] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [minDate, setMinDate] = useState<Date | null>(null);
@@ -96,6 +95,9 @@ const Dashboard: React.FC = () => {
       key: 'selection'
     }
   ]);
+  const [selectedOwner, setSelectedOwner] = useState<string>('');
+  const experimentSelectRef = useRef<HTMLSelectElement>(null);
+  const [isExperimentSelectOpen, setIsExperimentSelectOpen] = useState(false);
 
   useEffect(() => {
     fetchPermissions();
@@ -276,7 +278,7 @@ const Dashboard: React.FC = () => {
   const getSensorLabel = (sensor: SensorType): string => {
     switch (sensor) {
       case 'temperature': return 'Temperature';
-      case 'humidity': return 'Humidity';
+      case 'humidity': return 'relative humidity';
       case 'solar_radiation': return 'Solar Radiation';
       case 'wind_speed': return 'Wind Speed';
       case 'co2': return 'CO2 Concentration';
@@ -304,6 +306,82 @@ const Dashboard: React.FC = () => {
       case 'soil_moisture': return '(10-50%)';
       case 'light_intensity': return '(100-1000 lux)';
       default: return '';
+    }
+  };
+
+  /**
+   * removeMacFromDisplayName
+   * Removes MAC address pattern (in parentheses) from the end of a display name.
+   * @param name - string (the display name that may contain MAC address)
+   * @returns string (cleaned display name without MAC address)
+   */
+  const removeMacFromDisplayName = (name: string): string => {
+    if (!name) return name;
+    // Remove MAC address pattern in parentheses at the end: " (hexchars)"
+    return name.replace(/\s*\([a-f0-9]+\)$/i, '').trim();
+  };
+
+  /**
+   * isExperimentActive
+   * Checks if an experiment's lastTimestamp date matches today's date (ignoring time).
+   * @param exp - ExperimentSummary object
+   * @returns boolean - true if the experiment's last date is today
+   */
+  const isExperimentActive = (exp: ExperimentSummary): boolean => {
+    const lastDate = new Date(exp.lastTimestamp.value);
+    const today = new Date();
+    return (
+      lastDate.getFullYear() === today.getFullYear() &&
+      lastDate.getMonth() === today.getMonth() &&
+      lastDate.getDate() === today.getDate()
+    );
+  };
+
+  /**
+   * sortExperimentsDescending
+   * Sorts experiments in descending order by experiment number (latest first).
+   * @param a - ExperimentSummary
+   * @param b - ExperimentSummary
+   * @returns number - comparison result for sorting
+   */
+  const sortExperimentsDescending = (a: ExperimentSummary, b: ExperimentSummary): number => {
+    // Extract numbers from experimentName, fallback to string compare
+    const numA = parseInt(a.experimentName.match(/\d+/)?.[0] || '0', 10);
+    const numB = parseInt(b.experimentName.match(/\d+/)?.[0] || '0', 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numB - numA;
+    }
+    return a.experimentName.localeCompare(b.experimentName);
+  };
+
+  /**
+   * handleExperimentSelectFocus
+   * Scrolls the select element into view with space below to ensure dropdown opens downward.
+   */
+  const handleExperimentSelectFocus = () => {
+    if (experimentSelectRef.current) {
+      // Scroll the select into view with space below (block: 'nearest' ensures it only scrolls if needed)
+      experimentSelectRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'nearest',
+        inline: 'nearest'
+      });
+      
+      // Additional scroll to ensure space below for dropdown
+      setTimeout(() => {
+        const selectElement = experimentSelectRef.current;
+        if (selectElement) {
+          const rect = selectElement.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const spaceBelow = viewportHeight - rect.bottom;
+          
+          // If there's less than 300px below, scroll down a bit more
+          if (spaceBelow < 300) {
+            const scrollAmount = 300 - spaceBelow;
+            window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+          }
+        }
+      }, 100);
     }
   };
 
@@ -410,9 +488,16 @@ const Dashboard: React.FC = () => {
     }
   }, [selectedExperiment, experimentSummaries]);
 
-  // Helper to get unique systems by mac_address
+  // Helper to get unique owners
+  const uniqueOwners = Array.from(new Set(permissions.map(p => p.owner))).sort();
+
+  // Helper to get unique systems by mac_address, filtered by selected owner
   const uniqueSystems = Array.from(
-    new Map(permissions.map(p => [p.mac_address, p])).values()
+    new Map(
+      permissions
+        .filter(p => !selectedOwner || p.owner === selectedOwner)
+        .map(p => [p.mac_address, p])
+    ).values()
   );
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -422,16 +507,6 @@ const Dashboard: React.FC = () => {
     <div className="flex h-screen w-screen bg-[#f7f8f3]">
       {/* Fixed top-right buttons */}
       <div className="fixed top-4 right-4 flex items-center space-x-2 z-50">
-        <button
-          onClick={() => setShowSystemDetails(!showSystemDetails)}
-          className="bg-[#b2b27a] text-white p-2 rounded-full hover:bg-[#8ac6bb] transition-colors"
-          title="System Details"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
         <button
           onClick={handleLogout}
           className="bg-[#b2b27a] text-white py-2 px-4 rounded hover:bg-[#8ac6bb] transition-colors"
@@ -476,6 +551,32 @@ const Dashboard: React.FC = () => {
 
           {/* Selection container with flex-shrink-0 */}
           <div className="flex-shrink-0">
+            {/* Owner Selection - only show if user has more than one owner */}
+            {uniqueOwners.length > 1 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-[#8ac6bb] mb-2">
+                  Select Owner
+                </label>
+                <select 
+                  className="w-full p-2 border border-[#b2b27a] rounded text-[#8ac6bb] focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
+                  value={selectedOwner}
+                  onChange={(e) => {
+                    setSelectedOwner(e.target.value);
+                    setSelectedPermission(null);
+                    setSelectedExperiment('');
+                    setExperimentSummaries([]);
+                  }}
+                >
+                  <option value="">All Owners</option>
+                  {uniqueOwners.map((owner) => (
+                    <option key={owner} value={owner}>
+                      {owner}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* System Selection */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-[#8ac6bb] mb-2">
@@ -491,7 +592,7 @@ const Dashboard: React.FC = () => {
                 <option value="">Select a system</option>
                 {uniqueSystems.map((p) => (
                   <option key={p.mac_address} value={p.mac_address}>
-                    {p.table_name ? p.table_name : `${p.owner} (${p.mac_address})`}
+                    {removeMacFromDisplayName(p.table_name || `${p.owner} (${p.mac_address})`)} 
                   </option>
                 ))}
               </select>
@@ -499,33 +600,90 @@ const Dashboard: React.FC = () => {
 
             {/* Experiment Selection */}
             {selectedPermission && experimentSummaries.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-6 experiment-select-wrapper">
                 <label className="block text-sm font-medium text-[#8ac6bb] mb-2">
                   Select Experiment
                 </label>
-                <select
-                  value={selectedExperiment}
-                  onChange={(e) => setSelectedExperiment(e.target.value)}
-                  className="w-full p-2 border border-[#b2b27a] rounded text-[#8ac6bb] focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
-                >
-                  <option value="">Choose an experiment</option>
-                  {experimentSummaries
-                    .slice() // copy array to avoid mutating state
-                    .sort((a, b) => {
-                      // Extract numbers from experimentName, fallback to string compare
-                      const numA = parseInt(a.experimentName.match(/\d+/)?.[0] || '0', 10);
-                      const numB = parseInt(b.experimentName.match(/\d+/)?.[0] || '0', 10);
-                      if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                      }
-                      return a.experimentName.localeCompare(b.experimentName);
-                    })
-                    .map(exp => (
-                      <option key={exp.experimentName} value={exp.experimentName}>
-                        {exp.experimentName}
-                      </option>
-                    ))}
-                </select>
+                <div className="relative">
+                  {(() => {
+                    // Separate experiments into active and inactive
+                    const activeExperiments = experimentSummaries
+                      .filter(isExperimentActive)
+                      .slice()
+                      .sort(sortExperimentsDescending);
+                    const inactiveExperiments = experimentSummaries
+                      .filter(exp => !isExperimentActive(exp))
+                      .slice()
+                      .sort(sortExperimentsDescending);
+
+                    // Calculate size to show: active experiments + separator + first 5 inactive + placeholder
+                    // This limits the visible height while still allowing scroll
+                    const baseSize = activeExperiments.length + 
+                                     (inactiveExperiments.length > 0 && activeExperiments.length > 0 ? 1 : 0) + 
+                                     5 + // Show first 5 inactive
+                                     1; // "Choose an experiment" option
+                    const calculatedSize = Math.min(baseSize, 8); // Cap at 8 for reasonable height
+                    const shouldUseSize = inactiveExperiments.length > 5 && isExperimentSelectOpen; // Only use size when open and there are more than 5 inactive
+
+                    return (
+                      <select
+                        ref={experimentSelectRef}
+                        value={selectedExperiment}
+                        onChange={(e) => {
+                          setSelectedExperiment(e.target.value);
+                          setIsExperimentSelectOpen(false);
+                          // Blur the select to close it
+                          if (experimentSelectRef.current) {
+                            experimentSelectRef.current.blur();
+                          }
+                        }}
+                        onFocus={() => {
+                          setIsExperimentSelectOpen(true);
+                          handleExperimentSelectFocus();
+                        }}
+                        onBlur={() => {
+                          // Delay to allow onChange to fire first
+                          setTimeout(() => setIsExperimentSelectOpen(false), 200);
+                        }}
+                        size={shouldUseSize ? calculatedSize : undefined}
+                        className="w-full p-2 border border-[#b2b27a] rounded text-[#8ac6bb] focus:ring-[#8ac6bb] focus:border-[#8ac6bb] experiment-select"
+                      >
+                        <option value="">Choose an experiment</option>
+                        {activeExperiments.length > 0 && (
+                          <optgroup label="Active Experiments">
+                            {activeExperiments.map(exp => (
+                              <option key={exp.experimentName} value={exp.experimentName}>
+                                {exp.experimentName}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {inactiveExperiments.length > 0 && activeExperiments.length > 0 && (
+                          <option disabled>─────────────────────</option>
+                        )}
+                        {inactiveExperiments.length > 0 && (
+                          activeExperiments.length > 0 ? (
+                            <optgroup label="Inactive Experiments">
+                              {inactiveExperiments.map(exp => (
+                                <option key={exp.experimentName} value={exp.experimentName}>
+                                  {exp.experimentName}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : (
+                            <>
+                              {inactiveExperiments.map(exp => (
+                                <option key={exp.experimentName} value={exp.experimentName}>
+                                  {exp.experimentName}
+                                </option>
+                              ))}
+                            </>
+                          )
+                        )}
+                      </select>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 
@@ -571,55 +729,6 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* System Details Drawer */}
-      {showSystemDetails && selectedPermission && (
-        <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-30 overflow-y-auto">
-          <div className="p-4 pt-16"> {/* Added pt-16 to account for the fixed top buttons */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-[#8ac6bb]">System Details</h2>
-              <button
-                onClick={() => setShowSystemDetails(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">Owner</h3>
-                <p className="text-sm">{selectedPermission.owner}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Experiment</h3>
-                <p className="text-sm">{selectedPermission.experiment}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">MAC Address</h3>
-                <p className="text-sm">{selectedPermission.mac_address}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Role</h3>
-                <p className="text-sm">{selectedPermission.role}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Valid From</h3>
-                <p className="text-sm">{new Date(selectedPermission.valid_from).toLocaleString()}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Valid Until</h3>
-                <p className="text-sm">{selectedPermission.valid_until ? new Date(selectedPermission.valid_until).toLocaleString() : 'No expiration'}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Table ID</h3>
-                <p className="text-sm">{selectedPermission.table_id}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (

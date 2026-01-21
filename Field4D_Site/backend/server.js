@@ -11,6 +11,7 @@ const { BigQuery } = require('@google-cloud/bigquery');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
 require('dotenv').config({ path: path.join(__dirname, 'auth', '.env') });
 
 const app = express();
@@ -128,76 +129,79 @@ function hashPassword(password) {
 
 /**
  * POST /api/auth
- * Authenticates a user.
+ * Authenticates a user using cloud function.
  * @body { email: string, password: string }
- * @returns { success: boolean, message: string, userData?: object }
- * Side effect: queries BigQuery for user credentials.
+ * @returns { success: boolean, message: string, userData?: object, jwtToken?: string }
+ * Side effect: calls cloud function for authentication.
  */
 app.post('/api/auth', async (req, res) => {
   try {
     const { email, password } = req.body;
     logStructured('INFO', 'Auth request received', { email });
 
-    // Query to check user credentials
-    const query = `
-      SELECT email, hashed_password, created_at, last_login
-      FROM \`${process.env.GCP_USER_TABLE}\`
-      WHERE email = @email
-      LIMIT 1
-    `;
+    // Hash password using existing method
+    const hashedPassword = hashPassword(password);
+    logStructured('DEBUG', 'Password hashed', { email });
 
-    const options = {
-      query: query,
-      params: { email: email },
+    // Prepare request to cloud function
+    const authRequest = {
+      email: email,
+      hashed_password: hashedPassword
     };
 
-    logStructured('DEBUG', 'Executing BigQuery query', { options });
-    
+    logStructured('DEBUG', 'Calling cloud function', { 
+      url: process.env.GCP_AUTH_URL,
+      email 
+    });
+
     try {
-      const [rows] = await bigquery.query(options);
-      logStructured('DEBUG', 'Query results', { rowCount: rows.length });
-
-      if (rows.length === 0) {
-        logStructured('WARNING', 'No user found', { email });
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid email or password'
-        });
-      }
-
-      const user = rows[0];
-      logStructured('DEBUG', 'Found user', {
-        email: user.email,
-        created_at: user.created_at,
-        last_login: user.last_login
+      // Call cloud function
+      const response = await fetch(process.env.GCP_AUTH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(authRequest),
       });
 
-      // Check if the password matches
-      if (user.hashed_password !== hashPassword(password)) {
-        logStructured('WARNING', 'Password mismatch', { email });
+      const authResult = await response.json();
+      logStructured('DEBUG', 'Cloud function response', { 
+        success: authResult.success,
+        message: authResult.message 
+      });
+
+      if (!response.ok || !authResult.success) {
+        logStructured('WARNING', 'Authentication failed', { 
+          email,
+          message: authResult.message 
+        });
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: authResult.message || 'Invalid credentials'
         });
       }
 
+      // Authentication successful
       logStructured('INFO', 'Authentication successful', { email });
+      
+      // Return response with JWT token and user data
       res.json({
         success: true,
         message: 'Authentication successful',
         userData: {
-          email: user.email,
-          created_at: user.created_at,
-          last_login: user.last_login
-        }
+          email: email,
+          // Note: created_at and last_login not available from cloud function
+          // These will be null/undefined until we get them from another source
+        },
+        jwtToken: authResult.token
       });
-    } catch (queryError) {
-      logStructured('ERROR', 'BigQuery query error', {
-        error: queryError.message,
-        code: queryError.code,
-        errors: queryError.errors
+
+    } catch (cloudFunctionError) {
+      logStructured('ERROR', 'Cloud function error', {
+        error: cloudFunctionError.message,
+        email
       });
-      throw queryError;
+      throw cloudFunctionError;
     }
 
   } catch (error) {
@@ -509,6 +513,82 @@ app.post('/api/fetch-data', async (req, res) => {
     res.status(500).json({
       error: 'Failed to fetch selected data',
       details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/analytics-health
+ * Proxy endpoint to check analytics service health.
+ * @returns { success: boolean, data?: object, error?: string, responseTime?: number }
+ * Side effect: makes HTTP request to analytics service.
+ */
+app.get('/api/analytics-health', async (req, res) => {
+  const startTime = Date.now();
+  const analyticsUrl = `${process.env.GCP_ANALYTICS_URL}/health`;
+  
+  try {
+    logStructured('INFO', 'Analytics health check started', {
+      userEmail: req.headers['x-user-email'] || 'anonymous',
+      targetUrl: analyticsUrl
+    });
+
+    const response = await fetch(analyticsUrl, {
+      method: 'GET',
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const responseTime = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      logStructured('ERROR', 'Analytics health check failed', {
+        userEmail: req.headers['x-user-email'] || 'anonymous',
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        responseTime
+      });
+      
+      return res.status(response.status).json({
+        success: false,
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        responseTime
+      });
+    }
+
+    const data = await response.json();
+    
+    logStructured('INFO', 'Analytics health check successful', {
+      userEmail: req.headers['x-user-email'] || 'anonymous',
+      status: data.status,
+      version: data.version,
+      responseTime
+    });
+    
+    res.json({
+      success: true,
+      data,
+      responseTime
+    });
+    
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    const errorMessage = error.message || 'Unknown error';
+    
+    logStructured('ERROR', 'Analytics health check error', {
+      userEmail: req.headers['x-user-email'] || 'anonymous',
+      error: errorMessage,
+      responseTime
+    });
+    
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+      responseTime
     });
   }
 });
