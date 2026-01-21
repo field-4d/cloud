@@ -1,17 +1,5 @@
 # Ignore everything
 *
-# Ignore all .env files (and .env.production, .env.local, etc.)
-.env
-**/.env
-**/.env.*
-# token files
-auth_token_str.txt
-# Never commit service account / credential keys
-**/firestore-import-key.json
-**/*-import-key.json
-# dont uplad .cursor files
-.cursor/
-
 
 # Keep these folders
 !process_files/
