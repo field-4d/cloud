@@ -16,6 +16,7 @@ import uuid
 
 # Define port as a variable
 API_PORT = 8080  # Change this to 8000 or 8080 as needed
+API_PORT = 8000  # Change this to 8000 or 8080 as needed
 
 # API URLs using the port variable
 API_URL = f"http://localhost:{API_PORT}/analyze/tukey"

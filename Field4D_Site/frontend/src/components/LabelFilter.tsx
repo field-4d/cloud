@@ -5,7 +5,7 @@ import { components, OptionProps } from 'react-select';
 interface LabelFilterProps {
   sensorLabelOptions: string[];
   sensorLabelMap: Record<string, string[]>;
-  onFilterChange: (filteredSensors: string[], includeLabels: string[]) => void;
+  onFilterChange: (filteredSensors: string[], includeLabels: string[], excludeLabels: string[]) => void;
 }
 
 interface LabelOption {
@@ -58,7 +58,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
     andMode: boolean
   ) => {
     if (includeLabels.length === 0 && excludeLabels.length === 0) {
-      onFilterChange(Object.keys(sensorLabelMap), includeLabels);
+      onFilterChange(Object.keys(sensorLabelMap), includeLabels, excludeLabels);
       return;
     }
 
@@ -84,7 +84,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
       })
       .map(([sensor]) => sensor);
 
-    onFilterChange(filteredSensors, includeLabels);
+    onFilterChange(filteredSensors, includeLabels, excludeLabels);
   }, [sensorLabelMap, onFilterChange]);
 
   // Handle include labels change
@@ -139,7 +139,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         </label>
         <Select
           isMulti
-          options={labelOptions}
+          options={labelOptions.sort((a, b) => a.label.localeCompare(b.label))}
           value={labelOptions.filter(option => selectedIncludeLabels.includes(option.value))}
           onChange={handleIncludeLabelsChange}
           components={{ Option }}
@@ -167,7 +167,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         </label>
         <Select
           isMulti
-          options={labelOptions}
+          options={labelOptions.sort((a, b) => a.label.localeCompare(b.label))}
           value={labelOptions.filter(option => selectedExcludeLabels.includes(option.value))}
           onChange={handleExcludeLabelsChange}
           components={{ Option }}

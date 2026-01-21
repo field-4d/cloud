@@ -44,6 +44,16 @@ export async function authenticateUser(credentials: UserCredentials): Promise<Au
     const data = await response.json();
     logger.info('Auth response:', data);
 
+    // Store JWT token in localStorage if present
+    if (data.jwtToken) {
+      localStorage.setItem('jwtToken', data.jwtToken);
+      // Also add jwtToken to userData if present
+      if (data.userData) {
+        data.userData.jwtToken = data.jwtToken;
+        localStorage.setItem('userData', JSON.stringify(data.userData));
+      }
+    }
+
     if (!response.ok) {
       return {
         success: false,

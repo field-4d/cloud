@@ -79,6 +79,13 @@ interface SensorDataRow {
 
 const Y_AXIS_COLORS = ['#8ac6bb', '#b2b27a', '#e6a157'];
 
+// Artifact thresholds per parameter (case-insensitive matching)
+const ARTIFACT_THRESHOLDS: Record<string, number> = {
+  temperature: -40,
+  humidity: -999,
+  // Add more as needed
+};
+
 // Custom Option components with checkbox
 const ParameterOption = (props: OptionProps<ParameterOption, true>) => {
   return (
@@ -121,54 +128,55 @@ const PARAMETER_OPTIONS = [
   {
     label: 'Basic Environmental',
     options: [
-      { value: 'temperature', label: 'Temperature', unit: '°C' },
-      { value: 'humidity', label: 'Humidity', unit: '%' },
-      { value: 'barometric_pressure', label: 'Barometric Pressure', unit: 'hPa' },
-      { value: 'light', label: 'Light', unit: 'lux' },
-      { value: 'co2_ppm', label: 'CO2 (PPM)', unit: 'ppm' },
+      { value: 'temperature', label: 'Temperature (°C)', unit: '°C' },
+      { value: 'humidity', label: 'Relative Humidity (RH)', unit: '%' },
+      { value: 'barometric_pressure', label: 'Barometric Pressure (hPa)', unit: 'hPa' },
+      { value: 'light', label: 'Light Intensity (lux)', unit: 'lux' },
+      { value: 'battery', label: 'Battery Level (mV)', unit: 'mV' },
+      { value: 'co2_ppm', label: 'CO2 Concentration (PPM)', unit: 'ppm' },
       { value: 'air_velocity', label: 'Air Velocity', unit: 'm/s' }
     ]
   },
   {
     label: 'BMP390 Sensors',
     options: [
-      { value: 'bmp_390_u18_pressure', label: 'BMP390 U18 Pressure', unit: 'hPa' },
-      { value: 'bmp_390_u18_temperature', label: 'BMP390 U18 Temperature', unit: '°C' },
-      { value: 'bmp_390_u19_pressure', label: 'BMP390 U19 Pressure', unit: 'hPa' },
-      { value: 'bmp_390_u19_temperature', label: 'BMP390 U19 Temperature', unit: '°C' }
+      { value: 'bmp_390_u18_pressure', label: 'BMP390 U18 Pressure (hPa)', unit: 'hPa' },
+      { value: 'bmp_390_u18_temperature', label: 'BMP390 U18 Temperature (°C)', unit: '°C' },
+      { value: 'bmp_390_u19_pressure', label: 'BMP390 U19 Pressure (hPa)', unit: 'hPa' },
+      { value: 'bmp_390_u19_temperature', label: 'BMP390 U19 Temperature (°C)', unit: '°C' }
     ]
   },
   {
     label: 'HDC2010 Sensors',
     options: [
-      { value: 'hdc_2010_u13_temperature', label: 'HDC2010 U13 Temperature', unit: '°C' },
-      { value: 'hdc_2010_u13_humidity', label: 'HDC2010 U13 Humidity', unit: '%' },
-      { value: 'hdc_2010_u16_temperature', label: 'HDC2010 U16 Temperature', unit: '°C' },
-      { value: 'hdc_2010_u16_humidity', label: 'HDC2010 U16 Humidity', unit: '%' },
-      { value: 'hdc_2010_u17_temperature', label: 'HDC2010 U17 Temperature', unit: '°C' },
-      { value: 'hdc_2010_u17_humidity', label: 'HDC2010 U17 Humidity', unit: '%' }
+      { value: 'hdc_2010_u13_temperature', label: 'HDC2010 U13 Temperature (°C)', unit: '°C' },
+      { value: 'hdc_2010_u13_humidity', label: 'HDC2010 U13 Relative Humidity (RH)', unit: '%' },
+      { value: 'hdc_2010_u16_temperature', label: 'HDC2010 U16 Temperature (°C)', unit: '°C' },
+      { value: 'hdc_2010_u16_humidity', label: 'HDC2010 U16 Relative Humidity (RH)', unit: '%' },
+      { value: 'hdc_2010_u17_temperature', label: 'HDC2010 U17 Temperature (°C)', unit: '°C' },
+      { value: 'hdc_2010_u17_humidity', label: 'HDC2010 U17 Relative Humidity (RH)', unit: '%' }
     ]
   },
   {
     label: 'OPT3001 Light Sensors',
     options: [
-      { value: 'opt_3001_u1_light_intensity', label: 'OPT3001 U1 Light', unit: 'lux' },
-      { value: 'opt_3001_u2_light_intensity', label: 'OPT3001 U2 Light', unit: 'lux' },
-      { value: 'opt_3001_u3_light_intensity', label: 'OPT3001 U3 Light', unit: 'lux' },
-      { value: 'opt_3001_u4_light_intensity', label: 'OPT3001 U4 Light', unit: 'lux' },
-      { value: 'opt_3001_u5_light_intensity', label: 'OPT3001 U5 Light', unit: 'lux' }
+      { value: 'opt_3001_u1_light_intensity', label: 'OPT3001 U1 Light Intensity (lux)', unit: 'lux' },
+      { value: 'opt_3001_u2_light_intensity', label: 'OPT3001 U2 Light Intensity (lux)', unit: 'lux' },
+      { value: 'opt_3001_u3_light_intensity', label: 'OPT3001 U3 Light Intensity (lux)', unit: 'lux' },
+      { value: 'opt_3001_u4_light_intensity', label: 'OPT3001 U4 Light Intensity (lux)', unit: 'lux' },
+      { value: 'opt_3001_u5_light_intensity', label: 'OPT3001 U5 Light Intensity (lux)', unit: 'lux' }
     ]
   },
   {
     label: 'ZTP315 Temperature Sensors',
     options: [
-      { value: 'ztp_315_surface_temperature', label: 'ZTP315 Surface Temp', unit: '°C' },
-      { value: 'ztp_315_ambient_temperature', label: 'ZTP315 Ambient Temp', unit: '°C' },
-      { value: 'ztp_315_object_temperature', label: 'ZTP315 Object Temp', unit: '°C' },
+      { value: 'ztp_315_surface_temperature', label: 'ZTP315 Surface Temperature (°C)', unit: '°C' },
+      { value: 'ztp_315_ambient_temperature', label: 'ZTP315 Ambient Temperature (°C)', unit: '°C' },
+      { value: 'ztp_315_object_temperature', label: 'ZTP315 Object Temperature (°C)', unit: '°C' },
       { value: 'ztp_315_voltage_output', label: 'ZTP315 Voltage Output', unit: 'V' },
-      { value: 'ztp_315_temperature_offset', label: 'ZTP315 Temp Offset', unit: '°C' },
+      { value: 'ztp_315_temperature_offset', label: 'ZTP315 Temperature Offset (°C)', unit: '°C' },
       { value: 'ztp_315_emissivity', label: 'ZTP315 Emissivity', unit: '' },
-      { value: 'ztp_315_calibrated_temperature', label: 'ZTP315 Calibrated Temp', unit: '°C' }
+      { value: 'ztp_315_calibrated_temperature', label: 'ZTP315 Calibrated Temperature (°C)', unit: '°C' }
     ]
   },
   {
@@ -188,13 +196,12 @@ const PARAMETER_OPTIONS = [
   {
     label: 'System Parameters',
     options: [
-      { value: 'battery', label: 'Battery Level', unit: '%' },
-      { value: 'batmon_temperature', label: 'Battery Temperature', unit: '°C' },
-      { value: 'batmon_battery_voltage', label: 'Battery Voltage', unit: 'V' },
+      { value: 'batmon_temperature', label: 'Battery Temperature (°C)', unit: '°C' },
+      { value: 'batmon_battery_voltage', label: 'Battery Voltage (V)', unit: 'V' },
       { value: 'rssi', label: 'RSSI', unit: 'dBm' },
-      { value: 'tmp107_amb', label: 'TMP107 Ambient', unit: '°C' },
-      { value: 'tmp107_obj', label: 'TMP107 Object', unit: '°C' },
-      { value: 'barometric_temp', label: 'Barometric Temperature', unit: '°C' }
+      { value: 'tmp107_amb', label: 'TMP107 Ambient Temperature (°C)', unit: '°C' },
+      { value: 'tmp107_obj', label: 'TMP107 Object Temperature (°C)', unit: '°C' },
+      { value: 'barometric_temp', label: 'Barometric Temperature (°C)', unit: '°C' }
     ]
   }
 ];
@@ -204,19 +211,53 @@ const generateColorFromString = (str: string): string => {
   // Improved hash function for better color distribution
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
   }
   
-  // Use golden ratio to distribute colors evenly
+  // Use golden ratio to distribute colors evenly across the full spectrum
   const goldenRatio = 0.618033988749895;
-  const hue = (hash * goldenRatio) % 1;
+  const hue = (Math.abs(hash) * goldenRatio) % 1;
   
-  // Convert to HSL with better distribution
-  const h = Math.floor(hue * 360);
-  const s = 70 + (Math.abs(hash) % 15); // Saturation: 70-85%
-  const l = 50 + (Math.abs(hash) % 10); // Lightness: 50-60%
+  // Convert to HSL with better distribution - avoid red range (0-30 and 330-360)
+  let h = Math.floor(hue * 360);
+  // Shift red hues to other colors for better visibility
+  if (h < 30) h = h + 60; // Shift early reds to yellow-orange
+  if (h > 330) h = h - 60; // Shift late reds to purple
   
-  return `hsl(${h}, ${s}%, ${l}%)`;
+  const s = 70 + (Math.abs(hash) % 20); // Saturation: 70-90%
+  const l = 45 + (Math.abs(hash) % 20); // Lightness: 45-65%
+  
+  // Convert HSL to RGB for better Plotly compatibility
+  const hNorm = h / 360;
+  const sNorm = s / 100;
+  const lNorm = l / 100;
+  
+  let r, g, b;
+  if (sNorm === 0) {
+    r = g = b = lNorm;
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = lNorm < 0.5 ? lNorm * (1 + sNorm) : lNorm + sNorm - lNorm * sNorm;
+    const p = 2 * lNorm - q;
+    r = hue2rgb(p, q, hNorm + 1/3);
+    g = hue2rgb(p, q, hNorm);
+    b = hue2rgb(p, q, hNorm - 1/3);
+  }
+  
+  const toHex = (c: number) => {
+    const hex = Math.round(c * 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+  
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
 // Cache for sensor colors
@@ -274,6 +315,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showLabelFilter, setShowLabelFilter] = useState(false);
   const [includedLabels, setIncludedLabels] = useState<string[]>([]);
+  const [excludeLabels, setExcludeLabels] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState<'sensor' | 'label'>('sensor');
   const [errorType, setErrorType] = useState<'STD' | 'SE'>('SE');
 
@@ -283,6 +325,22 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
   // Outlier filtering state (single source of truth)
   const [outlierFiltering, setOutlierFiltering] = React.useState<boolean>(false);
+  
+  // Artifact filtering state (single source of truth)
+  const [artifactFiltering, setArtifactFiltering] = React.useState<boolean>(false);
+
+  // Helper: Filter artifact measurements (e.g., -40°C for temperature)
+  function filterArtifacts(data: SensorData[]): SensorData[] {
+    return data.map(d => {
+      const param = String(d.parameter).toLowerCase();
+      const threshold = ARTIFACT_THRESHOLDS[param];
+      
+      if (threshold !== undefined && typeof d.value === 'number' && d.value === threshold) {
+        return { ...d, value: NaN };
+      }
+      return d;
+    });
+  }
 
   // Helper: IQR-based outlier detection (same as in VisualizationPanel)
   function filterOutliersIQR(data, selectedParameters) {
@@ -316,10 +374,20 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
   // Use processed data for CSV export if filtering is enabled
   const processedSensorData = React.useMemo(() => {
-    if (!outlierFiltering) return sensorData;
-    const dataCopy = sensorData.map(d => ({ ...d }));
-    return filterOutliersIQR(dataCopy, selectedParameters);
-  }, [sensorData, outlierFiltering, selectedParameters]);
+    let data = sensorData.map(d => ({ ...d }));
+    
+    // Apply artifact filtering first
+    if (artifactFiltering) {
+      data = filterArtifacts(data);
+    }
+    
+    // Then apply outlier filtering
+    if (outlierFiltering) {
+      data = filterOutliersIQR(data, selectedParameters);
+    }
+    
+    return data;
+  }, [sensorData, artifactFiltering, outlierFiltering, selectedParameters]);
 
   // Reset and update available data when experiment changes
   useEffect(() => {
@@ -560,7 +628,12 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             for (const row of batch) {
               const timestamp = row.timestamp;
               const sensor = row.sensor_name;
-
+              const allLabels = currentExperiment?.sensorLabelMap?.[sensor] || [];
+              // Filter labels to only include the ones selected in "Include Labels"
+              const filteredLabels = includedLabels.length > 0 
+                ? allLabels.filter(label => includedLabels.includes(label))
+                : allLabels;
+              
               // Process each parameter for this row
               for (const paramKey of prefixedParameters) {
                 const value = row[paramKey];
@@ -569,7 +642,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
                     timestamp,
                     value,
                     sensor,
-                    parameter: paramKey.replace("SensorData_", "")
+                    parameter: paramKey.replace("SensorData_", ""),
+                    labels: filteredLabels.join(',') // Convert filtered array to comma-separated string
                   });
                 }
               }
@@ -589,7 +663,9 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         const duration = (endTime - startTime) / 1000; // Convert to seconds
         logger.info(`All processing completed in ${duration.toFixed(2)} seconds`);
         logger.info('Total transformed data points:', transformedData.length);
-
+        logger.info('Transformed data:', transformedData);
+        logger.info("The label options are:", currentExperiment?.sensorLabelMap);
+        
         setSensorData(transformedData);
         setVisualizedSensors(selectedSensors);
         setShowVisualization(true);
@@ -614,7 +690,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     if (groupBy === 'label' && currentExperiment?.sensorLabelMap && includedLabels.length > 0) {
       const labelMap = currentExperiment.sensorLabelMap;
       const labelsToExport = includedLabels;
-
+      
       // For each parameter, build a map: timestamp -> label -> [values]
       const byTimestamp: Record<string, Record<string, Record<string, number[]>>> = {};
       processedSensorData.forEach(d => {
@@ -711,7 +787,13 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       if (!dataByParameter[param][timestamp]) {
         dataByParameter[param][timestamp] = {};
       }
-      dataByParameter[param][timestamp][sensor] = curr.value ?? '';
+      // Handle NaN, null, and undefined as empty cells
+      const value = curr.value;
+      if (value === null || value === undefined || (typeof value === 'number' && isNaN(value))) {
+        dataByParameter[param][timestamp][sensor] = '';
+      } else {
+        dataByParameter[param][timestamp][sensor] = value;
+      }
     });
 
     // Create and download a file for each parameter
@@ -809,9 +891,10 @@ const DataSelector: React.FC<DataSelectorProps> = ({
               <LabelFilter
                 sensorLabelOptions={currentExperiment.sensorLabelOptions ?? []}
                 sensorLabelMap={currentExperiment.sensorLabelMap ?? {}}
-                onFilterChange={(filteredSensors, includeLabels) => {
+                onFilterChange={(filteredSensors, includeLabels, excludeLabels) => {
                   setSelectedSensors(filteredSensors);
                   setIncludedLabels(includeLabels);
+                  setExcludeLabels(excludeLabels);
                 }}
               />
             </div>
@@ -856,7 +939,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
         {/* Parameter Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gfray-700 mb-2">
             Select Parameters
           </label>
           <Select<ParameterOption, true>
@@ -930,15 +1013,18 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       {showVisualization && processedSensorData.length > 0 && !isLoading && (
         <div className="p-4 bg-white rounded-lg shadow">
           <VisualizationPanel
-            data={sensorData}
+            data={sensorData as any}
             selectedParameters={selectedParameters}
             selectedSensors={visualizedSensors}
             experimentName={selectedExperiment}
             getSensorColor={getSensorColor}
             outlierFiltering={outlierFiltering}
             setOutlierFiltering={setOutlierFiltering}
+            artifactFiltering={artifactFiltering}
+            setArtifactFiltering={setArtifactFiltering}
             sensorLabelMap={currentExperiment?.sensorLabelMap ?? {}}
             includedLabels={includedLabels}
+            excludeLabels={excludeLabels}
             groupBy={groupBy}
             setGroupBy={setGroupBy}
             errorType={errorType}
