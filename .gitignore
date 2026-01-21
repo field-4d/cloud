@@ -31,3 +31,9 @@
 # Keep .gitignore itself
 !.gitignore
 !README.md
+
+# Never commit .env files (credentials, secrets)
+.env
+.env.*
+**/.env
+**/.env.*
