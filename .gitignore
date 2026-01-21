@@ -19,7 +19,7 @@ auth_token_str.txt
 !login_and_issue_jwt/
 !F4D_Pi_V2/
 !cloud_upload_alerts/
-
+!Reggie_Online/
 # Also keep their contents
 !process_files/**
 !query_last_timestamp/**
@@ -32,6 +32,8 @@ auth_token_str.txt
 !/login_and_issue_jwt/** 
 !/F4D_Pi_V2/**
 !/cloud_upload_alerts/**
+!/Reggie_Online/**
+
 # Keep .gitignore itself
 !.gitignore
 !README.md
