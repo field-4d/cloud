@@ -21,8 +21,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(line_buffering=True)
 
-# WebSocket URI
-WS_URI = "ws://localhost:8000/ws/ping"
+# WebSocket URI - use wss:// for deployed backend (HTTPS)
+WS_URI = "wss://apisync-1000435921680.us-central1.run.app/ws/ping"
 
 # List of Last_Package payloads to test (multiple owners with multiple MAC addresses)
 # Each payload contains a "sensors" field with sensor readings

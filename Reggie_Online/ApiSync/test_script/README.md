@@ -5,8 +5,10 @@ This folder contains test scripts to verify the ApiSync FastAPI endpoints are wo
 ## Prerequisites
 
 Before running the tests, make sure:
-1. The FastAPI server is running (`python -m uvicorn src.main:app --reload --reload-exclude "test_script/**"` or `python src/main.py`)
-2. The server is accessible at `http://localhost:8000` (default port)
+1. The FastAPI server is running (`python -m uvicorn src.main:app --reload --reload-exclude "test_script/**"` or `python src/main.py`) from the backend directory, **or**
+2. Use the deployed backend: `https://apisync-1000435921680.us-central1.run.app` (scripts use this URL by default)
+
+The test scripts target the deployed backend by default (REST: `https://...`, WebSocket: `wss://...`).
 
 ## Quick Start: Run All Tests
 
@@ -129,6 +131,8 @@ The script updates metadata for 7 sensors with multiple owners and MAC addresses
 - `menachem_moshelion` / `2ccf6730ab7a` (1 sensor)
 - `menachem_moshelion` / `d83adde2608f` (1 sensor)
 - `menachem_moshelion` / `d83adde261b0` (1 sensor)
+
+**active_exp behavior:** Owner/mac validation is conditional on the sensor's `active_exp` field. When `active_exp` is False, updates are allowed regardless of owner/mac. When `active_exp` is True, owner and mac_address must match the document.
 
 **Features:**
 - Updates multiple sensors sequentially
@@ -392,6 +396,7 @@ python test_script/2.test_bigquery.py -d f4d_test -t aaaaaaaaaaaa_metadata
   - Empty updates dictionary
   - Invalid/non-existent sensor
   - Invalid JSON format
+  - Rapid Same LLA (uses `Icore_Pi` / `2ccf6730ab5f` for LLA `fd002124b00ccf7399b`)
   
 - **Last Package Tests:**
   - Normal dictionary format
@@ -425,8 +430,8 @@ python test_script/test_runner.py
 ======================================================================
 APISYNC COMPREHENSIVE TEST SUITE
 ======================================================================
-Base URL: http://localhost:8000
-WebSocket URI: ws://localhost:8000/ws/ping
+Base URL: https://apisync-1000435921680.us-central1.run.app
+WebSocket URI: wss://apisync-1000435921680.us-central1.run.app/ws/ping
 ======================================================================
 
 ✅ Server Connection: Server is running (0.123s)
@@ -522,10 +527,10 @@ python test_script/run_all_tests.py --clear-db
 ============================================================
 WEBSOCKET PING TEST
 ============================================================
-Testing endpoint: ws://localhost:8000/ws/ping
+Testing endpoint: wss://apisync-1000435921680.us-central1.run.app/ws/ping
 Total payloads to send: 9
 
-Connecting to ws://localhost:8000/ws/ping...
+Connecting to wss://apisync-1000435921680.us-central1.run.app/ws/ping...
 ✅ Connected successfully
 
 ============================================================
@@ -568,7 +573,7 @@ Test completed!
 ============================================================
 SENSOR METADATA UPDATE TEST
 ============================================================
-Testing endpoint: http://localhost:8000/FS/sensor/update-metadata
+Testing endpoint: https://apisync-1000435921680.us-central1.run.app/FS/sensor/update-metadata
 Total sensors to update: 4
 
 [1/4] Processing sensor...

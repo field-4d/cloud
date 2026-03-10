@@ -1176,6 +1176,12 @@
         const MAX_PAYLOADS_OPTIONS = [10, 15, 20];
         const DEFAULT_MAX_PAYLOADS = 10;
         
+        // API base URL - set when frontend runs locally but backend is deployed
+        window.API_BASE_URL = 'https://apisync-1000435921680.us-central1.run.app';
+        function getApiBaseUrl() {
+            return window.API_BASE_URL || window.location.origin;
+        }
+        
         function getMaxPayloads() {
             // Get from localStorage or use default
             const saved = localStorage.getItem('maxPayloads');
@@ -1305,9 +1311,10 @@
         }
         
         function getWebSocketUrl() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            return `${protocol}//${host}/ws/ping`;
+            const base = getApiBaseUrl();
+            const url = new URL(base);
+            const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${protocol}//${url.host}/ws/ping`;
         }
         
         function connectWebSocket() {
@@ -1406,7 +1413,7 @@
             healthResponse.style.display = 'none';
             
             try {
-                const response = await fetch('/health');
+                const response = await fetch(getApiBaseUrl() + '/health');
                 const data = await response.json();
                 
                 if (response.ok && data.status === 'ok') {
@@ -2248,7 +2255,7 @@
             }
             
             try {
-                const url = `/GCP-FS/permissions/resolve?email=${encodeURIComponent(email)}`;
+                const url = getApiBaseUrl() + `/GCP-FS/permissions/resolve?email=${encodeURIComponent(email)}`;
                 console.log('[PERMISSIONS] Resolving permissions for email:', email);
                 
                 const response = await fetch(url);
@@ -2480,7 +2487,7 @@
             }
             
             try {
-                const url = `/GCP-FS/metadata/experiments?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}`;
+                const url = getApiBaseUrl() + `/GCP-FS/metadata/experiments?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}`;
                 console.log('[EXPERIMENTS] Fetching experiments from:', url);
                 console.log('owner:', effectiveOwner);
                 console.log('mac_address:', effectiveMac);
@@ -2687,7 +2694,7 @@
             try {
                 // Handle empty exp_name - use empty string, not null
                 const expNameParam = exp_name || '';
-                const url = `/GCP-FS/metadata/sensors?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}&exp_name=${encodeURIComponent(expNameParam)}`;
+                const url = getApiBaseUrl() + `/GCP-FS/metadata/sensors?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}&exp_name=${encodeURIComponent(expNameParam)}`;
                 console.log('[EXPERIMENTS] Fetching sensors from:', url);
                 console.log('[EXPERIMENTS] Owner:', effectiveOwner);
                 console.log('[EXPERIMENTS] MAC:', effectiveMac);
@@ -2885,7 +2892,7 @@
             openMetadataModal(lla, null, 'loading');
             
             try {
-                const url = `/GCP-FS/metadata/active?owner=${encodeURIComponent(hostname)}&mac_address=${encodeURIComponent(mac_address)}&lla=${encodeURIComponent(lla)}`;
+                const url = getApiBaseUrl() + `/GCP-FS/metadata/active?owner=${encodeURIComponent(hostname)}&mac_address=${encodeURIComponent(mac_address)}&lla=${encodeURIComponent(lla)}`;
                 console.log('[METADATA] Fetching metadata from:', url);
                 
                 const response = await fetch(url);
@@ -3312,7 +3319,7 @@
                 }
                 
                 // Send update to backend endpoint
-                const response = await fetch('/FS/sensor/update-metadata', {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

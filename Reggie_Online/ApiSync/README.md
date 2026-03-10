@@ -1,7 +1,7 @@
 # ApiSync
 
 **Author:** Nir Averbuch  
-**Last updated:** 2025-12-30
+**Last updated:** 2026-03-10
 
 A FastAPI application with WebSocket support for real-time payload monitoring. Includes a web-based frontend dashboard to visualize received payloads with metadata management capabilities. Fully integrated with Google Cloud Firestore for sensor metadata storage and validation.
 
@@ -15,6 +15,7 @@ A FastAPI application with WebSocket support for real-time payload monitoring. I
 - **Automatic Sensor Registration**: Sensors are automatically registered in Firestore when they send Ping messages
 - **Sensor Validation**: Automatic LLA validation against Firestore metadata for each ping
 - **Metadata Management**: View and edit sensor metadata with active/inactive experiment separation
+- **Owner/MAC Reassignment (when inactive)**: When `active_exp` is false, owner and mac can be updated via PING, Last_Package, POST /FS/sensor/update, and update-metadata
 - **Flexible Metadata Updates**: Update any sensor field through the API or frontend interface (supports single and batch updates)
 - **Frontend Dashboard**: Interactive web interface to monitor WebSocket payloads with validation status
 - **Connection Management**: Manages multiple WebSocket connections with broadcasting
@@ -27,19 +28,19 @@ A FastAPI application with WebSocket support for real-time payload monitoring. I
 
 ```
 ApiSync/
-├── src/
-│   ├── main.py                    # Main FastAPI application
-│   └── api/
-│       ├── __init__.py
-│       ├── get_endpoints.py      # GET endpoints (health, frontend)
-│       ├── websocket_endpoints.py # WebSocket endpoints (ping)
-│       ├── firestore_endpoints.py # Firestore query endpoints
-│       ├── firestore_repository.py # Firestore operations and batch logic
-│       └── firestore_batch.py    # Batch write utilities
-├── auth/
-│   ├── .env                       # Firestore credentials (not in git)
-│   ├── firestore_config.py       # Firestore configuration and client setup
-│   └── README.md                  # Auth setup documentation
+├── backend/
+│   ├── src/
+│   │   ├── main.py                    # Main FastAPI application
+│   │   └── api/
+│   │       ├── __init__.py
+│   │       ├── get_endpoints.py      # GET endpoints (health, frontend)
+│   │       ├── websocket_endpoints.py # WebSocket endpoints (ping)
+│   │       ├── firestore_endpoints.py # Firestore query endpoints
+│   │       └── firestore_repository.py # Firestore operations and batch logic
+│   ├── auth/
+│   │   ├── .env                       # Firestore credentials (not in git)
+│   │   └── firestore_config.py       # Firestore configuration and client setup
+│   └── requirements.txt               # Python dependencies
 ├── frontend/
 │   └── index.html                 # Web dashboard interface
 ├── test_script/
@@ -51,9 +52,9 @@ ApiSync/
 │   ├── 5.test_runner.py           # Test runner script
 │   ├── test_runner.py             # Test runner utility
 │   └── logs/                      # Test output files (CSV, TXT)
-├── test_env_loading.py           # Environment variable loading test script
-├── requirements.txt               # Python dependencies
-└── README.md                      # This file
+├── Dockerfile                    # GCP Cloud Run build
+├── DEPLOY_GCP.md                 # GCP deployment guide
+└── README.md                     # This file
 ```
 
 ## Installation
@@ -90,7 +91,12 @@ python src/main.py
 
 The server will start on `http://localhost:8000`
 
-### Access Points
+### Deployed Backend
+
+- **REST API**: `https://apisync-1000435921680.us-central1.run.app`
+- **WebSocket**: `wss://apisync-1000435921680.us-central1.run.app/ws/ping`
+
+### Access Points (Local)
 
 - **Frontend Dashboard**: `http://localhost:8000/`
 - **Swagger UI**: `http://localhost:8000/docs`
@@ -190,8 +196,10 @@ Update existing sensor's `last_seen` timestamp.
 ```
 
 **Behavior:**
-- If document EXISTS: Updates only `last_seen` and `updated_at` with SERVER_TIMESTAMP
 - If document MISSING: Returns error (sensor not found)
+- If document EXISTS:
+  - When `active_exp` is True: Validates owner and mac match; returns error on mismatch. Updates `last_seen` and `updated_at`.
+  - When `active_exp` is False: Updates `last_seen`, `updated_at`, and optionally `owner` and `mac` (from hostname/mac_address in the request).
 
 #### `POST /FS/sensor/update-metadata`
 
@@ -283,7 +291,9 @@ Update sensor metadata in Firestore with flexible field updates. Supports both s
 - **Batch Mode**: Provide `sensors` array with multiple update objects (up to 500 operations per batch)
 - Only the fields provided in the `updates` dict will be modified
 - Automatically updates `updated_at` timestamp
-- Validates document exists and owner/MAC match
+- **Owner/MAC validation and update** (conditional on `active_exp`):
+  - When `active_exp` is False: owner and mac are updated from hostname/mac_address in the request; no validation
+  - When `active_exp` is True (or `"true"`): owner and mac_address must match document; on mismatch, returns 400 with warning
 - Batch operations are processed atomically using Firestore batch writes for optimal performance
 - Returns list of all fields that were updated (single mode) or list of updated LLAs (batch mode)
 
@@ -598,6 +608,15 @@ The WebSocket endpoint also supports metadata update messages (planned feature):
 - If validation succeeds AND `type == "Ping"`:
   - Automatically updates `last_seen` timestamp in Firestore
   - Maintains existing sensor data
+
+**Owner/MAC Update When Inactive:**
+- If validation fails with owner or MAC mismatch AND `type == "Ping"`:
+  - When the sensor's `active_exp` is False: Updates `owner` and `mac` in Firestore, then `last_seen`. Sets `is_valid: true` and message: "Owner/MAC updated (experiment inactive)".
+  - When `active_exp` is True: Returns validation error; no update.
+
+**Last_Package active_exp behavior:**
+- When `active_exp` is True: Validates owner/mac if provided; adds to failed_llas on mismatch.
+- When `active_exp` is False: Includes `owner` and `mac` in the update when hostname/mac_address are provided.
 
 **Features:**
 - Broadcasts received payloads to all connected clients
@@ -1150,6 +1169,16 @@ WebSocket Payload Received
 - **Performance**: Batch operations significantly improve throughput for multiple sensor updates
 
 ## Recent Updates
+
+### active_exp Logic: Owner/MAC Update When Inactive (Implemented - 2026-03-10)
+- **Unified behavior** across PING, Last_Package, POST /FS/sensor/update, and update-metadata
+- When `active_exp` is False: owner and mac can be updated in Firestore (enables reassignment of inactive sensors)
+- When `active_exp` is True: owner and mac must match; mismatch returns error or adds to failed_llas
+- **Affected flows:**
+  - **POST /FS/sensor/update** and **update_sensor_last_seen**: Validate on active; update owner/mac when inactive
+  - **WebSocket PING**: On owner/mac mismatch, calls update_sensor_metadata; if inactive, updates owner/mac then last_seen
+  - **WebSocket Last_Package** and **update_sensor_last_package**: Same validation and owner/mac update logic
+  - **update_sensor_metadata** and **batch_update_sensor_metadata**: Unchanged; already supported conditional validation
 
 ### Async Migration and Batch Writing (Implemented - 2025-12-30)
 - ✅ Fully migrated all Firestore operations to async using `AsyncClient`

@@ -22,8 +22,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(line_buffering=True)
 
-# Base URL for the API
-BASE_URL = "http://localhost:8000"
+# Base URL for the API - deployed backend
+BASE_URL = "https://apisync-1000435921680.us-central1.run.app"
 
 # Test configuration - using multiple owners and MAC addresses
 TEST_OWNERS = [

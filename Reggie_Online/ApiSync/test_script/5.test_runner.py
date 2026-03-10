@@ -28,9 +28,9 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(line_buffering=True)
 
-# Configuration
-BASE_URL = "http://localhost:8000"
-WS_URI = "ws://localhost:8000/ws/ping"
+# Configuration - deployed backend
+BASE_URL = "https://apisync-1000435921680.us-central1.run.app"
+WS_URI = "wss://apisync-1000435921680.us-central1.run.app/ws/ping"
 TIMEOUT = 10
 
 
@@ -648,9 +648,10 @@ class TestRunner:
         """Test metadata update with rapid successive updates for the same LLA."""
         start = time.time()
         url = f"{BASE_URL}/FS/sensor/update-metadata"
+        # LLA fd002124b00ccf7399b belongs to Icore_Pi/2ccf6730ab5f (per 1.test_websocket.py)
         payload = {
-            "owner": "developerroom",
-            "mac_address": "2ccf6730ab8c",
+            "owner": "Icore_Pi",
+            "mac_address": "2ccf6730ab5f",
             "lla": "fd002124b00ccf7399b",
             "updates": {
                 "label": f"Rapid_Test_{count}"

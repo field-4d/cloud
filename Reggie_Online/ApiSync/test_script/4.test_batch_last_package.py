@@ -23,8 +23,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(line_buffering=True)
 
-# WebSocket URI
-WS_URI = "ws://localhost:8000/ws/ping"
+# WebSocket URI - use wss:// for deployed backend (HTTPS)
+WS_URI = "wss://apisync-1000435921680.us-central1.run.app/ws/ping"
 TIMEOUT = 10
 
 # List of sensors to update with last_package data

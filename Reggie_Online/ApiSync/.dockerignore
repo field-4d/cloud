@@ -1,0 +1,33 @@
+# Credentials - never include in image
+backend/auth/.env
+auth/.env
+
+# Test scripts - stay in project for local use
+test_script/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual envs
+venv/
+.venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# Frontend - not needed in backend image
+frontend/
+
+# IDE / misc
+.cursor/
+*.md
