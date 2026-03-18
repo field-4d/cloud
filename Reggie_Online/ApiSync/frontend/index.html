@@ -571,6 +571,32 @@
             cursor: not-allowed;
         }
         
+        .field-locked {
+            opacity: 0.85;
+            color: #6b7280;
+        }
+        
+        .field-locked .metadata-item-value {
+            color: #9ca3af;
+        }
+        
+        .active-sensor-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .inactive-form-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
         .coordinates-input-group {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -711,16 +737,154 @@
         }
         
         /* Experiment Management Styles */
+        .selection-context-panel {
+            margin-bottom: 15px;
+            padding: 18px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #eef2ff 100%);
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .selection-context-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .selection-context-title {
+            font-size: 1em;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        
+        .selection-context-helper {
+            font-size: 0.9em;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        
+        .selection-context-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            align-items: end;
+            margin-bottom: 14px;
+        }
+        
+        .selection-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .selection-field-wide {
+            grid-column: span 2;
+        }
+        
+        .selection-field label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9em;
+        }
+        
+        .selection-field input,
+        .selection-field select,
+        #experimentSelect {
+            padding: 10px 12px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95em;
+            background: white;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .selection-field input:focus,
+        .selection-field select:focus,
+        #experimentSelect:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+        }
+        
+        .selection-field input:disabled,
+        .selection-field select:disabled,
+        #experimentSelect:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+            opacity: 0.75;
+        }
+        
+        .selection-inline-action {
+            min-height: 46px;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        
+        .selection-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .selection-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.82em;
+            font-weight: 600;
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        .selection-badge[data-tone="manual"] {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .selection-badge[data-tone="auto"] {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .selection-badge[data-tone="warning"] {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .selection-badge[data-tone="neutral"] {
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+        
+        .selection-summary {
+            margin-top: 12px;
+            font-size: 0.9em;
+            color: #4b5563;
+            line-height: 1.45;
+        }
+        
+        .selection-status {
+            margin: 0 0 12px;
+            font-size: 0.88em;
+            color: #6b7280;
+            min-height: 20px;
+        }
+        
         .experiment-controls {
             display: flex;
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
-            margin-bottom: 15px;
-            padding: 15px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 8px;
-            border: 2px solid #dee2e6;
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid #dbe3f3;
         }
         
         .experiment-control-group {
@@ -733,17 +897,6 @@
             font-weight: 600;
             color: #374151;
             font-size: 0.9em;
-        }
-        
-        #experimentSelect {
-            padding: 6px 12px;
-            border: 2px solid #d1d5db;
-            border-radius: 5px;
-            font-size: 0.9em;
-            cursor: pointer;
-            background: white;
-            min-width: 200px;
-            transition: border-color 0.2s, box-shadow 0.2s;
         }
         
         #experimentSelect:hover {
@@ -832,17 +985,71 @@
             color: #374151;
         }
         
+        @media (max-width: 900px) {
+            .selection-field-wide {
+                grid-column: span 1;
+            }
+        }
+        
         .sensors-list-section {
             margin-top: 20px;
             padding-top: 20px;
             border-top: 2px solid #e5e7eb;
         }
         
+        .sensors-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
         .sensors-list-title {
             font-size: 1.1em;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 15px;
+            margin: 0;
+        }
+        
+        .sensors-list-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .exp-action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9em;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .exp-action-start {
+            background: #10b981;
+            color: white;
+        }
+        
+        .exp-action-start:hover:not(:disabled) {
+            background: #059669;
+        }
+        
+        .exp-action-end {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .exp-action-end:hover:not(:disabled) {
+            background: #dc2626;
+        }
+        
+        .exp-action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .sensors-grid {
@@ -881,6 +1088,139 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+        }
+        
+        .sensor-card-checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        
+        .sensor-card-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .new-experiment-form-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .new-experiment-form-row label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9em;
+        }
+        
+        .new-exp-input {
+            padding: 6px 10px;
+            border: 2px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 0.9em;
+            min-width: 160px;
+        }
+        
+        .new-exp-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .selected-count {
+            margin-left: 8px;
+            font-size: 0.9em;
+            color: #6b7280;
+        }
+        
+        .sensor-management-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 14px 16px;
+            border: 1px solid #dbe3f3;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+        }
+        
+        .sensor-management-row label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9em;
+        }
+        
+        .sensor-management-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 220px;
+            margin-right: 8px;
+        }
+        
+        .sensor-management-title {
+            font-size: 0.95em;
+            font-weight: 700;
+            color: #374151;
+        }
+        
+        .sensor-management-note {
+            font-size: 0.84em;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        
+        .bulk-action-btn {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .bulk-action-btn:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+        
+        .csv-action-btn {
+            background: #111827;
+            color: white;
+        }
+        
+        .csv-action-btn:hover:not(:disabled) {
+            background: #1f2937;
+        }
+        
+        .upload-label-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .secondary-note {
+            font-size: 0.82em;
+            color: #6b7280;
+        }
+        
+        .hidden-file-input {
+            display: none;
+        }
+        
+        .link-btn {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: underline;
+            padding: 0 4px;
+        }
+        
+        .link-btn:hover {
+            color: #5568d3;
         }
         
         .sensor-card-lla {
@@ -986,64 +1326,56 @@
                 </div>
             </div>
             
-            <!-- Email Input and Permissions Resolution -->
-            <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <label for="emailInput" style="font-weight: 600; color: #374151;">Email:</label>
-                    <input type="email" id="emailInput" placeholder="user@mail.com" style="flex: 1; min-width: 200px; padding: 8px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em;">
-                    <button id="resolvePermissionsBtn" class="refresh-btn" onclick="resolvePermissions()" style="white-space: nowrap;">
-                        <span id="resolveIcon">🔍</span>
-                        <span>Resolve Permissions</span>
-                    </button>
+            <div id="ownerMacSelection" class="selection-context-panel">
+                <div class="selection-context-header">
+                    <div>
+                        <div class="selection-context-title">Selection Context</div>
+                        <div class="selection-context-helper" id="selectionHelperText">1. Resolve access, 2. choose an owner, 3. choose a device, 4. browse experiments.</div>
+                    </div>
+                    <div class="selection-badges">
+                        <span id="selectionSourceBadge" class="selection-badge" data-tone="neutral">Waiting for access</span>
+                        <span id="deviceCountBadge" class="selection-badge" data-tone="neutral" style="display: none;"></span>
+                        <span id="selectionStatusBadge" class="selection-badge" data-tone="neutral">No device selected</span>
+                    </div>
                 </div>
-                <div id="permissionsStatus" style="margin-top: 10px; font-size: 0.85em; color: #6b7280; display: none;"></div>
-            </div>
-            
-            <!-- Owner/MAC Selection Dropdowns -->
-            <div id="ownerMacSelection" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6; display: none;">
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <div class="experiment-control-group">
-                        <label for="ownerSelect" style="font-weight: 600; color: #374151;">Owner:</label>
-                        <select id="ownerSelect" onchange="onOwnerSelected(this.value)" disabled style="padding: 6px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em; cursor: pointer; background: white; min-width: 200px;">
-                            <option value="">Select owner...</option>
+                
+                <div class="selection-context-grid">
+                    <div class="selection-field selection-field-wide">
+                        <label for="emailInput">Email</label>
+                        <input type="email" id="emailInput" placeholder="user@mail.com">
+                    </div>
+                    <div class="selection-field">
+                        <label>&nbsp;</label>
+                        <button id="resolvePermissionsBtn" class="refresh-btn selection-inline-action" onclick="resolvePermissions()">
+                            <span id="resolveIcon">🔍</span>
+                            <span>Resolve Permissions</span>
+                        </button>
+                    </div>
+                    <div class="selection-field">
+                        <label for="ownerSelect">Owner</label>
+                        <select id="ownerSelect" onchange="onOwnerSelected(this.value)" disabled>
+                            <option value="">Resolve access to list owners</option>
                         </select>
                     </div>
-                    <div class="experiment-control-group">
-                        <label for="macAddressSelect" style="font-weight: 600; color: #374151;">MAC Address:</label>
-                        <select id="macAddressSelect" onchange="onMacAddressSelected(this.value)" disabled style="padding: 6px 12px; border: 2px solid #d1d5db; border-radius: 5px; font-size: 0.9em; cursor: pointer; background: white; min-width: 200px;">
-                            <option value="">Select owner first...</option>
+                    <div class="selection-field">
+                        <label for="macAddressSelect">Device (MAC Address)</label>
+                        <select id="macAddressSelect" onchange="onMacAddressSelected(this.value)" disabled>
+                            <option value="">Choose an owner first</option>
+                        </select>
+                    </div>
+                    <div class="selection-field">
+                        <label for="experimentSelect">Experiment</label>
+                        <select id="experimentSelect" onchange="onExperimentSelected(this.value)" disabled>
+                            <option value="">Choose a device first</option>
                         </select>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Owner/MAC Display (read-only, shows current selection) -->
-            <div id="ownerMacDisplay" style="margin-bottom: 15px; padding: 10px; background: #e9ecef; border-radius: 5px; display: none;">
-                <div style="display: flex; gap: 20px; font-size: 0.9em;">
-                    <div>
-                        <span style="font-weight: 600; color: #374151;">Selected Owner:</span>
-                        <span id="displayOwner" style="color: #6b7280; margin-left: 5px;">-</span>
-                    </div>
-                    <div>
-                        <span style="font-weight: 600; color: #374151;">Selected MAC Address:</span>
-                        <span id="displayMacAddress" style="color: #6b7280; margin-left: 5px;">-</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Message when owner/mac not available -->
-            <div id="ownerMacMessage" style="margin-bottom: 15px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 5px; color: #92400e;">
-                <strong>ℹ️ Info:</strong> Enter your email and click "Resolve Permissions" to select owner and MAC address, or wait for auto-detection from WebSocket payloads.
-            </div>
-            
-            <!-- Experiment Controls -->
-            <div class="experiment-controls" id="experimentControls">
-                <div class="experiment-control-group">
-                    <label for="experimentSelect">Experiment:</label>
-                    <select id="experimentSelect" onchange="onExperimentSelected(this.value)" disabled>
-                        <option value="">Select owner and MAC address first</option>
-                    </select>
-                </div>
+                
+                <div id="permissionsStatus" class="selection-status"></div>
+                <div id="selectionSummary" class="selection-summary">Resolve access to manage owners and devices, or wait for live WebSocket data to prefill the current device context.</div>
+                
+                <!-- Experiment Controls -->
+                <div class="experiment-controls" id="experimentControls">
                 <div class="experiment-control-group">
                     <div class="filter-radio-group">
                         <div class="filter-radio">
@@ -1079,10 +1411,56 @@
                     </div>
                 </div>
             </div>
+            </div>
             
-            <!-- Sensors List Section (shown when experiment is selected) -->
+            <!-- Sensors List Section (shown when experiment or All sensors is selected) -->
             <div id="sensorsListSection" class="sensors-list-section" style="display: none;">
-                <div class="sensors-list-title" id="sensorsListTitle">Sensors for Selected Experiment</div>
+                <div class="sensors-list-header">
+                    <div class="sensors-list-title" id="sensorsListTitle">Sensors for Selected Experiment</div>
+                    <div class="sensors-list-actions" id="sensorsListActions">
+                        <button type="button" id="startExperimentBtn" class="exp-action-btn exp-action-start" onclick="startExperimentBatch()" style="display: none;">Start Experiment</button>
+                        <button type="button" id="endExperimentBtn" class="exp-action-btn exp-action-end" onclick="endExperimentBatch()" style="display: none;">End Experiment</button>
+                        <button type="button" id="downloadCsvBtn" class="exp-action-btn csv-action-btn" onclick="downloadMetadataCsvTemplate()" style="display: none;">Download CSV Template</button>
+                        <label for="csvUploadInput" id="uploadCsvLabel" class="exp-action-btn csv-action-btn upload-label-btn" style="display: none;">Upload CSV</label>
+                        <input type="file" id="csvUploadInput" class="hidden-file-input" accept=".csv" onchange="handleMetadataCsvUpload(event)">
+                    </div>
+                </div>
+                <div id="experimentActionNote" class="sensor-management-row" style="display: none;">
+                    <div class="sensor-management-heading">
+                        <div class="sensor-management-title">Experiment Actions</div>
+                        <div class="sensor-management-note">Start or end experiments separately from metadata updates. Ending an experiment clears experiment-related metadata for the visible sensors.</div>
+                    </div>
+                </div>
+                <div id="bulkMetadataRow" class="sensor-management-row" style="display: none;">
+                    <div class="sensor-management-heading">
+                        <div class="sensor-management-title">Bulk Metadata</div>
+                        <div class="sensor-management-note">Apply non-empty fields to the selected sensors. Each update is keyed by LLA.</div>
+                    </div>
+                    <label for="bulkLabelInput">Label:</label>
+                    <input type="text" id="bulkLabelInput" placeholder="New label" class="new-exp-input" oninput="updateSelectedCount()">
+                    <label for="bulkLocationInput">Location:</label>
+                    <input type="text" id="bulkLocationInput" placeholder="New location" class="new-exp-input" oninput="updateSelectedCount()">
+                    <label for="bulkExpNameInput">Exp Name:</label>
+                    <input type="text" id="bulkExpNameInput" placeholder="New experiment name" class="new-exp-input" oninput="updateSelectedCount()">
+                    <button type="button" id="applyBulkMetadataBtn" class="exp-action-btn bulk-action-btn" onclick="applyBulkMetadataUpdates()" disabled>Apply to selected</button>
+                    <span id="bulkSelectedCountSpan" class="selected-count"></span>
+                    <button type="button" class="link-btn" onclick="selectAllSensors()">Select all</button>
+                    <button type="button" class="link-btn" onclick="clearSensorSelection()">Clear selection</button>
+                </div>
+                <div id="newExperimentFormRow" class="sensor-management-row" style="display: none;">
+                    <div class="sensor-management-heading">
+                        <div class="sensor-management-title">Experiment Setup</div>
+                        <div class="sensor-management-note">Use this section only when you want to start an experiment for the selected sensors.</div>
+                    </div>
+                    <label for="newExpName">Experiment name:</label>
+                    <input type="text" id="newExpName" placeholder="Experiment name" class="new-exp-input">
+                    <label for="newExpLocation">Experiment location:</label>
+                    <input type="text" id="newExpLocation" placeholder="Experiment location" class="new-exp-input">
+                    <button type="button" id="startSelectedExperimentBtn" class="exp-action-btn exp-action-start" onclick="startExperimentForSelectedSensors()" style="display: none;">Start Experiment (selected)</button>
+                    <button type="button" id="endSelectedExperimentBtn" class="exp-action-btn exp-action-end" onclick="endExperimentForSelectedSensors()" style="display: none;">End Experiment (selected)</button>
+                    <span id="selectedCountSpan" class="selected-count"></span>
+                    <span class="secondary-note">CSV import/export only applies to the currently loaded owner/device sensor list.</span>
+                </div>
                 <div id="sensorsList" class="sensors-grid">
                     <!-- Sensors will be populated here -->
                 </div>
@@ -1162,15 +1540,17 @@
         let lastPackageMap = new Map(); // Track last_package data: LLA -> {temperature, humidity, solar_intensity, battery, ...}
         
         // Experiment management variables
-        let currentOwner = null;
-        let currentMacAddress = null;
+        let activeSelection = {
+            owner: null,
+            macAddress: null,
+            source: 'idle'
+        };
         let experimentsList = []; // Store all experiments
         let filteredExperiments = []; // Store filtered experiments based on active status
         let selectedExperiment = null; // Currently selected experiment name
         let experimentFilter = 'all'; // 'all', 'active', 'inactive'
         let resolvedPermissions = null; // Store resolved permissions from API
-        let selectedOwner = null; // Currently selected owner from dropdown
-        let selectedMacAddress = null; // Currently selected MAC address from dropdown
+        let liveOwnerDevices = new Map(); // owner -> Set of MAC addresses discovered from payloads
         
         // Max payloads configuration (scalable: easy to add more options)
         const MAX_PAYLOADS_OPTIONS = [10, 15, 20];
@@ -1531,7 +1911,7 @@
                     <div>
                         <strong style="color: #991b1b;">Error Entry #${errorList.length + 1}</strong>
                     </div>
-                    <span style="color: #6b7280; font-size: 0.85em;">${data.timestamp || 'N/A'}</span>
+                    <span style="color: #6b7280; font-size: 0.85em;">${formatDate(data.timestamp) || 'N/A'}</span>
                 </div>
                 <div style="margin-bottom: 8px;">
                     <strong style="color: #374151;">Message:</strong>
@@ -1626,7 +2006,7 @@
                         // Update timestamp only
                         const timestampEl = existingItem.querySelector('.timestamp');
                         if (timestampEl) {
-                            timestampEl.textContent = timestamp;
+                            timestampEl.textContent = formatDate(timestamp) || timestamp;
                         }
                         
                         // Update owner and mac_address if available
@@ -1718,7 +2098,7 @@
                         // Update Last Seen timestamp in the UI
                         const timestampEl = existingItem.querySelector('.timestamp');
                         if (timestampEl) {
-                            timestampEl.textContent = timestamp;
+                            timestampEl.textContent = formatDate(timestamp) || timestamp;
                         }
                         
                         // Trigger blink animation (like when Ping updates)
@@ -1878,7 +2258,7 @@
                         <span class="type-badge type-badge-last-package">📦 Last Package</span>
                         <strong>Payload #${++payloadCount}</strong>
                     </div>
-                    <span class="timestamp">${timestamp || 'N/A'}</span>
+                    <span class="timestamp">${formatDate(timestamp) || 'N/A'}</span>
                 </div>
                 <div class="payload-content">
                     <div class="payload-field">
@@ -2008,7 +2388,7 @@
                     // Update timestamp in existing item
                     const timestampEl = existingItem.querySelector('.timestamp');
                     if (timestampEl) {
-                        timestampEl.textContent = data.timestamp || 'N/A';
+                        timestampEl.textContent = formatDate(data.timestamp) || 'N/A';
                     }
                 }
                 
@@ -2081,7 +2461,7 @@
                         <span class="type-badge ${typeBadgeClass}">${typeBadgeText}</span>
                         <strong>Payload #${++payloadCount}</strong>
                     </div>
-                    <span class="timestamp">${data.timestamp || 'N/A'}</span>
+                    <span class="timestamp">${formatDate(data.timestamp) || 'N/A'}</span>
                 </div>
                 <div class="payload-content">
                     <div class="payload-field">
@@ -2132,96 +2512,336 @@
         
         // Experiment Management Functions
         
+        function getActiveOwner() {
+            return activeSelection.owner;
+        }
+        
+        function getActiveMacAddress() {
+            return activeSelection.macAddress;
+        }
+        
+        function hasCompleteSelection() {
+            return Boolean(getActiveOwner() && getActiveMacAddress());
+        }
+        
+        function registerLiveOwnerAndMac(owner, macAddress) {
+            if (!owner || !macAddress) {
+                return false;
+            }
+            
+            let devices = liveOwnerDevices.get(owner);
+            if (!devices) {
+                devices = new Set();
+                liveOwnerDevices.set(owner, devices);
+            }
+            
+            const sizeBefore = devices.size;
+            devices.add(macAddress);
+            return devices.size !== sizeBefore;
+        }
+        
+        function getAvailableOwnerGroups() {
+            const groups = new Map();
+            
+            if (Array.isArray(resolvedPermissions)) {
+                resolvedPermissions.forEach(group => {
+                    if (!group?.owner) return;
+                    groups.set(group.owner, new Set(Array.isArray(group.mac_addresses) ? group.mac_addresses : []));
+                });
+            }
+            
+            liveOwnerDevices.forEach((macs, owner) => {
+                if (!groups.has(owner)) {
+                    groups.set(owner, new Set());
+                }
+                macs.forEach(mac => groups.get(owner).add(mac));
+            });
+            
+            return Array.from(groups.entries())
+                .map(([owner, macs]) => ({
+                    owner,
+                    mac_addresses: Array.from(macs).sort()
+                }))
+                .sort((a, b) => a.owner.localeCompare(b.owner));
+        }
+        
+        function hasResolvedPermissionMatch(owner = getActiveOwner(), macAddress = getActiveMacAddress()) {
+            if (!owner || !macAddress || !resolvedPermissions || resolvedPermissions.length === 0) {
+                return false;
+            }
+            
+            return resolvedPermissions.some(group =>
+                group.owner === owner &&
+                Array.isArray(group.mac_addresses) &&
+                group.mac_addresses.includes(macAddress)
+            );
+        }
+        
+        function persistActiveSelection() {
+            if (hasCompleteSelection()) {
+                localStorage.setItem('currentOwner', getActiveOwner());
+                localStorage.setItem('currentMacAddress', getActiveMacAddress());
+            } else {
+                localStorage.removeItem('currentOwner');
+                localStorage.removeItem('currentMacAddress');
+            }
+        }
+        
+        function setActiveSelection(owner, macAddress, source = 'manual', options = {}) {
+            activeSelection = {
+                owner: owner || null,
+                macAddress: macAddress || null,
+                source
+            };
+            
+            if (options.persist !== false) {
+                persistActiveSelection();
+            }
+            
+            updateSelectionContextUI();
+            
+            if (options.syncControls) {
+                syncSelectionControls();
+            }
+        }
+        
+        function populateOwnerOptions(preferredOwner = '') {
+            const ownerSelect = document.getElementById('ownerSelect');
+            if (!ownerSelect) return;
+            const ownerGroups = getAvailableOwnerGroups();
+            
+            ownerSelect.innerHTML = '';
+            
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = ownerGroups.length > 0
+                ? 'Select owner...'
+                : 'Waiting for owners from access or live data';
+            ownerSelect.appendChild(placeholder);
+            
+            ownerGroups.forEach(ownerGroup => {
+                const option = document.createElement('option');
+                option.value = ownerGroup.owner;
+                option.textContent = `${ownerGroup.owner} (${ownerGroup.mac_addresses.length} device${ownerGroup.mac_addresses.length !== 1 ? 's' : ''})`;
+                ownerSelect.appendChild(option);
+            });
+            
+            ownerSelect.disabled = ownerGroups.length === 0;
+            if (preferredOwner && Array.from(ownerSelect.options).some(option => option.value === preferredOwner)) {
+                ownerSelect.value = preferredOwner;
+            }
+        }
+        
+        function populateMacAddressOptions(owner, preferredMac = '') {
+            const macSelect = document.getElementById('macAddressSelect');
+            if (!macSelect) return;
+            
+            macSelect.innerHTML = '';
+            
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            
+            if (!owner) {
+                placeholder.textContent = 'Choose an owner first';
+                macSelect.appendChild(placeholder);
+                macSelect.disabled = true;
+                return;
+            }
+            
+            const ownerGroup = getAvailableOwnerGroups().find(group => group.owner === owner);
+            
+            if (!ownerGroup || !Array.isArray(ownerGroup.mac_addresses) || ownerGroup.mac_addresses.length === 0) {
+                placeholder.textContent = preferredMac ? 'Detected device from live data' : 'No devices found for this owner';
+                macSelect.appendChild(placeholder);
+                if (preferredMac) {
+                    const option = document.createElement('option');
+                    option.value = preferredMac;
+                    option.textContent = `${preferredMac} (live detected)`;
+                    macSelect.appendChild(option);
+                    macSelect.disabled = false;
+                    macSelect.value = preferredMac;
+                } else {
+                    macSelect.disabled = true;
+                }
+                return;
+            }
+            
+            placeholder.textContent = 'Select device...';
+            macSelect.appendChild(placeholder);
+            
+            ownerGroup.mac_addresses.forEach(mac => {
+                const option = document.createElement('option');
+                option.value = mac;
+                option.textContent = mac;
+                macSelect.appendChild(option);
+            });
+            
+            if (preferredMac && !ownerGroup.mac_addresses.includes(preferredMac)) {
+                const option = document.createElement('option');
+                option.value = preferredMac;
+                option.textContent = `${preferredMac} (live detected)`;
+                macSelect.appendChild(option);
+            }
+            
+            macSelect.disabled = false;
+            if (preferredMac && Array.from(macSelect.options).some(option => option.value === preferredMac)) {
+                macSelect.value = preferredMac;
+            }
+        }
+        
+        function syncSelectionControls() {
+            const owner = getActiveOwner();
+            const macAddress = getActiveMacAddress();
+            populateOwnerOptions(owner);
+            populateMacAddressOptions(owner, macAddress);
+        }
+        
+        function resetExperimentContext(placeholderText = 'Choose a device first') {
+            experimentsList = [];
+            filteredExperiments = [];
+            selectedExperiment = null;
+            
+            const experimentSelect = document.getElementById('experimentSelect');
+            const experimentStats = document.getElementById('experimentStats');
+            if (experimentSelect) {
+                experimentSelect.innerHTML = `<option value="">${placeholderText}</option>`;
+                experimentSelect.value = '';
+            }
+            if (experimentStats) {
+                experimentStats.style.display = 'none';
+            }
+            
+            clearSensorsList();
+        }
+        
+        function updateSelectionContextUI() {
+            const owner = getActiveOwner();
+            const macAddress = getActiveMacAddress();
+            const hasSelection = hasCompleteSelection();
+            const sourceBadge = document.getElementById('selectionSourceBadge');
+            const deviceCountBadge = document.getElementById('deviceCountBadge');
+            const statusBadge = document.getElementById('selectionStatusBadge');
+            const helperText = document.getElementById('selectionHelperText');
+            const summaryText = document.getElementById('selectionSummary');
+            const experimentSelect = document.getElementById('experimentSelect');
+            const refreshBtn = document.getElementById('refreshExperimentsBtn');
+            const availableOwnerGroups = getAvailableOwnerGroups();
+            const ownerGroup = availableOwnerGroups.find(group => group.owner === owner);
+            const hasMatch = hasResolvedPermissionMatch(owner, macAddress);
+            
+            if (sourceBadge) {
+                let sourceLabel = 'Waiting for access';
+                let sourceTone = 'neutral';
+                if (activeSelection.source === 'manual' && hasSelection) {
+                    sourceLabel = 'Manual selection';
+                    sourceTone = 'manual';
+                } else if (activeSelection.source === 'auto-detected' && hasSelection) {
+                    sourceLabel = 'Auto-detected';
+                    sourceTone = 'auto';
+                } else if (activeSelection.source === 'restored' && hasSelection) {
+                    sourceLabel = 'Restored selection';
+                    sourceTone = 'neutral';
+                } else if (resolvedPermissions && resolvedPermissions.length > 0) {
+                    sourceLabel = 'Access resolved';
+                }
+                sourceBadge.textContent = sourceLabel;
+                sourceBadge.dataset.tone = sourceTone;
+            }
+            
+            if (deviceCountBadge) {
+                if (ownerGroup && Array.isArray(ownerGroup.mac_addresses)) {
+                    deviceCountBadge.style.display = 'inline-flex';
+                    deviceCountBadge.dataset.tone = 'neutral';
+                    deviceCountBadge.textContent = `${ownerGroup.mac_addresses.length} device${ownerGroup.mac_addresses.length !== 1 ? 's' : ''}`;
+                } else {
+                    deviceCountBadge.style.display = 'none';
+                }
+            }
+            
+            if (statusBadge) {
+                if (hasSelection && resolvedPermissions && resolvedPermissions.length > 0 && !hasMatch) {
+                    statusBadge.textContent = 'Detected outside resolved access';
+                    statusBadge.dataset.tone = 'warning';
+                } else if (hasSelection) {
+                    statusBadge.textContent = 'Ready to browse';
+                    statusBadge.dataset.tone = activeSelection.source === 'auto-detected' ? 'auto' : 'manual';
+                } else {
+                    statusBadge.textContent = 'No device selected';
+                    statusBadge.dataset.tone = 'neutral';
+                }
+            }
+            
+            if (helperText) {
+                if (availableOwnerGroups.length === 0) {
+                    helperText.textContent = 'Waiting for owners from resolved access or live payloads.';
+                } else if (!resolvedPermissions || resolvedPermissions.length === 0) {
+                    helperText.textContent = 'Owners and devices are being discovered from live payloads. Resolve access if you want the permission-scoped list.';
+                } else if (!owner) {
+                    helperText.textContent = '2. Choose an owner to list the devices you can manage.';
+                } else if (!macAddress) {
+                    helperText.textContent = '3. Choose a device to load experiments for this owner.';
+                } else {
+                    helperText.textContent = '4. Browse experiments, review sensor status, and run experiment actions for the selected device.';
+                }
+            }
+            
+            if (summaryText) {
+                if (hasSelection) {
+                    if (resolvedPermissions && resolvedPermissions.length > 0 && !hasMatch) {
+                        summaryText.textContent = `Live data detected owner "${owner}" on ${macAddress}, but it is not part of the currently resolved access list. Resolve a different email or choose another available device.`;
+                    } else {
+                        summaryText.textContent = `Showing experiment context for owner "${owner}" on device ${macAddress}.`;
+                    }
+                } else {
+                    summaryText.textContent = availableOwnerGroups.length > 0
+                        ? 'Choose an owner and device from the dropdowns. Live payloads can add more devices, but they do not automatically switch the current selection.'
+                        : 'Resolve access to manage owners and devices, or wait for live WebSocket data to discover the current device context.';
+                }
+            }
+            
+            if (experimentSelect && !hasSelection && !experimentSelect.innerHTML.includes('Loading experiments')) {
+                experimentSelect.disabled = true;
+                experimentSelect.innerHTML = '<option value="">Choose a device first</option>';
+            }
+            
+            if (refreshBtn) {
+                refreshBtn.disabled = !hasSelection;
+            }
+        }
+        
         function detectOwnerAndMac(payload) {
             /**
-             * Extract owner and mac_address from WebSocket payload and store globally.
-             * Auto-populates dropdowns if permissions are already resolved.
+             * Extract owner and mac_address from WebSocket payload and register it for dropdown selection.
              * @param {Object} payload - WebSocket payload data
              */
             const owner = payload?.owner || payload?.hostname;
             const mac_address = payload?.mac_address;
             
-            if (owner && mac_address) {
-                // Store in localStorage for persistence
-                localStorage.setItem('currentOwner', owner);
-                localStorage.setItem('currentMacAddress', mac_address);
-                
-                // If permissions are resolved, try to auto-select matching owner/MAC
-                if (resolvedPermissions && resolvedPermissions.length > 0) {
-                    const matchingOwner = resolvedPermissions.find(og => og.owner === owner);
-                    if (matchingOwner && matchingOwner.mac_addresses.includes(mac_address)) {
-                        // Auto-select in dropdowns
-                        const ownerSelect = document.getElementById('ownerSelect');
-                        const macSelect = document.getElementById('macAddressSelect');
-                        
-                        if (ownerSelect && ownerSelect.value !== owner) {
-                            ownerSelect.value = owner;
-                            onOwnerSelected(owner);
-                        }
-                        
-                        if (macSelect && macSelect.value !== mac_address) {
-                            macSelect.value = mac_address;
-                            onMacAddressSelected(mac_address);
-                        }
-                        
-                        console.log(`[EXPERIMENTS] Auto-selected Owner: ${owner}, MAC: ${mac_address} from WebSocket`);
-                        return; // Already handled by dropdown selection
-                    }
-                }
-                
-                // Fallback: Update global variables if they changed (when permissions not resolved)
-                if (currentOwner !== owner || currentMacAddress !== mac_address) {
-                    currentOwner = owner;
-                    currentMacAddress = mac_address;
-                    
-                    console.log(`[EXPERIMENTS] Detected Owner: ${owner}, MAC: ${mac_address}`);
-                    
-                    // Update owner/mac display
-                    updateOwnerMacDisplay(owner, mac_address);
-                    
-                    // Fetch experiments if not already loaded
-                    if (experimentsList.length === 0) {
-                        fetchExperiments(owner, mac_address);
-                    }
-                }
+            if (!owner || !mac_address) {
+                return;
             }
-        }
-        
-        function updateOwnerMacDisplay(owner, mac_address) {
-            /**
-             * Update the owner and MAC address display in the experiment management card.
-             * @param {string} owner - Owner identifier
-             * @param {string} mac_address - MAC address
-             */
-            const ownerDisplay = document.getElementById('displayOwner');
-            const macDisplay = document.getElementById('displayMacAddress');
-            const ownerMacDisplay = document.getElementById('ownerMacDisplay');
-            const ownerMacMessage = document.getElementById('ownerMacMessage');
             
-            if (owner && mac_address) {
-                if (ownerDisplay) ownerDisplay.textContent = owner;
-                if (macDisplay) macDisplay.textContent = mac_address;
-                if (ownerMacDisplay) ownerMacDisplay.style.display = 'block';
-                if (ownerMacMessage) ownerMacMessage.style.display = 'none';
-                
-                // Enable experiment controls
-                const select = document.getElementById('experimentSelect');
-                const refreshBtn = document.getElementById('refreshExperimentsBtn');
-                if (select) select.disabled = false;
-                if (refreshBtn) refreshBtn.disabled = false;
-            } else {
-                if (ownerMacDisplay) ownerMacDisplay.style.display = 'none';
-                if (ownerMacMessage) ownerMacMessage.style.display = 'block';
-                
-                // Disable experiment controls
-                const select = document.getElementById('experimentSelect');
-                const refreshBtn = document.getElementById('refreshExperimentsBtn');
-                if (select) {
-                    select.disabled = true;
-                    select.innerHTML = '<option value="">Select owner and MAC address first</option>';
-                }
-                if (refreshBtn) refreshBtn.disabled = true;
+            const optionsChanged = registerLiveOwnerAndMac(owner, mac_address);
+            
+            if (optionsChanged) {
+                syncSelectionControls();
+                updateSelectionContextUI();
+                console.log(`[EXPERIMENTS] Discovered device ${mac_address} for owner ${owner}`);
             }
+            
+            if (!hasCompleteSelection()) {
+                setActiveSelection(owner, mac_address, 'auto-detected', { syncControls: true });
+                console.log(`[EXPERIMENTS] Auto-selected initial owner/device from live data: ${owner}, ${mac_address}`);
+                fetchExperiments(owner, mac_address);
+                return;
+            }
+            
+            if (getActiveOwner() === owner && getActiveMacAddress() === mac_address && experimentsList.length === 0) {
+                fetchExperiments(owner, mac_address);
+                return;
+            }
+            
+            console.log(`[EXPERIMENTS] Live payload detected ${owner} / ${mac_address} without changing the current experiment selection.`);
         }
         
         async function resolvePermissions() {
@@ -2232,7 +2852,6 @@
             const resolveBtn = document.getElementById('resolvePermissionsBtn');
             const resolveIcon = document.getElementById('resolveIcon');
             const permissionsStatus = document.getElementById('permissionsStatus');
-            const ownerMacSelection = document.getElementById('ownerMacSelection');
             
             const email = emailInput?.value?.trim();
             
@@ -2272,65 +2891,32 @@
                 if (data.success && data.owners && data.owners.length > 0) {
                     resolvedPermissions = data.owners;
                     console.log(`[PERMISSIONS] Resolved ${resolvedPermissions.length} owner(s) for email: ${email}`);
-                    
-                    // Show owner/MAC selection section
-                    if (ownerMacSelection) {
-                        ownerMacSelection.style.display = 'block';
-                    }
-                    
-                    // Populate owner dropdown
-                    const ownerSelect = document.getElementById('ownerSelect');
-                    if (ownerSelect) {
-                        ownerSelect.innerHTML = '<option value="">Select owner...</option>';
-                        resolvedPermissions.forEach(ownerGroup => {
-                            const option = document.createElement('option');
-                            option.value = ownerGroup.owner;
-                            option.textContent = `${ownerGroup.owner} (${ownerGroup.mac_addresses.length} MAC${ownerGroup.mac_addresses.length !== 1 ? 's' : ''})`;
-                            ownerSelect.appendChild(option);
-                        });
-                        ownerSelect.disabled = false;
-                    }
-                    
-                    // Clear MAC dropdown
-                    const macSelect = document.getElementById('macAddressSelect');
-                    if (macSelect) {
-                        macSelect.innerHTML = '<option value="">Select owner first...</option>';
-                        macSelect.disabled = true;
-                    }
-                    
-                    // Clear experiment dropdown
-                    const expSelect = document.getElementById('experimentSelect');
-                    if (expSelect) {
-                        expSelect.innerHTML = '<option value="">Select MAC address first...</option>';
-                        expSelect.disabled = true;
-                    }
-                    
-                    // Clear sensors list
-                    clearSensorsList();
-                    
-                    // Reset selected values
-                    selectedOwner = null;
-                    selectedMacAddress = null;
-                    currentOwner = null;
-                    currentMacAddress = null;
+                    populateOwnerOptions(getActiveOwner());
+                    syncSelectionControls();
                     
                     // Update status
                     if (permissionsStatus) {
-                        permissionsStatus.textContent = `✅ Found ${resolvedPermissions.length} owner(s). Select owner and MAC address to view experiments.`;
+                        permissionsStatus.textContent = `Found ${resolvedPermissions.length} owner(s). Choose an owner and device to load experiments.`;
                         permissionsStatus.style.color = '#10b981';
                     }
                     
-                    // Auto-select if only one owner with one MAC
-                    if (resolvedPermissions.length === 1 && resolvedPermissions[0].mac_addresses.length === 1) {
-                        const singleOwner = resolvedPermissions[0];
-                        if (ownerSelect) {
-                            ownerSelect.value = singleOwner.owner;
-                            onOwnerSelected(singleOwner.owner);
-                            if (macSelect) {
-                                macSelect.value = singleOwner.mac_addresses[0];
-                                onMacAddressSelected(singleOwner.mac_addresses[0]);
-                            }
+                    const hasMatchingLiveSelection = hasResolvedPermissionMatch();
+                    
+                    if (hasMatchingLiveSelection) {
+                        syncSelectionControls();
+                        if (experimentsList.length === 0 && hasCompleteSelection()) {
+                            fetchExperiments(getActiveOwner(), getActiveMacAddress());
                         }
+                    } else if (resolvedPermissions.length === 1 && resolvedPermissions[0].mac_addresses.length === 1) {
+                        const singleOwner = resolvedPermissions[0];
+                        const onlyMac = singleOwner.mac_addresses[0];
+                        setActiveSelection(singleOwner.owner, onlyMac, 'manual', { syncControls: true });
+                        fetchExperiments(singleOwner.owner, onlyMac);
+                    } else if (!hasCompleteSelection()) {
+                        setActiveSelection(null, null, 'idle');
+                        resetExperimentContext('Choose a device first');
+                    } else {
+                        updateSelectionContextUI();
                     }
                 } else {
                     throw new Error('No owners found in permissions response');
@@ -2357,59 +2943,38 @@
              * Handle owner selection from dropdown.
              * @param {string} owner - Selected owner identifier
              */
-            selectedOwner = owner;
-            selectedMacAddress = null; // Reset MAC selection
-            
-            const macSelect = document.getElementById('macAddressSelect');
-            const expSelect = document.getElementById('experimentSelect');
-            
-            if (!owner || !resolvedPermissions) {
-                if (macSelect) {
-                    macSelect.innerHTML = '<option value="">Select owner first...</option>';
-                    macSelect.disabled = true;
-                }
+            if (!owner) {
+                setActiveSelection(null, null, 'idle');
+                populateMacAddressOptions(null);
+                resetExperimentContext('Choose a device first');
                 return;
             }
             
-            // Find selected owner in resolved permissions
-            const ownerGroup = resolvedPermissions.find(og => og.owner === owner);
+            const ownerGroup = getAvailableOwnerGroups().find(og => og.owner === owner);
             
             if (!ownerGroup || !ownerGroup.mac_addresses || ownerGroup.mac_addresses.length === 0) {
                 console.warn(`[PERMISSIONS] No MAC addresses found for owner: ${owner}`);
-                if (macSelect) {
-                    macSelect.innerHTML = '<option value="">No MAC addresses found</option>';
-                    macSelect.disabled = true;
-                }
+                setActiveSelection(owner, null, 'manual');
+                populateMacAddressOptions(owner);
+                resetExperimentContext('No devices found for this owner');
                 return;
             }
             
-            // Populate MAC dropdown
-            if (macSelect) {
-                macSelect.innerHTML = '<option value="">Select MAC address...</option>';
-                ownerGroup.mac_addresses.forEach(mac => {
-                    const option = document.createElement('option');
-                    option.value = mac;
-                    option.textContent = mac;
-                    macSelect.appendChild(option);
-                });
-                macSelect.disabled = false;
+            setActiveSelection(owner, null, 'manual');
+            populateMacAddressOptions(owner);
+            resetExperimentContext('Choose a device first');
+            
+            if (ownerGroup.mac_addresses.length === 1) {
+                const onlyMac = ownerGroup.mac_addresses[0];
+                const macSelect = document.getElementById('macAddressSelect');
+                if (macSelect) {
+                    macSelect.value = onlyMac;
+                }
+                onMacAddressSelected(onlyMac);
+                return;
             }
             
-            // Clear experiment dropdown
-            if (expSelect) {
-                expSelect.innerHTML = '<option value="">Select MAC address first...</option>';
-                expSelect.disabled = true;
-            }
-            
-            // Clear sensors list
-            clearSensorsList();
-            
-            // Clear current owner/MAC until MAC is selected
-            currentOwner = null;
-            currentMacAddress = null;
-            updateOwnerMacDisplay(null, null);
-            
-            console.log(`[PERMISSIONS] Owner selected: ${owner}, ${ownerGroup.mac_addresses.length} MAC address(es) available`);
+            console.log(`[PERMISSIONS] Owner selected: ${owner}, ${ownerGroup.mac_addresses.length} device(s) available`);
         }
         
         function onMacAddressSelected(mac_address) {
@@ -2417,58 +2982,46 @@
              * Handle MAC address selection from dropdown.
              * @param {string} mac_address - Selected MAC address
              */
-            selectedMacAddress = mac_address;
+            const owner = document.getElementById('ownerSelect')?.value || getActiveOwner();
             
-            if (!selectedOwner || !mac_address) {
+            if (!owner || !mac_address) {
                 console.warn('[PERMISSIONS] Cannot proceed: missing owner or MAC address');
+                setActiveSelection(owner, null, 'manual');
+                resetExperimentContext('Choose a device first');
                 return;
             }
             
-            // Update current owner/MAC for experiment fetching
-            currentOwner = selectedOwner;
-            currentMacAddress = mac_address;
-            
-            // Update display
-            updateOwnerMacDisplay(selectedOwner, mac_address);
-            
-            // Enable experiment dropdown
-            const expSelect = document.getElementById('experimentSelect');
-            if (expSelect) {
-                expSelect.disabled = false;
-            }
-            
-            // Clear experiment selection and sensors list
+            setActiveSelection(owner, mac_address, 'manual');
             selectedExperiment = null;
+            const expSelect = document.getElementById('experimentSelect');
             if (expSelect) {
                 expSelect.value = '';
             }
             clearSensorsList();
             
-            // Fetch experiments for selected owner/MAC
-            fetchExperiments(selectedOwner, mac_address);
+            fetchExperiments(owner, mac_address);
             
-            console.log(`[PERMISSIONS] MAC address selected: ${mac_address} for owner: ${selectedOwner}`);
+            console.log(`[PERMISSIONS] Device selected: ${mac_address} for owner: ${owner}`);
         }
         
         async function fetchExperiments(owner, mac_address) {
             /**
              * Fetch experiments from the API endpoint.
-             * Uses selected owner/MAC from dropdowns, or falls back to auto-detected values.
-             * @param {string} owner - Owner identifier (optional, uses selectedOwner if not provided)
-             * @param {string} mac_address - MAC address (optional, uses selectedMacAddress if not provided)
+             * Uses the active selection context.
+             * @param {string} owner - Owner identifier
+             * @param {string} mac_address - MAC address
              */
-            // Use provided parameters or fall back to selected values
-            const effectiveOwner = owner || selectedOwner || currentOwner;
-            const effectiveMac = mac_address || selectedMacAddress || currentMacAddress;
+            const effectiveOwner = owner || getActiveOwner();
+            const effectiveMac = mac_address || getActiveMacAddress();
             
             if (!effectiveOwner || !effectiveMac) {
                 console.warn('[EXPERIMENTS] Cannot fetch experiments: missing owner or mac_address');
                 return;
             }
             
-            // Update current values
-            currentOwner = effectiveOwner;
-            currentMacAddress = effectiveMac;
+            if (getActiveOwner() !== effectiveOwner || getActiveMacAddress() !== effectiveMac) {
+                setActiveSelection(effectiveOwner, effectiveMac, activeSelection.source || 'manual', { syncControls: true });
+            }
             
             const select = document.getElementById('experimentSelect');
             const refreshBtn = document.getElementById('refreshExperimentsBtn');
@@ -2568,8 +3121,8 @@
                 return true;
             });
             
-            // Clear and populate dropdown
-            select.innerHTML = '<option value="">All Experiments</option>';
+            // Clear and populate dropdown: All Experiments, All sensors, then named experiments
+            select.innerHTML = '<option value="">All Experiments</option><option value="__all_sensors__">All sensors</option>';
             
             if (filteredExperiments.length === 0) {
                 const filterText = experimentFilter === 'active' ? 'active' : experimentFilter === 'inactive' ? 'inactive' : '';
@@ -2596,8 +3149,10 @@
                 select.appendChild(option);
             });
             
-            // Restore selected experiment if it still exists in filtered list
-            if (selectedExperiment !== null) {
+            // Restore selected experiment if it still exists in filtered list (or "All sensors")
+            if (selectedExperiment === ALL_SENSORS_VALUE) {
+                select.value = ALL_SENSORS_VALUE;
+            } else if (selectedExperiment !== null) {
                 const stillExists = filteredExperiments.some(exp => {
                     const expName = exp.exp_name || '';
                     return expName === selectedExperiment;
@@ -2606,7 +3161,6 @@
                     select.value = selectedExperiment;
                 } else {
                     selectedExperiment = null;
-                    // Clear sensors list if selected experiment is no longer in filtered list
                     clearSensorsList();
                 }
             }
@@ -2635,40 +3189,84 @@
             }
         }
         
+        const ALL_SENSORS_VALUE = '__all_sensors__';
+        let isAllSensorsView = false;
+        
         function onExperimentSelected(expName) {
             /**
              * Handle experiment selection from dropdown.
-             * @param {string} expName - Selected experiment name (empty string for "All Experiments" or empty exp_name)
+             * @param {string} expName - Selected experiment name, empty string for "All Experiments", __all_sensors__ for "All sensors", or experiment name
              */
-            // Store the selected value (can be empty string for unnamed experiments)
             selectedExperiment = expName === '' ? null : expName;
+            isAllSensorsView = expName === ALL_SENSORS_VALUE;
             
             if (expName === '') {
-                // "All Experiments" selected - clear sensors list
                 clearSensorsList();
                 return;
             }
             
-            // Fetch sensors for selected experiment (expName can be empty string for unnamed)
-            if (currentOwner && currentMacAddress) {
-                fetchSensorsForExperiment(currentOwner, currentMacAddress, expName);
+            if (expName === ALL_SENSORS_VALUE) {
+                if (hasCompleteSelection()) {
+                    fetchAllSensors(getActiveOwner(), getActiveMacAddress());
+                } else {
+                    console.warn('[EXPERIMENTS] Cannot fetch all sensors: missing owner or mac_address');
+                    alert('Owner and MAC address are required.');
+                }
+                return;
+            }
+            
+            if (hasCompleteSelection()) {
+                fetchSensorsForExperiment(getActiveOwner(), getActiveMacAddress(), expName);
             } else {
                 console.warn('[EXPERIMENTS] Cannot fetch sensors: missing owner or mac_address');
                 alert('Owner and MAC address are required. Please wait for WebSocket payload or refresh the page.');
             }
         }
         
+        async function fetchAllSensors(owner, mac_address) {
+            /**
+             * Fetch all sensors for owner/mac (no exp_name filter).
+             * Backend returns all sensors when exp_name is omitted.
+             */
+            const effectiveOwner = owner || getActiveOwner();
+            const effectiveMac = mac_address || getActiveMacAddress();
+            if (!effectiveOwner || !effectiveMac) {
+                alert('Owner and MAC address are required.');
+                return;
+            }
+            const sensorsListSection = document.getElementById('sensorsListSection');
+            const sensorsList = document.getElementById('sensorsList');
+            const sensorsListTitle = document.getElementById('sensorsListTitle');
+            if (sensorsListSection) sensorsListSection.style.display = 'block';
+            if (sensorsListTitle) sensorsListTitle.textContent = 'Loading all sensors...';
+            if (sensorsList) sensorsList.innerHTML = '<div class="metadata-loading">Loading sensors...</div>';
+            try {
+                const url = getApiBaseUrl() + `/GCP-FS/metadata/sensors?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const data = await response.json();
+                if (data.success && data.data) {
+                    displaySensorsList(data.data, 'All sensors');
+                } else {
+                    throw new Error(data.message || 'Failed to fetch sensors');
+                }
+            } catch (error) {
+                console.error('[EXPERIMENTS] Error fetching all sensors:', error);
+                if (sensorsListTitle) sensorsListTitle.textContent = 'Error loading sensors';
+                if (sensorsList) sensorsList.innerHTML = `<div class="metadata-error">Error: ${error.message}</div>`;
+            }
+        }
+        
         async function fetchSensorsForExperiment(owner, mac_address, exp_name) {
             /**
              * Fetch sensors for a specific experiment.
-             * Uses selected owner/MAC from dropdowns, or falls back to provided/auto-detected values.
-             * @param {string} owner - Owner identifier (optional, uses selectedOwner if not provided)
-             * @param {string} mac_address - MAC address (optional, uses selectedMacAddress if not provided)
+             * Uses the active owner/device selection context.
+             * @param {string} owner - Owner identifier
+             * @param {string} mac_address - MAC address
              * @param {string} exp_name - Experiment name
              */
-            // Use provided parameters or fall back to selected values
-            const effectiveOwner = owner || selectedOwner || currentOwner;
-            const effectiveMac = mac_address || selectedMacAddress || currentMacAddress;
+            const effectiveOwner = owner || getActiveOwner();
+            const effectiveMac = mac_address || getActiveMacAddress();
             
             if (!effectiveOwner || !effectiveMac) {
                 console.warn('[EXPERIMENTS] Cannot fetch sensors: missing owner or mac_address');
@@ -2724,90 +3322,653 @@
             }
         }
         
+        let currentSensorsList = [];
+        let selectedSensorLLAs = new Set();
+        
+        function getSelectedSensors() {
+            return currentSensorsList.filter(sensor => selectedSensorLLAs.has(sensor.LLA));
+        }
+        
+        function getCurrentSensorLookup() {
+            const lookup = new Map();
+            currentSensorsList.forEach(sensor => {
+                if (sensor?.LLA) {
+                    lookup.set(sensor.LLA, sensor);
+                }
+            });
+            return lookup;
+        }
+        
+        function resetBulkMetadataForm() {
+            const bulkLabel = document.getElementById('bulkLabelInput');
+            const bulkLocation = document.getElementById('bulkLocationInput');
+            const bulkExpName = document.getElementById('bulkExpNameInput');
+            if (bulkLabel) bulkLabel.value = '';
+            if (bulkLocation) bulkLocation.value = '';
+            if (bulkExpName) bulkExpName.value = '';
+        }
+        
+        function refreshCurrentSensorView() {
+            if (!hasCompleteSelection()) return;
+            
+            fetchExperiments(getActiveOwner(), getActiveMacAddress());
+            
+            if (isAllSensorsView || selectedExperiment === ALL_SENSORS_VALUE) {
+                fetchAllSensors(getActiveOwner(), getActiveMacAddress());
+            } else if (selectedExperiment !== null) {
+                fetchSensorsForExperiment(getActiveOwner(), getActiveMacAddress(), selectedExperiment);
+            }
+        }
+        
+        function getPendingBulkMetadataUpdates() {
+            const updates = {};
+            const label = document.getElementById('bulkLabelInput')?.value?.trim();
+            const location = document.getElementById('bulkLocationInput')?.value?.trim();
+            const expName = document.getElementById('bulkExpNameInput')?.value?.trim();
+            
+            if (label) updates.label = label;
+            if (location) updates.location = location;
+            if (expName) updates.exp_name = expName;
+            
+            return updates;
+        }
+        
+        function updateSelectedCount() {
+            const span = document.getElementById('selectedCountSpan');
+            const btn = document.getElementById('startSelectedExperimentBtn');
+            const endBtn = document.getElementById('endSelectedExperimentBtn');
+            const nameInput = document.getElementById('newExpName');
+            const bulkBtn = document.getElementById('applyBulkMetadataBtn');
+            const bulkSpan = document.getElementById('bulkSelectedCountSpan');
+            const n = selectedSensorLLAs.size;
+            const hasBulkValues = Object.keys(getPendingBulkMetadataUpdates()).length > 0;
+            const selectedSensors = getSelectedSensors();
+            const hasActiveSelection = selectedSensors.some(sensor => sensor.Active_Exp === true);
+            
+            if (span) span.textContent = n > 0 ? `${n} selected for experiment actions` : '';
+            if (bulkSpan) bulkSpan.textContent = n > 0 ? `${n} selected for metadata updates` : '';
+            if (btn) {
+                btn.style.display = isAllSensorsView && n > 0 ? 'inline-block' : 'none';
+                btn.disabled = !nameInput || !nameInput.value.trim();
+            }
+            if (endBtn) {
+                endBtn.style.display = isAllSensorsView && n > 0 ? 'inline-block' : 'none';
+                endBtn.disabled = !(isAllSensorsView && n > 0 && hasActiveSelection);
+            }
+            if (bulkBtn) {
+                bulkBtn.disabled = !(isAllSensorsView && n > 0 && hasBulkValues);
+            }
+        }
+        
+        function selectAllSensors() {
+            if (!isAllSensorsView) return;
+            currentSensorsList.forEach(s => { if (s.LLA) selectedSensorLLAs.add(s.LLA); });
+            const listEl = document.getElementById('sensorsList');
+            if (listEl) listEl.querySelectorAll('.sensor-card-checkbox').forEach(cb => { cb.checked = true; });
+            updateSelectedCount();
+        }
+        
+        function clearSensorSelection() {
+            selectedSensorLLAs.clear();
+            document.querySelectorAll('.sensor-card-checkbox').forEach(cb => { cb.checked = false; });
+            updateSelectedCount();
+        }
+        
+        function setCsvActionVisibility(isVisible) {
+            const downloadBtn = document.getElementById('downloadCsvBtn');
+            const uploadLabel = document.getElementById('uploadCsvLabel');
+            if (downloadBtn) downloadBtn.style.display = isVisible ? 'inline-flex' : 'none';
+            if (uploadLabel) uploadLabel.style.display = isVisible ? 'inline-flex' : 'none';
+        }
+        
         function displaySensorsList(sensors, exp_name) {
             /**
              * Display sensors in a grid layout.
              * @param {Array} sensors - Array of sensor objects
-             * @param {string} exp_name - Experiment name
+             * @param {string} exp_name - Experiment name (or "All sensors")
              */
+            currentSensorsList = sensors || [];
             const sensorsList = document.getElementById('sensorsList');
             const sensorsListTitle = document.getElementById('sensorsListTitle');
+            const startBtn = document.getElementById('startExperimentBtn');
+            const endBtn = document.getElementById('endExperimentBtn');
+            const startSelectedBtn = document.getElementById('startSelectedExperimentBtn');
+            const newExpRow = document.getElementById('newExperimentFormRow');
+            const bulkMetadataRow = document.getElementById('bulkMetadataRow');
+            const experimentActionNote = document.getElementById('experimentActionNote');
+            const newExpName = document.getElementById('newExpName');
             
             if (!sensorsList) return;
+            setCsvActionVisibility(true);
             
             if (sensorsListTitle) {
-                sensorsListTitle.textContent = `Sensors for "${exp_name}" (${sensors.length} sensor${sensors.length !== 1 ? 's' : ''})`;
+                sensorsListTitle.textContent = `Sensors for "${exp_name || 'Unnamed'}" (${sensors.length} sensor${sensors.length !== 1 ? 's' : ''})`;
+            }
+            
+            if (isAllSensorsView) {
+                selectedSensorLLAs.clear();
+                if (startBtn) startBtn.style.display = 'none';
+                if (endBtn) endBtn.style.display = 'none';
+                if (newExpRow) newExpRow.style.display = 'flex';
+                if (bulkMetadataRow) bulkMetadataRow.style.display = 'flex';
+                if (experimentActionNote) experimentActionNote.style.display = 'none';
+            } else {
+                resetBulkMetadataForm();
+                if (newExpRow) newExpRow.style.display = 'none';
+                if (bulkMetadataRow) bulkMetadataRow.style.display = 'none';
+                if (startSelectedBtn) startSelectedBtn.style.display = 'none';
+                const hasInactive = sensors.some(s => s.Active_Exp === false);
+                const hasActive = sensors.some(s => s.Active_Exp === true);
+                if (startBtn) startBtn.style.display = hasInactive ? 'inline-block' : 'none';
+                if (endBtn) endBtn.style.display = hasActive ? 'inline-block' : 'none';
+                if (experimentActionNote) experimentActionNote.style.display = hasInactive || hasActive ? 'flex' : 'none';
             }
             
             if (sensors.length === 0) {
                 sensorsList.innerHTML = '<div class="metadata-empty">No sensors found for this experiment.</div>';
+                if (startBtn) startBtn.style.display = 'none';
+                if (endBtn) endBtn.style.display = 'none';
+                if (startSelectedBtn) startSelectedBtn.style.display = 'none';
+                if (newExpRow) newExpRow.style.display = 'none';
+                if (bulkMetadataRow) bulkMetadataRow.style.display = 'none';
+                if (experimentActionNote) experimentActionNote.style.display = 'none';
+                setCsvActionVisibility(false);
+                updateSelectedCount();
                 return;
             }
             
-            // Clear existing content
             sensorsList.innerHTML = '';
             
-            // Create sensor cards
             sensors.forEach(sensor => {
                 const card = document.createElement('div');
                 const isActive = sensor.Active_Exp === true;
                 card.className = `sensor-card ${isActive ? 'active-exp' : 'inactive-exp'}`;
+                const lla = sensor.LLA || '';
                 
-                card.innerHTML = `
-                    <div class="sensor-card-header">
-                        <div class="sensor-card-lla">${sensor.LLA || 'N/A'}</div>
-                        <div class="sensor-card-badge ${isActive ? 'active' : 'inactive'}">
-                            ${isActive ? 'Active' : 'Inactive'}
+                if (isAllSensorsView) {
+                    card.innerHTML = `
+                        <div class="sensor-card-header">
+                            <label class="sensor-card-checkbox-label" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="sensor-card-checkbox" data-lla="${lla.replace(/"/g, '&quot;')}">
+                            </label>
+                            <div class="sensor-card-lla">${sensor.LLA || 'N/A'}</div>
+                            <div class="sensor-card-badge ${isActive ? 'active' : 'inactive'}">
+                                ${isActive ? 'Active' : 'Inactive'}
+                            </div>
                         </div>
-                    </div>
-                    <div class="sensor-card-info">
-                        <div class="sensor-card-info-item">
-                            <span class="sensor-card-info-label">Label:</span>
-                            <span class="sensor-card-info-value">${sensor.Label || 'N/A'}</span>
+                        <div class="sensor-card-info">
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Label:</span>
+                                <span class="sensor-card-info-value">${sensor.Label || 'N/A'}</span>
+                            </div>
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Location:</span>
+                                <span class="sensor-card-info-value">${sensor.Location || 'N/A'}</span>
+                            </div>
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Exp Name:</span>
+                                <span class="sensor-card-info-value">${sensor.Exp_Name || 'N/A'}</span>
+                            </div>
+                            ${sensor.Last_Seen ? `
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Last Seen:</span>
+                                <span class="sensor-card-info-value">${formatDate(sensor.Last_Seen)}</span>
+                            </div>
+                            ` : ''}
                         </div>
-                        <div class="sensor-card-info-item">
-                            <span class="sensor-card-info-label">Location:</span>
-                            <span class="sensor-card-info-value">${sensor.Location || 'N/A'}</span>
+                    `;
+                    const cb = card.querySelector('.sensor-card-checkbox');
+                    if (cb) {
+                        cb.addEventListener('change', () => {
+                            if (cb.checked) selectedSensorLLAs.add(lla);
+                            else selectedSensorLLAs.delete(lla);
+                            updateSelectedCount();
+                        });
+                    }
+                } else {
+                    card.innerHTML = `
+                        <div class="sensor-card-header">
+                            <div class="sensor-card-lla">${sensor.LLA || 'N/A'}</div>
+                            <div class="sensor-card-badge ${isActive ? 'active' : 'inactive'}">
+                                ${isActive ? 'Active' : 'Inactive'}
+                            </div>
                         </div>
-                        <div class="sensor-card-info-item">
-                            <span class="sensor-card-info-label">Exp Name:</span>
-                            <span class="sensor-card-info-value">${sensor.Exp_Name || 'N/A'}</span>
+                        <div class="sensor-card-info">
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Label:</span>
+                                <span class="sensor-card-info-value">${sensor.Label || 'N/A'}</span>
+                            </div>
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Location:</span>
+                                <span class="sensor-card-info-value">${sensor.Location || 'N/A'}</span>
+                            </div>
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Exp Name:</span>
+                                <span class="sensor-card-info-value">${sensor.Exp_Name || 'N/A'}</span>
+                            </div>
+                            ${sensor.Last_Seen ? `
+                            <div class="sensor-card-info-item">
+                                <span class="sensor-card-info-label">Last Seen:</span>
+                                <span class="sensor-card-info-value">${formatDate(sensor.Last_Seen)}</span>
+                            </div>
+                            ` : ''}
                         </div>
-                        ${sensor.Last_Seen ? `
-                        <div class="sensor-card-info-item">
-                            <span class="sensor-card-info-label">Last Seen:</span>
-                            <span class="sensor-card-info-value">${formatDate(sensor.Last_Seen)}</span>
-                        </div>
-                        ` : ''}
-                    </div>
-                `;
+                    `;
+                }
                 
-                // Add click handler to open metadata modal
-                card.addEventListener('click', () => {
+                card.addEventListener('click', (e) => {
+                    if (isAllSensorsView && e.target.closest('.sensor-card-checkbox-label')) return;
                     fetchMetadataForLLA(sensor.Owner, sensor.Mac_Address, sensor.LLA);
                 });
                 
                 sensorsList.appendChild(card);
             });
+            
+            if (isAllSensorsView) updateSelectedCount();
+        }
+        
+        async function applyBulkMetadataUpdates() {
+            const selected = getSelectedSensors();
+            const updates = getPendingBulkMetadataUpdates();
+            
+            if (!isAllSensorsView) {
+                alert('Bulk metadata updates are available in the "All sensors" view.');
+                return;
+            }
+            
+            if (selected.length === 0) {
+                alert('Please select at least one sensor.');
+                return;
+            }
+            
+            if (Object.keys(updates).length === 0) {
+                alert('Enter at least one metadata field to update.');
+                return;
+            }
+            
+            const sensors = selected.map(sensor => ({
+                lla: sensor.LLA,
+                hostname: sensor.Owner || getActiveOwner(),
+                mac_address: sensor.Mac_Address || getActiveMacAddress(),
+                updates: { ...updates }
+            }));
+            
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sensors })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to update sensor metadata');
+                
+                alert(`Updated metadata for ${result.updated_llas?.length || selected.length} sensor(s).`);
+                resetBulkMetadataForm();
+                updateSelectedCount();
+                refreshCurrentSensorView();
+            } catch (error) {
+                console.error('[BULK_METADATA]', error);
+                alert('Failed to update metadata: ' + error.message);
+            }
+        }
+        
+        function escapeCsvValue(value) {
+            const stringValue = value === undefined || value === null ? '' : String(value);
+            if (/[",\n]/.test(stringValue)) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        }
+        
+        function downloadMetadataCsvTemplate() {
+            if (!currentSensorsList.length) {
+                alert('Load sensors first to download a CSV template.');
+                return;
+            }
+            
+            const headers = ['lla', 'owner', 'mac_address', 'label', 'location', 'exp_name'];
+            const rows = currentSensorsList.map(sensor => ([
+                sensor.LLA || '',
+                sensor.Owner || getActiveOwner() || '',
+                sensor.Mac_Address || getActiveMacAddress() || '',
+                sensor.Label || '',
+                sensor.Location || '',
+                sensor.Exp_Name || ''
+            ]));
+            
+            const csv = [headers, ...rows]
+                .map(row => row.map(escapeCsvValue).join(','))
+                .join('\r\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const owner = (getActiveOwner() || 'owner').replace(/[^\w-]+/g, '_');
+            const mac = (getActiveMacAddress() || 'device').replace(/[^\w-]+/g, '_');
+            link.href = url;
+            link.download = `sensor_metadata_template_${owner}_${mac}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        function parseCsvText(text) {
+            const rows = [];
+            let currentRow = [];
+            let currentValue = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        currentValue += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    currentRow.push(currentValue);
+                    currentValue = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (char === '\r' && nextChar === '\n') i++;
+                    currentRow.push(currentValue);
+                    if (currentRow.some(cell => cell.trim() !== '')) {
+                        rows.push(currentRow);
+                    }
+                    currentRow = [];
+                    currentValue = '';
+                } else {
+                    currentValue += char;
+                }
+            }
+            
+            if (currentValue.length > 0 || currentRow.length > 0) {
+                currentRow.push(currentValue);
+                if (currentRow.some(cell => cell.trim() !== '')) {
+                    rows.push(currentRow);
+                }
+            }
+            
+            return rows;
+        }
+        
+        function normalizeCsvHeader(header) {
+            return String(header || '')
+                .replace(/^\uFEFF/, '')
+                .trim()
+                .toLowerCase()
+                .replace(/[\s-]+/g, '_');
+        }
+        
+        async function handleMetadataCsvUpload(event) {
+            const file = event?.target?.files?.[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const rows = parseCsvText(text);
+                if (rows.length < 2) {
+                    throw new Error('CSV must include a header row and at least one data row.');
+                }
+                
+                const headers = rows[0].map(normalizeCsvHeader);
+                const llaIndex = headers.indexOf('lla');
+                const ownerIndex = headers.indexOf('owner');
+                const hostnameIndex = headers.indexOf('hostname');
+                const macIndex = headers.indexOf('mac_address');
+                const labelIndex = headers.indexOf('label');
+                const locationIndex = headers.indexOf('location');
+                const expNameIndex = headers.indexOf('exp_name');
+                
+                if (llaIndex === -1) {
+                    throw new Error('CSV must include an "LLA" column.');
+                }
+                
+                const sensorLookup = getCurrentSensorLookup();
+                const sensors = [];
+                const errors = [];
+                
+                rows.slice(1).forEach((row, index) => {
+                    const lineNumber = index + 2;
+                    const lla = (row[llaIndex] || '').trim();
+                    if (!lla) {
+                        errors.push(`Line ${lineNumber}: missing LLA.`);
+                        return;
+                    }
+                    
+                    const currentSensor = sensorLookup.get(lla);
+                    if (!currentSensor) {
+                        errors.push(`Line ${lineNumber}: LLA ${lla} is not in the current sensor list.`);
+                        return;
+                    }
+                    
+                    const updates = {};
+                    const label = labelIndex >= 0 ? (row[labelIndex] || '').trim() : '';
+                    const location = locationIndex >= 0 ? (row[locationIndex] || '').trim() : '';
+                    const expName = expNameIndex >= 0 ? (row[expNameIndex] || '').trim() : '';
+                    
+                    if (label) updates.label = label;
+                    if (location) updates.location = location;
+                    if (expName) updates.exp_name = expName;
+                    
+                    if (Object.keys(updates).length === 0) {
+                        return;
+                    }
+                    
+                    sensors.push({
+                        lla,
+                        hostname: (ownerIndex >= 0 ? row[ownerIndex] : '')?.trim() ||
+                            (hostnameIndex >= 0 ? row[hostnameIndex] : '')?.trim() ||
+                            currentSensor.Owner ||
+                            getActiveOwner(),
+                        mac_address: (macIndex >= 0 ? row[macIndex] : '')?.trim() ||
+                            currentSensor.Mac_Address ||
+                            getActiveMacAddress(),
+                        updates
+                    });
+                });
+                
+                if (errors.length > 0) {
+                    throw new Error(errors.slice(0, 8).join('\n'));
+                }
+                
+                if (sensors.length === 0) {
+                    throw new Error('No valid metadata updates were found in the CSV.');
+                }
+                
+                const confirmed = window.confirm(`Apply metadata updates from CSV to ${sensors.length} sensor(s)?`);
+                if (!confirmed) {
+                    return;
+                }
+                
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sensors })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to import CSV metadata');
+                
+                alert(`Imported metadata updates for ${result.updated_llas?.length || sensors.length} sensor(s).`);
+                refreshCurrentSensorView();
+            } catch (error) {
+                console.error('[CSV_IMPORT]', error);
+                alert('CSV import failed: ' + error.message);
+            } finally {
+                if (event?.target) {
+                    event.target.value = '';
+                }
+            }
+        }
+        
+        async function startExperimentForSelectedSensors() {
+            const nameEl = document.getElementById('newExpName');
+            const locationEl = document.getElementById('newExpLocation');
+            const expName = nameEl ? nameEl.value.trim() : '';
+            const expLocation = locationEl ? locationEl.value.trim() : '';
+            if (!expName) {
+                alert('Please enter an experiment name.');
+                return;
+            }
+            const selected = currentSensorsList.filter(s => selectedSensorLLAs.has(s.LLA));
+            if (selected.length === 0) {
+                alert('Please select at least one sensor.');
+                return;
+            }
+            const now = getTimestampForExperiment();
+            const sensors = selected.map(s => ({
+                lla: s.LLA,
+                hostname: s.Owner || getActiveOwner(),
+                mac_address: s.Mac_Address || getActiveMacAddress(),
+                updates: {
+                    exp_name: expName,
+                    exp_location: expLocation,
+                    active_exp: true,
+                    exp_started_at: now
+                }
+            }));
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sensors })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to start experiment');
+                alert(`Started experiment "${expName}" for ${result.updated_llas?.length || selected.length} sensor(s).`);
+                selectedSensorLLAs.clear();
+                updateSelectedCount();
+                refreshCurrentSensorView();
+            } catch (e) {
+                console.error('[START_SELECTED]', e);
+                alert('Failed to start experiment: ' + e.message);
+            }
+        }
+        
+        async function endExperimentForSelectedSensors() {
+            const selected = getSelectedSensors().filter(sensor => sensor.Active_Exp === true);
+            if (selected.length === 0) {
+                alert('No active sensors selected to end.');
+                return;
+            }
+            
+            const sensors = selected.map(sensor => ({
+                lla: sensor.LLA,
+                hostname: sensor.Owner || getActiveOwner(),
+                mac_address: sensor.Mac_Address || getActiveMacAddress(),
+                updates: getEndExperimentUpdates()
+            }));
+            
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sensors })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to end experiment');
+                alert(`Ended experiment for ${result.updated_llas?.length || selected.length} selected sensor(s).`);
+                selectedSensorLLAs.clear();
+                updateSelectedCount();
+                refreshCurrentSensorView();
+            } catch (e) {
+                console.error('[END_SELECTED]', e);
+                alert('Failed to end experiment: ' + e.message);
+            }
+        }
+        
+        async function startExperimentBatch() {
+            const inactive = currentSensorsList.filter(s => s.Active_Exp === false);
+            if (inactive.length === 0) {
+                alert('No inactive sensors to start.');
+                return;
+            }
+            const now = getTimestampForExperiment();
+            const sensors = inactive.map(s => ({
+                lla: s.LLA,
+                hostname: s.Owner || getActiveOwner(),
+                mac_address: s.Mac_Address || getActiveMacAddress(),
+                updates: { active_exp: true, exp_started_at: now }
+            }));
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sensors })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to start experiment');
+                alert(`Started experiment for ${result.updated_llas?.length || inactive.length} sensor(s).`);
+                refreshCurrentSensorView();
+            } catch (e) {
+                console.error('[START_EXP]', e);
+                alert('Failed to start experiment: ' + e.message);
+            }
+        }
+        
+        async function endExperimentBatch() {
+            const active = currentSensorsList.filter(s => s.Active_Exp === true);
+            if (active.length === 0) {
+                alert('No active sensors to end.');
+                return;
+            }
+            const sensors = active.map(s => ({
+                lla: s.LLA,
+                hostname: s.Owner || getActiveOwner(),
+                mac_address: s.Mac_Address || getActiveMacAddress(),
+                updates: getEndExperimentUpdates()
+            }));
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sensors })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to end experiment');
+                alert(`Ended experiment for ${result.updated_llas?.length || active.length} sensor(s).`);
+                refreshCurrentSensorView();
+            } catch (e) {
+                console.error('[END_EXP]', e);
+                alert('Failed to end experiment: ' + e.message);
+            }
         }
         
         function clearSensorsList() {
-            /**
-             * Clear the sensors list display.
-             */
+            currentSensorsList = [];
+            selectedSensorLLAs.clear();
+            isAllSensorsView = false;
             const sensorsListSection = document.getElementById('sensorsListSection');
-            if (sensorsListSection) {
-                sensorsListSection.style.display = 'none';
-            }
+            const startBtn = document.getElementById('startExperimentBtn');
+            const endBtn = document.getElementById('endExperimentBtn');
+            const startSelectedBtn = document.getElementById('startSelectedExperimentBtn');
+            const endSelectedBtn = document.getElementById('endSelectedExperimentBtn');
+            const newExpRow = document.getElementById('newExperimentFormRow');
+            const bulkMetadataRow = document.getElementById('bulkMetadataRow');
+            const experimentActionNote = document.getElementById('experimentActionNote');
+            if (sensorsListSection) sensorsListSection.style.display = 'none';
+            if (startBtn) startBtn.style.display = 'none';
+            if (endBtn) endBtn.style.display = 'none';
+            if (startSelectedBtn) startSelectedBtn.style.display = 'none';
+            if (endSelectedBtn) endSelectedBtn.style.display = 'none';
+            if (newExpRow) newExpRow.style.display = 'none';
+            if (bulkMetadataRow) bulkMetadataRow.style.display = 'none';
+            if (experimentActionNote) experimentActionNote.style.display = 'none';
+            setCsvActionVisibility(false);
+            resetBulkMetadataForm();
         }
         
         function refreshExperiments() {
             /**
              * Refresh the experiments list.
-             * Uses selected owner/MAC from dropdowns, or falls back to auto-detected values.
+             * Uses the active owner/device selection context.
              */
-            const effectiveOwner = selectedOwner || currentOwner;
-            const effectiveMac = selectedMacAddress || currentMacAddress;
+            const effectiveOwner = getActiveOwner();
+            const effectiveMac = getActiveMacAddress();
             
             if (effectiveOwner && effectiveMac) {
                 fetchExperiments(effectiveOwner, effectiveMac);
@@ -2856,19 +4017,15 @@
             const savedOwner = localStorage.getItem('currentOwner');
             const savedMac = localStorage.getItem('currentMacAddress');
             if (savedOwner && savedMac) {
-                currentOwner = savedOwner;
-                currentMacAddress = savedMac;
-                console.log(`[EXPERIMENTS] Loaded from localStorage - Owner: ${currentOwner}, MAC: ${currentMacAddress}`);
-                
-                // Update owner/mac display
-                updateOwnerMacDisplay(currentOwner, currentMacAddress);
-                
-                // Fetch experiments automatically
-                fetchExperiments(currentOwner, currentMacAddress);
+                setActiveSelection(savedOwner, savedMac, 'restored', { persist: false, syncControls: true });
+                console.log(`[EXPERIMENTS] Loaded from localStorage - Owner: ${savedOwner}, MAC: ${savedMac}`);
+                fetchExperiments(savedOwner, savedMac);
             } else {
-                // Show message that owner/mac not available yet
-                updateOwnerMacDisplay(null, null);
+                updateSelectionContextUI();
             }
+            
+            const newExpNameInput = document.getElementById('newExpName');
+            if (newExpNameInput) newExpNameInput.addEventListener('input', updateSelectedCount);
             
             // Automatically connect on page load
             console.log('Auto-connecting WebSocket...');
@@ -2916,16 +4073,13 @@
                     updatePayloadCardStatus(lla, activeMetadata.length > 0);
                     
                     if (activeMetadata.length > 0) {
-                        // Show active experiments
-                        openMetadataModal(lla, activeMetadata, 'active');
+                        openMetadataModal(lla, activeMetadata, 'active', null, hostname, mac_address);
                     } else {
-                        // No active experiments - show history (inactive experiments)
                         const inactiveMetadata = data.data.filter(item => item.Active_Exp === false);
                         if (inactiveMetadata.length > 0) {
-                            openMetadataModal(lla, inactiveMetadata, 'inactive');
+                            openMetadataModal(lla, inactiveMetadata, 'inactive', null, hostname, mac_address);
                         } else {
-                            // Has metadata but no active or inactive experiments (shouldn't happen)
-                            openMetadataModal(lla, data.data, 'no_active');
+                            openMetadataModal(lla, data.data, 'no_active', null, hostname, mac_address);
                         }
                     }
                 } else {
@@ -2939,22 +4093,21 @@
             }
         }
         
-        function openMetadataModal(lla, metadata, state = 'loading', errorMessage = null) {
+        let currentModalOwner = '';
+        let currentModalMacAddress = '';
+        
+        function openMetadataModal(lla, metadata, state = 'loading', errorMessage = null, hostname = '', mac_address = '') {
+            currentModalOwner = hostname || '';
+            currentModalMacAddress = mac_address || '';
             const modal = document.getElementById('metadataModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
             const modalHeader = modal.querySelector('.modal-header');
             
-            // Remove existing state classes
             modalHeader.classList.remove('active-state', 'inactive-state');
-            
-            // Set title
             modalTitle.textContent = `Sensor Metadata - ${lla || 'Unknown'}`;
-            
-            // Show modal
             modal.classList.add('active');
             
-            // Display based on state
             if (state === 'loading') {
                 modalBody.innerHTML = '<div class="metadata-loading">Loading metadata...</div>';
             } else if (state === 'not_found') {
@@ -2964,15 +4117,12 @@
             } else if (typeof state === 'string' && state.includes('Missing')) {
                 modalBody.innerHTML = `<div class="metadata-error">${state}</div>`;
             } else if (state === 'no_active') {
-                // Has metadata but no active experiments
                 modalHeader.classList.add('inactive-state');
                 displayMetadataInModal(metadata, false);
             } else if (state === 'active') {
-                // Has active metadata - show current state
                 modalHeader.classList.add('active-state');
                 displayMetadataInModal(metadata, true, true);
             } else if (state === 'inactive') {
-                // Has inactive metadata - show history with dropdown
                 modalHeader.classList.add('inactive-state');
                 displayMetadataInModal(metadata, false, false);
             }
@@ -3016,29 +4166,26 @@
         }
         
         function displayActiveExperiments(metadata, modalBody) {
-            // Group by experiment
+            const owner = currentModalOwner || (metadata[0] && payloadDataMap.get(metadata[0].LLA)?.owner);
+            const mac_address = currentModalMacAddress || (metadata[0] && payloadDataMap.get(metadata[0].LLA)?.mac_address);
             const experiments = {};
             metadata.forEach(item => {
                 const expKey = `${item.Exp_ID}_${item.Exp_Name}`;
-                if (!experiments[expKey]) {
-                    experiments[expKey] = [];
-                }
+                if (!experiments[expKey]) experiments[expKey] = [];
                 experiments[expKey].push(item);
             });
             
             let html = `
                 <div class="status-banner active">
                     <span class="status-icon">✅</span>
-                    CURRENT STATE
+                    CURRENT STATE (Label &amp; Coordinates editable)
                 </div>
             `;
             
-            // Display each experiment
             Object.keys(experiments).forEach(expKey => {
                 const items = experiments[expKey];
                 const firstItem = items[0];
-                
-                html += renderExperimentSection(firstItem, items, true);
+                html += renderExperimentSection(firstItem, items, true, owner, mac_address);
             });
             
             modalBody.innerHTML = html;
@@ -3053,11 +4200,10 @@
                 return;
             }
             
-            // Get LLA, owner, and mac_address from payload data map
             const lla = firstItem.LLA;
             const payloadData = payloadDataMap.get(lla);
-            const owner = payloadData?.owner || payloadData?.hostname || '';
-            const mac_address = payloadData?.mac_address || '';
+            const owner = currentModalOwner || payloadData?.owner || payloadData?.hostname || firstItem.Owner || '';
+            const mac_address = currentModalMacAddress || payloadData?.mac_address || firstItem.Mac_Address || '';
             
             // Render editable form
             let html = `
@@ -3117,7 +4263,7 @@
                             </div>
                             <div class="metadata-item inactive-item">
                                 <div class="metadata-item-label">Last Seen</div>
-                                <input type="text" class="editable-field" value="${formatDate(item.Last_Seen) || 'N/A'}" disabled>
+                                <div class="metadata-item-value">${formatDate(item.Last_Seen) || 'N/A'}</div>
                             </div>
                             <div class="metadata-item inactive-item">
                                 <div class="metadata-item-label">Frequency</div>
@@ -3133,17 +4279,65 @@
             });
             
             html += `
-                    <button type="submit" class="save-button" id="saveMetadataBtn">Save Changes</button>
+                    <div class="inactive-form-actions">
+                        <button type="submit" class="save-button" id="saveMetadataBtn">Save Changes</button>
+                        <button type="button" class="exp-action-btn exp-action-start" onclick="startExperimentSingle('${owner.replace(/'/g, "\\'")}', '${mac_address.replace(/'/g, "\\'")}', '${(lla || '').replace(/'/g, "\\'")}')">Start Experiment</button>
+                    </div>
                 </form>
             `;
             
             modalBody.innerHTML = html;
         }
         
-        function renderExperimentSection(firstItem, items, isActive) {
+        async function startExperimentSingle(owner, mac_address, lla) {
+            const form = document.getElementById('metadataEditForm');
+            if (!form) {
+                alert('Form not found.');
+                return;
+            }
+            const formData = new FormData(form);
+            const expName = formData.get('exp_name');
+            const expLocation = formData.get('exp_location');
+            const updates = { active_exp: true, exp_started_at: getTimestampForExperiment() };
+            if (expName !== null) updates.exp_name = expName;
+            if (expLocation !== null) updates.exp_location = expLocation;
+            let idx = 0;
+            if (formData.has(`location_${idx}`)) {
+                const loc = formData.get(`location_${idx}`);
+                const label = formData.get(`label_${idx}`);
+                const coordX = formData.get(`coord_x_${idx}`);
+                const coordY = formData.get(`coord_y_${idx}`);
+                const coordZ = formData.get(`coord_z_${idx}`);
+                if (loc !== null) updates.location = loc;
+                if (label !== null) updates.label = label;
+                const coords = {};
+                if (coordX !== null && coordX !== '') coords.x = parseFloat(coordX);
+                if (coordY !== null && coordY !== '') coords.y = parseFloat(coordY);
+                if (coordZ !== null && coordZ !== '') coords.z = parseFloat(coordZ);
+                if (Object.keys(coords).length > 0) updates.coordinates = coords;
+            }
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner, mac_address, lla, updates })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to start experiment');
+                alert('Experiment started for this sensor.');
+                fetchMetadataForLLA(owner, mac_address, lla);
+                refreshCurrentSensorView();
+            } catch (e) {
+                console.error('[START_EXP_SINGLE]', e);
+                alert('Failed to start experiment: ' + e.message);
+            }
+        }
+        
+        function renderExperimentSection(firstItem, items, isActive, owner = '', mac_address = '') {
             const sectionClass = isActive ? 'active-section' : 'inactive-section';
             const titleClass = isActive ? 'active-title' : 'inactive-title';
             const itemClass = isActive ? 'active-item' : 'inactive-item';
+            const lockedClass = 'field-locked';
             
             let html = `
                 <div class="metadata-section ${sectionClass}">
@@ -3152,15 +4346,15 @@
                         ${isActive ? '<span class="active-exp-badge">Active</span>' : '<span class="inactive-exp-badge">Inactive</span>'}
                     </div>
                     <div class="metadata-grid">
-                        <div class="metadata-item ${itemClass}">
+                        <div class="metadata-item ${itemClass} ${lockedClass}">
                             <div class="metadata-item-label">Experiment ID</div>
                             <div class="metadata-item-value">${firstItem.Exp_ID || 'N/A'}</div>
                         </div>
-                        <div class="metadata-item ${itemClass}">
+                        <div class="metadata-item ${itemClass} ${isActive ? lockedClass : ''}">
                             <div class="metadata-item-label">Experiment Name</div>
                             <div class="metadata-item-value">${firstItem.Exp_Name || 'N/A'}</div>
                         </div>
-                        <div class="metadata-item ${itemClass}">
+                        <div class="metadata-item ${itemClass} ${isActive ? lockedClass : ''}">
                             <div class="metadata-item-label">Experiment Location</div>
                             <div class="metadata-item-value">${firstItem.Exp_Location || 'N/A'}</div>
                         </div>
@@ -3176,9 +4370,55 @@
                 </div>
             `;
             
-            // Display sensor details for each LLA in this experiment
-            items.forEach(item => {
-                html += `
+            items.forEach((item, idx) => {
+                if (isActive && owner && mac_address) {
+                    html += `
+                    <div class="metadata-section ${sectionClass}">
+                        <div class="metadata-section-title ${titleClass}">Sensor Details - ${item.LLA || 'N/A'}</div>
+                        <form class="active-metadata-form" onsubmit="saveActiveMetadataChanges(event, '${owner.replace(/'/g, "\\'")}', '${mac_address.replace(/'/g, "\\'")}', '${(item.LLA || '').replace(/'/g, "\\'")}', ${idx})">
+                        <div class="metadata-grid">
+                            <div class="metadata-item ${itemClass} ${lockedClass}">
+                                <div class="metadata-item-label">LLA</div>
+                                <div class="metadata-item-value">${item.LLA || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Label</div>
+                                <input type="text" class="editable-field" name="label_${idx}" value="${(item.Label || '').replace(/"/g, '&quot;')}" placeholder="Enter label">
+                            </div>
+                            <div class="metadata-item ${itemClass} ${lockedClass}">
+                                <div class="metadata-item-label">Location</div>
+                                <div class="metadata-item-value">${item.Location || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass}">
+                                <div class="metadata-item-label">Coordinates</div>
+                                <div class="coordinates-input-group">
+                                    <input type="number" class="editable-field" name="coord_x_${idx}" value="${item.Coordinates_X ?? ''}" placeholder="X" step="0.01">
+                                    <input type="number" class="editable-field" name="coord_y_${idx}" value="${item.Coordinates_Y ?? ''}" placeholder="Y" step="0.01">
+                                    <input type="number" class="editable-field" name="coord_z_${idx}" value="${item.Coordinates_Z ?? ''}" placeholder="Z" step="0.01">
+                                </div>
+                            </div>
+                            <div class="metadata-item ${itemClass} ${lockedClass}">
+                                <div class="metadata-item-label">Frequency</div>
+                                <div class="metadata-item-value">${item.Frequency || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass} ${lockedClass}">
+                                <div class="metadata-item-label">RFID</div>
+                                <div class="metadata-item-value">${item.RFID || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item ${itemClass} ${lockedClass}">
+                                <div class="metadata-item-label">Last Seen</div>
+                                <div class="metadata-item-value">${formatDate(item.Last_Seen) || 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div class="active-sensor-actions">
+                            <button type="submit" class="save-button">Save Label &amp; Coordinates</button>
+                            <button type="button" class="exp-action-btn exp-action-end" onclick="endExperimentSingle('${owner.replace(/'/g, "\\'")}', '${mac_address.replace(/'/g, "\\'")}', '${(item.LLA || '').replace(/'/g, "\\'")}')">End Experiment</button>
+                        </div>
+                        </form>
+                    </div>
+                    `;
+                } else {
+                    html += `
                     <div class="metadata-section ${sectionClass}">
                         <div class="metadata-section-title ${titleClass}">Sensor Details - ${item.LLA || 'N/A'}</div>
                         <div class="metadata-grid">
@@ -3231,23 +4471,54 @@
                             ` : ''}
                         </div>
                     </div>
-                `;
+                    `;
+                }
             });
             
             return html;
         }
         
+        function getTimestampForExperiment() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
+        
+        function getEndExperimentUpdates() {
+            return {
+                active_exp: false,
+                exp_ended_at: getTimestampForExperiment(),
+                exp_id: "",
+                exp_name: "",
+                exp_location: "",
+                exp_started_at: null,
+                label: "",
+                label_options: [],
+                location: null,
+                coordinates: { x: null, y: null, z: null }
+            };
+        }
+        
         function formatDate(dateString) {
             if (!dateString) return null;
             try {
-                const date = new Date(dateString);
-                return date.toLocaleString('en-US', {
+                let str = String(dateString).trim();
+                const hasTimezone = /[Zz]$|[\+\-]\d{2}:?\d{2}$/.test(str);
+                if (!hasTimezone && /^\d{4}-\d{2}-\d{2}/.test(str)) {
+                    const hadSpace = /^\d{4}-\d{2}-\d{2} \d/.test(str);
+                    str = str.replace(' ', 'T');
+                    if (hadSpace) str += 'Z';
+                }
+                const date = new Date(str);
+                if (isNaN(date.getTime())) return dateString;
+                return date.toLocaleString(undefined, {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
-                    second: '2-digit'
+                    second: '2-digit',
+                    timeZoneName: 'short'
                 });
             } catch (e) {
                 return dateString;
@@ -3269,6 +4540,71 @@
                 payloadItem.classList.add('active-exp');
             } else {
                 payloadItem.classList.add('inactive-exp');
+            }
+        }
+        
+        async function saveActiveMetadataChanges(event, hostname, mac_address, lla, index) {
+            event.preventDefault();
+            const form = event.target;
+            const saveBtn = form.querySelector('button[type="submit"]');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
+            try {
+                const formData = new FormData(form);
+                const label = formData.get(`label_${index}`);
+                const coordX = formData.get(`coord_x_${index}`);
+                const coordY = formData.get(`coord_y_${index}`);
+                const coordZ = formData.get(`coord_z_${index}`);
+                const updates = {};
+                if (label !== null) updates.label = label;
+                const coordinates = {};
+                if (coordX !== null && coordX !== '') coordinates.x = parseFloat(coordX);
+                if (coordY !== null && coordY !== '') coordinates.y = parseFloat(coordY);
+                if (coordZ !== null && coordZ !== '') coordinates.z = parseFloat(coordZ);
+                if (Object.keys(coordinates).length > 0) updates.coordinates = coordinates;
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner: hostname, mac_address, lla, updates })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to save');
+                alert('Label & coordinates saved.');
+                fetchMetadataForLLA(hostname, mac_address, lla);
+            } catch (e) {
+                console.error('[SAVE_ACTIVE]', e);
+                alert('Failed to save: ' + e.message);
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save Label & Coordinates';
+                }
+            }
+        }
+        
+        async function endExperimentSingle(owner, mac_address, lla) {
+            if (!confirm('End experiment for this sensor?')) return;
+            try {
+                const response = await fetch(getApiBaseUrl() + '/FS/sensor/update-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner,
+                        mac_address,
+                        lla,
+                        updates: getEndExperimentUpdates()
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Failed to end experiment');
+                alert('Experiment ended for this sensor.');
+                closeMetadataModal();
+                refreshCurrentSensorView();
+            } catch (e) {
+                console.error('[END_EXP_SINGLE]', e);
+                alert('Failed to end experiment: ' + e.message);
             }
         }
         
