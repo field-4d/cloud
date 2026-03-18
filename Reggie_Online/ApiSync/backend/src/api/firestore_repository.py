@@ -118,6 +118,7 @@ def _map_firestore_to_api_format(doc_data: Dict[str, Any], lla: str) -> Dict[str
         "Label_Options": doc_data.get("label_options", []),
         "Location": doc_data.get("location", ""),
         "RFID": doc_data.get("rfid", ""),
+        # Use 0 for missing coordinates to preserve API contract (downstream expects numeric, not None)
         "Coordinates_X": coordinates.get("x") if isinstance(coordinates, dict) and coordinates.get("x") is not None else 0,
         "Coordinates_Y": coordinates.get("y") if isinstance(coordinates, dict) and coordinates.get("y") is not None else 0,
         "Coordinates_Z": coordinates.get("z") if isinstance(coordinates, dict) and coordinates.get("z") is not None else 0,
