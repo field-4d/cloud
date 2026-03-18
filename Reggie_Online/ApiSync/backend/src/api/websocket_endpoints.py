@@ -2,7 +2,7 @@
 WebSocket endpoints for the ApiSync application.
 """
 from fastapi import WebSocket, WebSocketDisconnect
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import time
@@ -99,7 +99,7 @@ async def websocket_ping(websocket: WebSocket):
                 )
                 error_response = {
                     "received": False,
-                    "timestamp": datetime.now().replace(microsecond=0).isoformat(),
+                    "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
                     "error": "Invalid JSON format"
                 }
                 await manager.broadcast(error_response)
@@ -328,7 +328,7 @@ async def websocket_ping(websocket: WebSocket):
                 # Create Last_Package response with package data for each processed sensor
                 response = {
                     "received": True,
-                    "timestamp": datetime.now().replace(microsecond=0).isoformat(),
+                    "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
                     "type": "Last_Package",
                     "owner": package_owner,  # Include owner for frontend metadata access
                     "hostname": package_owner,  # Include for backward compatibility
@@ -355,7 +355,7 @@ async def websocket_ping(websocket: WebSocket):
             # Create response with the payload information and validation (for Ping type)
             response = {
                 "received": True,
-                "timestamp": datetime.now().replace(microsecond=0).isoformat(),
+                "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
                 "payload": {
                     "owner": owner,
                     "hostname": owner,  # Include for backward compatibility

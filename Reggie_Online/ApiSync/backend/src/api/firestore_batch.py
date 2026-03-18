@@ -27,8 +27,7 @@ class FirestoreBatchWriter:
         """
         self.client = client
         self.batch = client.batch()
-        self.operation_count = 0  # Operations in current batch (for 500 limit)
-        self.total_operation_count = 0  # Total across all batches (for commit return)
+        self.operation_count = 0
         self.batches = [self.batch]  # Track all batches created
         
     def add_update(self, doc_ref, data: Dict[str, Any]) -> bool:
@@ -50,7 +49,6 @@ class FirestoreBatchWriter:
         
         self.batch.update(doc_ref, data)
         self.operation_count += 1
-        self.total_operation_count += 1
         return True
     
     def add_set(self, doc_ref, data: Dict[str, Any], merge: bool = False) -> bool:
@@ -73,7 +71,6 @@ class FirestoreBatchWriter:
         
         self.batch.set(doc_ref, data, merge=merge)
         self.operation_count += 1
-        self.total_operation_count += 1
         return True
     
     def add_delete(self, doc_ref) -> bool:
@@ -94,7 +91,6 @@ class FirestoreBatchWriter:
         
         self.batch.delete(doc_ref)
         self.operation_count += 1
-        self.total_operation_count += 1
         return True
     
     async def commit(self):
@@ -104,13 +100,13 @@ class FirestoreBatchWriter:
         Returns:
             int: Total number of operations committed
         """
-        if self.total_operation_count == 0:
+        if self.operation_count == 0:
             logger.debug("[FIRESTORE_BATCH] No operations to commit")
             return 0
         
         logger.info(
             f"[FIRESTORE_BATCH] Committing {len(self.batches)} batch(es) | "
-            f"Total operations: {self.total_operation_count}"
+            f"Total operations: {self.operation_count}"
         )
         
         # Commit all batches (they can run concurrently)
@@ -119,7 +115,7 @@ class FirestoreBatchWriter:
             logger.debug(f"[FIRESTORE_BATCH] Batch {i+1}/{len(self.batches)} committed")
         
         logger.info(f"[FIRESTORE_BATCH] All batches committed successfully")
-        return self.total_operation_count
+        return self.operation_count
     
     def reset(self):
         """
@@ -128,7 +124,6 @@ class FirestoreBatchWriter:
         self.batch = self.client.batch()
         self.batches = [self.batch]
         self.operation_count = 0
-        self.total_operation_count = 0
         logger.debug("[FIRESTORE_BATCH] Batch writer reset")
     
     def get_operation_count(self) -> int:
@@ -139,3 +134,4 @@ class FirestoreBatchWriter:
             int: Number of operations in current batch
         """
         return self.operation_count
+
