@@ -14,6 +14,7 @@
 !F4D_Pi_V2/
 !cloud_upload_alerts/
 !Reggie_Online/
+!F4D_python/
 # Also keep their contents
 !process_files/**
 !query_last_timestamp/**
@@ -27,6 +28,12 @@
 !/F4D_Pi_V2/**
 !/cloud_upload_alerts/**
 !/Reggie_Online/**
+!/F4D_python/**
+
+# Ignore generated Python files in F4D_python
+F4D_python/venv/
+F4D_python/**/__pycache__/
+F4D_python/**/*.pyc
 
 # Keep .gitignore itself
 !.gitignore

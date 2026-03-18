@@ -19,6 +19,7 @@ Each subfolder also contains its own `README.md` file with specific documentatio
 ## Other Folders in the Repository !
 
 - **fetch_google**: Scripts to retrieve data from Google Cloud services, such as BigQuery or Cloud Storage.
+- **F4D_python**: Python serial ingest service that reads device messages, pushes live events to ApiSync, and flushes aggregated sensor data into DuckDB.
 - **process_files**: Contains file preprocessing logic including reformatting, validation, and batch handling.
 - **query_last_timestamp**: Tools to identify the latest data record timestamps for incremental data pulling.
 - **update-labels**: Scripts for dynamically updating metadata labels in Google Cloud resources.
@@ -34,7 +35,8 @@ Each of these folders includes its own `README.md` for further documentation.
 ## Project Structure Overview
 
 - `F4D/`: Core processing, analytics, and reporting logic for the Field4D initiative.
-- `F4D_Pi_V2/`: Newest VersionCore processing, analytics, and reporting logic for the Field4D initiative.
+- `F4D_Pi_V2/`: Newest version of the Raspberry Pi-side Field4D processing stack.
+- `F4D_python/`: Serial ingest and synchronization service with DuckDB storage, timed flushes, and ApiSync live updates.
 - `fetch_google/`: Interfaces for cloud data extraction.
 - `process_files/`: Local data processing and reformatting.
 - `query_last_timestamp/`: Utilities to track data update state.
