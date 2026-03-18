@@ -220,6 +220,143 @@ python3 -m DB.firestore_client
 python3 main.py
 ```
 
+## Test and Validation Cheat Sheet
+
+Use this section as a quick runbook to validate parser behavior, metadata sync, timed flush writes, and WebSocket flow.
+
+### 0) Fast preflight
+
+```bash
+cd /home/pi/F4D
+python3 --version
+python3 -m pip install -r requirements.txt
+python3 -m initializer.env_initializer
+```
+
+Check required environment keys:
+
+```bash
+grep -E '^(HOSTNAME|MAC_ADDRESS|API_SYNC_URL)=' /home/pi/F4D/.env
+```
+
+### 1) Parser smoke tests (no serial device required)
+
+```bash
+python3 - <<'PY'
+from parser import parse_serial_line
+
+print(parse_serial_line('PING received from: fe80::abcd\n'))
+print(parse_serial_line('JSON_START\n'))
+print(parse_serial_line('{"ipv6":"fe80::1234","temp":24.5,"humidity":61}\n'))
+print(parse_serial_line('JSON_END\n'))
+print(parse_serial_line('PANID 0x1A2B\n'))
+print(parse_serial_line('Random Quote: "hello"\n'))
+print(parse_serial_line('Initialization Completed Successfully.\n'))
+PY
+```
+
+Expected:
+- First line returns a dict with `type = PING`.
+- JSON block returns a dict with `type = sensor_data`.
+- Antenna sequence returns a dict with `type = antenna_log` when completed.
+
+### 2) Metadata sync validation
+
+Run metadata sync directly:
+
+```bash
+python3 - <<'PY'
+from DB.firestore_client import sync_sensor_metadata_to_duckdb
+result = sync_sensor_metadata_to_duckdb()
+print(result)
+PY
+```
+
+Inspect DuckDB metadata rows:
+
+```bash
+python3 - <<'PY'
+import duckdb
+con = duckdb.connect('/home/pi/F4D/DB/local.duckdb')
+print('metadata rows:', con.execute('select count(*) from sensors_metadata').fetchone()[0])
+print(con.execute('''
+    select LLA, Exp_ID, Exp_Name, Active_Exp
+    from sensors_metadata
+    order by Snapshot_At desc
+    limit 10
+''').fetchall())
+PY
+```
+
+### 3) Live ingest + timed flush validation
+
+Start the service and watch logs:
+
+```bash
+cd /home/pi/F4D
+python3 main.py
+```
+
+What to look for in logs:
+- `[SYNC] Waiting for 3-minute sync clock...`
+- `[FLASH] Updated buffer for sensor: ...`
+- `[Web-Socket] Queued sensor data for upload: ...`
+- At boundary: `[SYNC] 3-minute boundary reached...`
+- Write summary: `[WRITE:sensors_data] ...` and `[WRITE:packet_events] ...`
+
+### 4) Post-flush database checks
+
+After at least one 3-minute boundary passes:
+
+```bash
+python3 - <<'PY'
+import duckdb
+con = duckdb.connect('/home/pi/F4D/DB/local.duckdb')
+
+print('sensors_data rows:', con.execute('select count(*) from sensors_data').fetchone()[0])
+print('packet_events rows:', con.execute('select count(*) from packet_events').fetchone()[0])
+
+print('\nLatest sensors_data rows:')
+for row in con.execute('''
+    select Timestamp, LLA, Variable, Value, Package_Count_3min
+    from sensors_data
+    order by Timestamp desc
+    limit 10
+''').fetchall():
+    print(row)
+
+print('\nLatest packet_events rows:')
+for row in con.execute('''
+    select Interval_Timestamp, LLA, Packet_Order_In_LLA_Interval, Packet_Order_Global_Interval, Packet_Count_3min
+    from packet_events
+    order by Interval_Timestamp desc, Packet_Order_Global_Interval desc
+    limit 10
+''').fetchall():
+    print(row)
+PY
+```
+
+### 5) WebSocket/API quick checks
+
+Validate ApiSync URL format in `.env` (must start with `http://` or `https://`):
+
+```bash
+grep '^API_SYNC_URL=' /home/pi/F4D/.env
+```
+
+If Last_Package sends are failing, monitor for:
+- `[Web-Socket] Failed to send LastPackage: ...`
+- `[Web-Socket] Queue full, dropping packet ...`
+
+### 6) Common validation outcomes
+
+- Parser OK, no DB writes:
+  - usually means no active metadata row for that sensor LLA.
+- Metadata OK, no live upload:
+  - check API reachability and `API_SYNC_URL` value.
+- Flash buffer restored after boundary:
+  - indicates timed write failure; check DB file permissions and logs.
+
 ## Serial Input Format
 
 ### 1) PING line
@@ -265,3 +402,14 @@ Recognized lines include:
 
 - Flush writes skipped:
   - Ensure sensor `ipv6` has active metadata in `sensors_metadata` (active experiment rows).
+
+## Exit from the screen 
+- screen -ls
+- screen -r XXXXX
+- Ctrl + A, then K -> to confirm press "y"
+
+## journal Tricks and commands
+- normal journal
+  - journalctl -u f4d-main.service -f
+- journal with high precision
+  - journalctl -u f4d-main.service -o short-precise -f

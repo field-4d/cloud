@@ -3,11 +3,13 @@ from parser import parse_serial_line
 from sync import send_ping, enqueue_last_package, start_last_package_sender
 from DB import update_flash_memory
 from services import start_flush_thread
+from helpers import open_serial_with_auto_recovery
 
 def main():
     start_flush_thread()  # single timed worker: metadata sync + flush
     start_last_package_sender()
 
+    ser = open_serial_with_auto_recovery("/dev/ttyACM0", 115200)
     port = SerialPort("/dev/ttyACM0", 115200)
 
     for raw in port.read_lines():

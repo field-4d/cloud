@@ -5,3 +5,7 @@ from .scheduler import (
     format_dt,
     sleep_until,
 )
+
+from .serial_helpers import (
+    open_serial_with_auto_recovery,
+)
