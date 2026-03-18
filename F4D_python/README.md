@@ -35,6 +35,7 @@ flowchart TD
   J --> K[DB.pop_flash_memory_snapshot]
   K --> L[DB.write_flash_buffer_to_sensors_data]
   L --> M[(DuckDB sensors_data)]
+  L --> P[(DuckDB packet_events)]
 
   N[DB.firestore_client.sync_sensor_metadata_to_duckdb] --> O[(DuckDB sensors_metadata)]
 ```
