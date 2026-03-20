@@ -11,8 +11,8 @@ from helpers import get_next_3min_boundary, format_dt, sleep_until
 
 
 def flush_worker():
-    next_flush_time = get_next_3min_boundary()
-
+    next_flush_time = get_next_3min_boundary(datetime.now())
+    
     print(f"[SYNC] Waiting for 3-minute sync clock. First flush scheduled at: {format_dt(next_flush_time)}")
     print(f"[COLLECT] New collection window opened for interval ending at {format_dt(next_flush_time)}")
 

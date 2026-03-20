@@ -9,12 +9,32 @@ DB_PATH = "/home/pi/F4D/DB/local.duckdb"
 def now_local():
     return datetime.now()
 
+def now_local_seconds():
+    return datetime.now().replace(microsecond=0)
+
+def now_local_millis():
+    now = datetime.now()
+    return now.replace(microsecond=(now.microsecond // 1000) * 1000)
+
+
+
 def get_connection():
     Path("/home/pi/F4D/DB").mkdir(parents=True, exist_ok=True)
     return duckdb.connect(DB_PATH)
 
 
-def parse_timestamp(value):
+def parse_timestamp(value, trim_to_seconds=False):
+    """
+    Normalize incoming timestamps to LOCAL naive Python datetime objects
+    for storage in DuckDB TIMESTAMP columns.
+
+    Rules:
+    - Accept Python datetime or ISO-like string
+    - Convert trailing Z to +00:00
+    - If timezone-aware, convert to local timezone and drop tzinfo
+    - If naive, keep as-is
+    - Optionally trim to second precision
+    """
     if value in (None, "", "null"):
         return None
 
@@ -22,17 +42,21 @@ def parse_timestamp(value):
         dt = value
     else:
         try:
-            if isinstance(value, str) and value.endswith("Z"):
-                value = value.replace("Z", "+00:00")
-            dt = datetime.fromisoformat(value)
+            text = str(value).strip()
+            if text.endswith("Z"):
+                text = text.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(text)
         except Exception:
             return None
 
-    # Convert timezone-aware timestamps to local machine time, then store as naive local timestamp
     if dt.tzinfo is not None:
         dt = dt.astimezone().replace(tzinfo=None)
 
+    if trim_to_seconds:
+        dt = dt.replace(microsecond=0)
+
     return dt
+
 
 
 def to_json_text(value):
@@ -606,7 +630,8 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
     skipped_inactive = 0
     skipped_invalid_value = 0
     processed_sensors = 0
-
+    
+    interval_timestamp = parse_timestamp(interval_timestamp, trim_to_seconds=True)
     timebucket = make_timebucket(interval_timestamp)
 
     active_sensor_rows = []
@@ -688,7 +713,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
 
     all_packet_events.sort(
         key=lambda x: (
-            x["Packet_Arrival_Time"] or datetime.min.replace(tzinfo=timezone.utc),
+            x["Packet_Arrival_Time"] or datetime.min,
             x["LLA"]
         )
     )

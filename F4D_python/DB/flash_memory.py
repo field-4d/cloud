@@ -24,8 +24,8 @@ def update_flash_memory(packet: dict) -> None:
         raise ValueError("Packet must contain 'ipv6'")
 
     sensor_payload = {k: v for k, v in packet.items() if k != "ipv6"}
-    now_dt = datetime.now() # device local time is fine for ordering events, but store in ISO format for consistency
-    now_str = now_dt.isoformat(timespec="milliseconds")
+    now_dt = datetime.now(timezone.utc)
+    now_str = now_dt.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
     with FLASH_MEMORY_LOCK:
         if ipv6 not in FLASH_MEMORY_BUFFER:

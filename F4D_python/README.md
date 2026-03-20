@@ -1,6 +1,6 @@
 # F4D Serial Ingest Service
 
-This project reads messages from a serial-connected device, parses structured payloads, forwards live events to ApiSync over WebSocket, and writes aggregated sensor values to DuckDB on a timed flush cycle.
+This project reads messages from a serial-connected device, parses structured payloads, forwards live events to ApiSync over WebSocket, writes aggregated sensor values to DuckDB on a timed flush cycle, and supports manual DuckDB to BigQuery sync uploads.
 
 ## What This App Does
 
@@ -14,6 +14,7 @@ This project reads messages from a serial-connected device, parses structured pa
     - sends live `Last_Package` payload to ApiSync,
     - and gets persisted to DuckDB on the next 3-minute flush.
 - Supports metadata sync from Firestore endpoint into DuckDB `sensors_metadata`.
+- Supports manual incremental upload of local DuckDB tables to BigQuery through `DB/f4d_bq_sync.py`.
 
 Entry point: `main.py`
 
@@ -33,11 +34,13 @@ flowchart TD
 
   I[services.start_flush_thread] --> J[3-minute boundary]
   J --> K[DB.pop_flash_memory_snapshot]
+  K --> N[services.metadata_service.sync_metadata_for_interval]
+  N --> O[(DuckDB sensors_metadata)]
   K --> L[DB.write_flash_buffer_to_sensors_data]
   L --> M[(DuckDB sensors_data)]
   L --> P[(DuckDB packet_events)]
 
-  N[DB.firestore_client.sync_sensor_metadata_to_duckdb] --> O[(DuckDB sensors_metadata)]
+  Q[DB.f4d_bq_sync.py] --> R[f4d-bq-sync HTTP endpoint]
 ```
 
 ## Project Scheme
@@ -47,6 +50,7 @@ F4D/
 ├── DB/
 │   ├── __init__.py
 │   ├── duckdb_client.py
+│   ├── f4d_bq_sync.py
 │   ├── firestore_client.py
 │   ├── flash_memory.py
 │   └── local.duckdb
@@ -64,7 +68,8 @@ F4D/
 │   └── port.py
 ├── services/
 │   ├── __init__.py
-│   └── flush_service.py
+│   ├── flush_service.py
+│   └── metadata_service.py
 ├── sync/
 │   ├── __init__.py
 │   └── ApiSync_client.py
@@ -94,6 +99,7 @@ This is the exact flow when a sensor package is received:
 - Store latest packet payload.
 - Increment `packet_count` for the current interval.
 - Update `last_packet_time`.
+- Store packet event arrival timestamps in UTC ISO format with millisecond precision and trailing `Z`.
 
 5. Immediate live sync:
 `last_package(packet_for_buffer)` sends current sensor snapshot to ApiSync via WebSocket.
@@ -101,12 +107,16 @@ This is the exact flow when a sensor package is received:
 6. Timed flush thread:
 `start_flush_thread()` runs a daemon worker that waits for the next 3-minute boundary.
 
-7. Atomic flush at boundary:
+7. Metadata refresh before write:
+- `sync_metadata_for_interval()` refreshes local metadata so the interval write uses the latest active experiment rows.
+
+8. Atomic flush at boundary:
 - `pop_flash_memory_snapshot()` takes and clears current buffer atomically.
 - `write_flash_buffer_to_sensors_data(snapshot)` writes long-format rows into DuckDB `sensors_data`.
+- The flush interval timestamp is normalized to local naive time and trimmed to second precision.
 - If write fails, `restore_flash_memory_snapshot(snapshot)` restores data to avoid loss.
 
-8. Repeat:
+9. Repeat:
 New packets continue accumulating in a fresh interval buffer until the next boundary.
 
 ### Sequence View
@@ -148,17 +158,22 @@ sequenceDiagram
 - `DB/flash_memory.py`
   - Thread-safe in-memory buffer keyed by `ipv6`.
   - Supports update, snapshot pop, and restore for fault-tolerant flush.
+  - Stores packet arrival timestamps in UTC ISO `...Z` format before DB normalization.
 
 - `services/flush_service.py`
   - Flush worker aligned to 3-minute clock boundaries.
+  - Refreshes metadata before each interval write.
   - Moves buffered data into DuckDB `sensors_data`.
 
 - `helpers/scheduler.py`
   - Time-boundary and sleep utilities used by flush worker.
+  - Computes next boundaries in local naive device time.
 
 - `DB/duckdb_client.py`
   - Manages DuckDB connection and table initialization.
   - Writes interval data into `sensors_data`.
+  - Writes packet-level ordering rows into `packet_events`.
+  - Normalizes incoming timestamps into local naive DuckDB `TIMESTAMP` values.
   - Applies Firestore metadata into `sensors_metadata`.
 
 - `DB/firestore_client.py`
@@ -171,7 +186,12 @@ sequenceDiagram
     - `last_package(packet)`
 
 - `initializer/env_initializer.py`
-  - Creates/updates `.env` with `HOSTNAME`, `MAC_ADDRESS`, and `API_SYNC_URL`.
+  - Creates/updates `.env` with `HOSTNAME`, `MAC_ADDRESS`, `API_SYNC_URL`, and `F4D_BQ_SYNC_URL`.
+
+- `DB/f4d_bq_sync.py`
+  - Reads local DuckDB rows incrementally by experiment, owner, and MAC address.
+  - Queries cloud last-uploaded timestamps and uploads only new rows.
+  - Supports `sensors_data`, `packet_events`, or both, with dry-run and batch controls.
 
 ## Data Tables (DuckDB)
 
@@ -181,6 +201,17 @@ sequenceDiagram
 - `sensors_data`:
   - Time-series rows written every 3 minutes from flash buffer snapshots.
   - One row per `(sensor, variable, flush interval)` with `Package_Count_3min`.
+
+- `packet_events`:
+  - Packet-level interval event rows derived from flash-buffer arrival logs.
+  - Includes per-sensor interval order and global order within the flush interval.
+
+## Time Handling
+
+- Flash-memory packet arrivals are captured in UTC ISO format with millisecond precision, for example `2026-03-20T12:34:56.789Z`.
+- DuckDB storage normalizes timezone-aware timestamps into local machine time and stores them as naive `TIMESTAMP` values.
+- Flush interval timestamps are trimmed to second precision before being written to `sensors_data` and `packet_events`.
+- Packet event ordering is sorted by normalized packet arrival time, then by sensor `LLA`.
 
 ## Requirements
 
@@ -237,7 +268,7 @@ python3 -m initializer.env_initializer
 Check required environment keys:
 
 ```bash
-grep -E '^(HOSTNAME|MAC_ADDRESS|API_SYNC_URL)=' /home/pi/F4D/.env
+grep -E '^(HOSTNAME|MAC_ADDRESS|API_SYNC_URL|F4D_BQ_SYNC_URL)=' /home/pi/F4D/.env
 ```
 
 ### 1) Parser smoke tests (no serial device required)
@@ -303,6 +334,7 @@ What to look for in logs:
 - `[FLASH] Updated buffer for sensor: ...`
 - `[Web-Socket] Queued sensor data for upload: ...`
 - At boundary: `[SYNC] 3-minute boundary reached...`
+- Metadata refresh: `[METADATA] Starting metadata refresh before interval write...`
 - Write summary: `[WRITE:sensors_data] ...` and `[WRITE:packet_events] ...`
 
 ### 4) Post-flush database checks
@@ -349,7 +381,39 @@ If Last_Package sends are failing, monitor for:
 - `[Web-Socket] Failed to send LastPackage: ...`
 - `[Web-Socket] Queue full, dropping packet ...`
 
-### 6) Common validation outcomes
+### 6) Manual DuckDB to BigQuery sync
+
+Dry-run one table:
+
+```bash
+python3 -m DB.f4d_bq_sync --table sensors_data --exp "<EXP_NAME>" --dry-run
+```
+
+Upload both local tables in batches:
+
+```bash
+python3 -m DB.f4d_bq_sync --table both --exp "<EXP_NAME>" --batch-size 500
+```
+
+Optional overrides for manual testing:
+
+```bash
+python3 -m DB.f4d_bq_sync \
+  --table packet_events \
+  --exp "<EXP_NAME>" \
+  --limit 100 \
+  --owner "<HOSTNAME>" \
+  --mac "<MAC_ADDRESS>" \
+  --sync-url "https://your-bq-sync-service"
+```
+
+What the sync does:
+- Reads `HOSTNAME`, `MAC_ADDRESS`, and `F4D_BQ_SYNC_URL` from `.env` by default.
+- Asks the cloud service for the last uploaded timestamp per table.
+- Selects only newer local rows from DuckDB.
+- Uploads to `F4D_sensors_data` and/or `F4D_packet_events`.
+
+### 7) Common validation outcomes
 
 - Parser OK, no DB writes:
   - usually means no active metadata row for that sensor LLA.
@@ -389,6 +453,7 @@ Recognized lines include:
 | `HOSTNAME` | Sanitized system hostname used as API owner |
 | `MAC_ADDRESS` | MAC address of `eth0` without colons |
 | `API_SYNC_URL` | ApiSync base URL (`http://` or `https://`) |
+| `F4D_BQ_SYNC_URL` | HTTP endpoint used by `DB/f4d_bq_sync.py` for BigQuery sync |
 
 ## Troubleshooting
 

@@ -2,9 +2,19 @@ from datetime import datetime, timedelta
 import time
 
 
+def local_now():
+    return datetime.now()
+
+
 def get_next_minute_boundary(interval_minutes: int, now=None):
+    """
+    Return the next interval boundary in LOCAL time as a naive datetime.
+    Example for 3 minutes:
+    12:23:10 -> 12:24:00
+    12:24:00 -> 12:27:00
+    """
     if now is None:
-        now = datetime.now()
+        now = local_now()
 
     minute_block = (now.minute // interval_minutes) * interval_minutes
     current_boundary = now.replace(minute=minute_block, second=0, microsecond=0)
@@ -29,7 +39,8 @@ def format_dt(dt_obj):
 
 def sleep_until(target_dt):
     while True:
-        remaining = (target_dt - datetime.now()).total_seconds()
+        now = local_now()
+        remaining = (target_dt - now).total_seconds()
         if remaining <= 0:
             break
         time.sleep(min(remaining, 0.5))
