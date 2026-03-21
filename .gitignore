@@ -15,6 +15,7 @@
 !cloud_upload_alerts/
 !Reggie_Online/
 !F4D_python/
+!f4d_bq_sync/
 # Also keep their contents
 !process_files/**
 !query_last_timestamp/**
@@ -29,6 +30,7 @@
 !/cloud_upload_alerts/**
 !/Reggie_Online/**
 !/F4D_python/**
+!/f4d_bq_sync/**
 
 # Ignore generated Python files in F4D_python
 F4D_python/venv/

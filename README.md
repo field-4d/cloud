@@ -44,6 +44,7 @@ Each of these folders includes its own `README.md` for further documentation.
 - `upload_To_bucket/`: Cloud export logic.
 - `users-devices-permission/`: User-device access control.
 - `field4d_analytics/`: FastAPI for statistics.
+- `f4d_bq_sync/`: HTTP service for syncing Field4D data into BigQuery (Cloud Run).
 - `login_and_issue_jwt/`: Isuue JWT token and handle login
 - `Field4D_Site/`: Field4d.com site front + back
 ---
