@@ -1,20 +1,22 @@
 # F4D Serial Ingest Service
 
-This project reads messages from a serial-connected device, parses structured payloads, forwards live events to ApiSync over WebSocket, writes aggregated sensor values to DuckDB on a timed flush cycle, and supports manual DuckDB to BigQuery sync uploads.
+This project reads messages from a serial-connected device, parses structured payloads, forwards live events to ApiSync over WebSocket, writes aggregated sensor values to DuckDB on a timed flush cycle, and uploads new rows to BigQuery (automatically after each successful flush, or on demand via CLI / `run_sync`).
 
 ## What This App Does
 
-- Opens serial port `/dev/ttyACM0` at `115200` baud.
+- Opens serial port `/dev/ttyACM0` at `115200` baud (with optional auto-recovery if the port is held by `screen`; see `helpers/serial_helpers.py`).
 - Continuously reads incoming lines.
 - Parses three message types:
   - `PING` lines: extracts the LLA and sends a WebSocket `Ping` event.
   - antenna initialization logs: emits `antenna_log` and prints details.
   - JSON sensor payload blocks (`JSON_START`/`JSON_END`):
     - updates an in-memory flash buffer,
-    - sends live `Last_Package` payload to ApiSync,
+    - sends live `Last_Package` payload to ApiSync (queued sender thread),
     - and gets persisted to DuckDB on the next 3-minute flush.
-- Supports metadata sync from Firestore endpoint into DuckDB `sensors_metadata`.
-- Supports manual incremental upload of local DuckDB tables to BigQuery through `DB/f4d_bq_sync.py`.
+- Syncs metadata from the Firestore-backed API into DuckDB `sensors_metadata`, including multiple active experiments when the payload contains more than one `Exp_Name`.
+- Uploads DuckDB `sensors_data` and `packet_events` to BigQuery through the `f4d-bq-sync` HTTP service:
+  - **Automatic:** after a successful timed flush, `services/flush_service.py` calls `DB.run_sync()` for all experiments marked active in `sensors_metadata`.
+  - **Manual:** `python3 -m DB.f4d_bq_sync` or `run_sync(...)` in Python (single experiment or all active experiments).
 
 Entry point: `main.py`
 
@@ -39,8 +41,10 @@ flowchart TD
   K --> L[DB.write_flash_buffer_to_sensors_data]
   L --> M[(DuckDB sensors_data)]
   L --> P[(DuckDB packet_events)]
+  L -->|on successful write| Q[DB.run_sync active experiments]
+  Q --> R[f4d-bq-sync HTTP endpoint]
 
-  Q[DB.f4d_bq_sync.py] --> R[f4d-bq-sync HTTP endpoint]
+  S[Manual: python -m DB.f4d_bq_sync] --> R
 ```
 
 ## Project Scheme
@@ -56,7 +60,8 @@ F4D/
 │   └── local.duckdb
 ├── helpers/
 │   ├── __init__.py
-│   └── scheduler.py
+│   ├── scheduler.py
+│   └── serial_helpers.py
 ├── initializer/
 │   ├── __init__.py
 │   └── env_initializer.py
@@ -116,7 +121,11 @@ This is the exact flow when a sensor package is received:
 - The flush interval timestamp is normalized to local naive time and trimmed to second precision.
 - If write fails, `restore_flash_memory_snapshot(snapshot)` restores data to avoid loss.
 
-9. Repeat:
+9. BigQuery upload (after a successful write):
+- `run_sync(table="both", exp_name=None, ...)` asks the cloud service for the last uploaded timestamp per experiment and table, then uploads only newer rows for each **active** experiment in `sensors_metadata`.
+- Failures are logged and do not roll back the DuckDB write.
+
+10. Repeat:
 New packets continue accumulating in a fresh interval buffer until the next boundary.
 
 ### Sequence View
@@ -138,15 +147,17 @@ sequenceDiagram
   T->>T: wait to next 3-minute boundary
   T->>F: pop_flash_memory_snapshot()
   T->>D: write_flash_buffer_to_sensors_data(snapshot)
+  Note over T,D: On OK: run_sync() -> BigQuery via f4d-bq-sync
 ```
 
 ## Project Structure
 
 - `main.py`
-  - Starts timed flush worker thread.
+  - Starts timed flush worker thread and the Last_Package sender thread.
+  - Opens the serial port via `open_serial_with_auto_recovery` (Linux: can detach `screen` holding `/dev/ttyACM0`).
   - Reads serial data continuously.
   - Routes parsed messages by type.
-  - Sends PING and Last_Package messages to ApiSync.
+  - Sends PING and queues Last_Package messages to ApiSync.
   - Buffers sensor packets in flash memory.
 
 - `parser/json_parser.py`
@@ -163,18 +174,22 @@ sequenceDiagram
 - `services/flush_service.py`
   - Flush worker aligned to 3-minute clock boundaries.
   - Refreshes metadata before each interval write.
-  - Moves buffered data into DuckDB `sensors_data`.
+  - Moves buffered data into DuckDB `sensors_data` and `packet_events`.
+  - On successful write, runs `run_sync()` for all active experiments (both tables) unless an exception is raised (errors are logged only).
 
 - `helpers/scheduler.py`
   - Time-boundary and sleep utilities used by flush worker.
   - Computes next boundaries in local naive device time.
+
+- `helpers/serial_helpers.py`
+  - `open_serial_with_auto_recovery`: opens `pyserial` with a best-effort cleanup when the device is busy (`lsof` + kill `screen` on Linux).
 
 - `DB/duckdb_client.py`
   - Manages DuckDB connection and table initialization.
   - Writes interval data into `sensors_data`.
   - Writes packet-level ordering rows into `packet_events`.
   - Normalizes incoming timestamps into local naive DuckDB `TIMESTAMP` values.
-  - Applies Firestore metadata into `sensors_metadata`.
+  - Applies Firestore metadata into `sensors_metadata` (payloads may update several experiments in one response; inactive rows deactivate by experiment name).
 
 - `DB/firestore_client.py`
   - Pulls metadata from API endpoint.
@@ -183,20 +198,25 @@ sequenceDiagram
 - `sync/ApiSync_client.py`
   - WebSocket client for:
     - `send_ping(lla)`
-    - `last_package(packet)`
+    - queued `Last_Package` uploads (started from `main.py` via `start_last_package_sender`)
 
 - `initializer/env_initializer.py`
   - Creates/updates `.env` with `HOSTNAME`, `MAC_ADDRESS`, `API_SYNC_URL`, and `F4D_BQ_SYNC_URL`.
 
 - `DB/f4d_bq_sync.py`
-  - Reads local DuckDB rows incrementally by experiment, owner, and MAC address.
-  - Queries cloud last-uploaded timestamps and uploads only new rows.
-  - Supports `sensors_data`, `packet_events`, or both, with dry-run and batch controls.
+  - **`run_sync()`** is the supported entry point (also re-exported from `DB`).
+  - Reads local DuckDB rows incrementally by experiment name, owner (`HOSTNAME`), and MAC address.
+  - Queries the cloud service for last-uploaded timestamps and uploads only new rows.
+  - **`exp_name=None`:** discovers distinct active experiment names from `sensors_metadata` and syncs each (aggregated result status may be `ok`, `no_active_experiments`, or `partial_error` if one experiment fails).
+  - **`exp_name` set:** syncs that single experiment only.
+  - CLI: `--table sensors_data|packet_events|both`; `--exp` optional (omit for active mode).
+  - Optional `--limit`, `--batch-size`, `--owner`, `--mac`, `--sync-url`, `--dry-run`.
 
 ## Data Tables (DuckDB)
 
 - `sensors_metadata`:
-  - Experiment and sensor metadata synced from Firestore endpoint.
+  - Experiment and sensor metadata synced from the Firestore-backed API.
+  - Multiple rows may be active at once (distinct `Exp_Name` values with `Active_Exp = true`); BQ sync iterates those names when `exp_name` is not specified.
 
 - `sensors_data`:
   - Time-series rows written every 3 minutes from flash buffer snapshots.
@@ -336,6 +356,7 @@ What to look for in logs:
 - At boundary: `[SYNC] 3-minute boundary reached...`
 - Metadata refresh: `[METADATA] Starting metadata refresh before interval write...`
 - Write summary: `[WRITE:sensors_data] ...` and `[WRITE:packet_events] ...`
+- After a successful write: `[BQ SYNC] - Starting Automatic BigQuery sync for active experiments...` then `[BQ SYNC RESULT] ...` or `[BQ SYNC ERROR] ...`
 
 ### 4) Post-flush database checks
 
@@ -381,21 +402,29 @@ If Last_Package sends are failing, monitor for:
 - `[Web-Socket] Failed to send LastPackage: ...`
 - `[Web-Socket] Queue full, dropping packet ...`
 
-### 6) Manual DuckDB to BigQuery sync
+### 6) DuckDB to BigQuery sync (CLI and code)
 
-Dry-run one table:
+**Active experiments (recommended default):** omit `--exp` so every distinct `Exp_Name` with `Active_Exp = true` in `sensors_metadata` is synced.
+
+Dry-run both tables for all active experiments:
+
+```bash
+python3 -m DB.f4d_bq_sync --table both --dry-run
+```
+
+Upload both tables for all active experiments:
+
+```bash
+python3 -m DB.f4d_bq_sync --table both --batch-size 500
+```
+
+**Single experiment:** pass `--exp` to scope uploads to one experiment name (must match `Exp_Name` in DuckDB / cloud filter).
 
 ```bash
 python3 -m DB.f4d_bq_sync --table sensors_data --exp "<EXP_NAME>" --dry-run
 ```
 
-Upload both local tables in batches:
-
-```bash
-python3 -m DB.f4d_bq_sync --table both --exp "<EXP_NAME>" --batch-size 500
-```
-
-Optional overrides for manual testing:
+Optional overrides for testing:
 
 ```bash
 python3 -m DB.f4d_bq_sync \
@@ -407,11 +436,20 @@ python3 -m DB.f4d_bq_sync \
   --sync-url "https://your-bq-sync-service"
 ```
 
+**From Python** (same behavior as the service after flush):
+
+```python
+from DB import run_sync
+
+result = run_sync(table="both", exp_name=None, dry_run=False)
+```
+
 What the sync does:
-- Reads `HOSTNAME`, `MAC_ADDRESS`, and `F4D_BQ_SYNC_URL` from `.env` by default.
-- Asks the cloud service for the last uploaded timestamp per table.
+- Reads `HOSTNAME`, `MAC_ADDRESS`, and `F4D_BQ_SYNC_URL` from `.env` by default (unless overridden).
+- Asks the cloud service for the last uploaded timestamp per table (and experiment when applicable).
 - Selects only newer local rows from DuckDB.
 - Uploads to `F4D_sensors_data` and/or `F4D_packet_events`.
+- CLI exit code `0` when status is `ok` or `no_active_experiments`; `1` when status is `partial_error` or on fatal errors.
 
 ### 7) Common validation outcomes
 
@@ -468,6 +506,15 @@ Recognized lines include:
 
 - Flush writes skipped:
   - Ensure sensor `ipv6` has active metadata in `sensors_metadata` (active experiment rows).
+
+- BigQuery sync skipped or errors:
+  - Automatic sync only runs after a **successful** `sensors_data` / `packet_events` write; fix any write/DB permission issues first.
+  - Confirm `F4D_BQ_SYNC_URL` and network reachability; check `[BQ SYNC ERROR]` logs.
+  - With `--exp` omitted, ensure at least one row in `sensors_metadata` has `Active_Exp = true` and a non-empty `Exp_Name`.
+
+## Related repo: device registry in BigQuery
+
+The sibling folder [`users-devices-permission`](../users-devices-permission/README.md) documents a Google Cloud Function that upserts MAC addresses, owners, and related metadata in BigQuery. Field devices identify uploads to the BQ sync service using `HOSTNAME` and `MAC_ADDRESS` from `.env` (written by `initializer/env_initializer.py`), which should stay consistent with how devices are registered upstream.
 
 ## Exit from the screen 
 - screen -ls

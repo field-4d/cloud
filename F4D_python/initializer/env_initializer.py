@@ -76,6 +76,7 @@ def run_initializer():
         "API_SYNC_URL",
         "https://apisync-1000435921680.us-central1.run.app"
     )
+    
     update_env_var(
         "F4D_BQ_SYNC_URL",
         "https://f4d-bq-sync-1000435921680.me-west1.run.app"

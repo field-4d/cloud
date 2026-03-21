@@ -153,3 +153,6 @@ def sync_sensor_metadata_to_duckdb(
         "db_result": result
     }
 
+if __name__ == "__main__":
+    sync_result = sync_sensor_metadata_to_duckdb()
+    print(f"Sync result: {json.dumps(sync_result, indent=2, default=str)}")

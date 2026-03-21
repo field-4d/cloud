@@ -4,6 +4,7 @@ import duckdb
 import json
 import uuid
 
+
 DB_PATH = "/home/pi/F4D/DB/local.duckdb"
 
 def now_local():
@@ -156,7 +157,16 @@ def deactivate_experiment(con, exp_name):
     if not exp_name:
         return 0
 
-    result = con.execute("""
+    count_row = con.execute("""
+        SELECT COUNT(*)
+        FROM sensors_metadata
+        WHERE Exp_Name = ?
+          AND Active_Exp = true
+    """, [exp_name]).fetchone()
+
+    rows_to_update = int(count_row[0]) if count_row else 0
+
+    con.execute("""
         UPDATE sensors_metadata
         SET Active_Exp = false,
             Exp_Ended_At = ?,
@@ -165,25 +175,33 @@ def deactivate_experiment(con, exp_name):
           AND Active_Exp = true
     """, [now_local(), exp_name])
 
-    return result.rowcount if hasattr(result, "rowcount") else 0
+    return rows_to_update
 
 
-def deactivate_experiment_by_id(con, exp_id):
-    if exp_id is None:
+def deactivate_experiment(con, exp_name):
+    if not exp_name:
         return 0
 
-    result = con.execute("""
+    count_row = con.execute("""
+        SELECT COUNT(*)
+        FROM sensors_metadata
+        WHERE Exp_Name = ?
+          AND Active_Exp = true
+    """, [exp_name]).fetchone()
+
+    rows_to_update = int(count_row[0]) if count_row else 0
+
+    con.execute("""
         UPDATE sensors_metadata
         SET Active_Exp = false,
             Exp_Ended_At = ?,
             Snapshot_At = current_timestamp
-        WHERE Exp_ID = ?
+        WHERE Exp_Name = ?
           AND Active_Exp = true
-    """, [now_local(), exp_id])
+    """, [now_local(), exp_name])
 
-    return result.rowcount if hasattr(result, "rowcount") else 0
-
-
+    return rows_to_update
+    
 def ensure_boot_row(con, item):
     lla = item.get("LLA")
     if not lla:
@@ -227,6 +245,7 @@ def ensure_boot_row(con, item):
     ])
 
     return True
+
 
 
 def find_existing_active_row(con, lla, exp_id, exp_name):
@@ -397,6 +416,37 @@ def upsert_active_experiment_rows(con, rows, exp_id, exp_name):
     return inserted, updated, skipped_missing_lla
 
 
+def get_active_experiment_by_name(con, exp_name):
+    if not exp_name:
+        return None
+
+    return con.execute("""
+        SELECT Exp_Name, Exp_ID
+        FROM sensors_metadata
+        WHERE Exp_Name = ?
+          AND Active_Exp = true
+          AND Exp_ID > 0
+        ORDER BY Exp_ID DESC
+        LIMIT 1
+    """, [exp_name]).fetchone()
+
+def get_active_experiment_name_by_lla(con, lla):
+    if not lla:
+        return None
+
+    row = con.execute("""
+        SELECT Exp_Name
+        FROM sensors_metadata
+        WHERE LLA = ?
+          AND Active_Exp = true
+          AND Exp_ID > 0
+        ORDER BY Exp_ID DESC
+        LIMIT 1
+    """, [lla]).fetchone()
+
+    return row[0] if row else None
+
+
 def apply_sensor_metadata_payload(response_payload):
     if not response_payload.get("ok"):
         raise ValueError(f"Firestore request failed: {response_payload}")
@@ -409,27 +459,86 @@ def apply_sensor_metadata_payload(response_payload):
     if not rows:
         return {"status": "no rows"}
 
-    active_rows = [r for r in rows if r.get("Active_Exp") is True]
-    inactive_rows = [r for r in rows if r.get("Active_Exp") is not True]
+    def get_active_experiment_name_by_lla(lla):
+        if not lla:
+            return None
 
-    if active_rows:
-        new_exp_name = active_rows[0].get("Exp_Name")
-        if not new_exp_name:
-            return {
-                "status": "error",
-                "message": "Active experiment rows arrived without Exp_Name"
-            }
+        row = con.execute("""
+            SELECT Exp_Name
+            FROM sensors_metadata
+            WHERE LLA = ?
+              AND Active_Exp = true
+              AND Exp_ID > 0
+              AND Exp_Name IS NOT NULL
+              AND Exp_Name <> ''
+            ORDER BY Exp_ID DESC
+            LIMIT 1
+        """, [lla]).fetchone()
 
-        current_active = get_active_experiment(con)
+        return row[0] if row else None
+
+    grouped = {}
+    skipped_unresolved_rows = 0
+
+    for row in rows:
+        exp_name = row.get("Exp_Name")
+        active_exp = row.get("Active_Exp")
+        lla = row.get("LLA")
+
+        if not exp_name and active_exp is not True:
+            exp_name = get_active_experiment_name_by_lla(lla)
+
+        if not exp_name:
+            skipped_unresolved_rows += 1
+            continue
+
+        grouped.setdefault(exp_name, []).append(row)
+
+    if not grouped:
+        return {
+            "status": "no_resolved_experiments",
+            "experiments_processed": 0,
+            "skipped_unresolved_rows": skipped_unresolved_rows,
+            "results": []
+        }
+
+    results = []
+
+    for exp_name, exp_rows in grouped.items():
+        has_inactive = any(r.get("Active_Exp") is not True for r in exp_rows)
+        active_rows = [r for r in exp_rows if r.get("Active_Exp") is True]
+
+        if has_inactive:
+            deactivated_count = deactivate_experiment(con, exp_name)
+
+            boot_rows_added = 0
+            existing_boot_rows = 0
+            skipped_missing_lla = 0
+
+            for item in exp_rows:
+                if not item.get("LLA"):
+                    skipped_missing_lla += 1
+                    continue
+
+                if ensure_boot_row(con, item):
+                    boot_rows_added += 1
+                else:
+                    existing_boot_rows += 1
+
+            results.append({
+                "experiment_name": exp_name,
+                "status": "inactive_payload_processed",
+                "deactivated_rows": deactivated_count,
+                "boot_rows_added": boot_rows_added,
+                "existing_boot_rows": existing_boot_rows,
+                "skipped_missing_lla": skipped_missing_lla
+            })
+            continue
+
+        current_active = get_active_experiment_by_name(con, exp_name)
 
         if current_active:
-            current_exp_name, current_exp_id = current_active
-
-            if current_exp_name != new_exp_name:
-                deactivate_experiment_by_id(con, current_exp_id)
-                exp_id = get_next_exp_id(con)
-            else:
-                exp_id = current_exp_id
+            _, exp_id = current_active
         else:
             exp_id = get_next_exp_id(con)
 
@@ -437,45 +546,23 @@ def apply_sensor_metadata_payload(response_payload):
             con=con,
             rows=active_rows,
             exp_id=exp_id,
-            exp_name=new_exp_name
+            exp_name=exp_name
         )
 
-        return {
+        results.append({
+            "experiment_name": exp_name,
             "status": "active_experiment_processed",
-            "experiment_name": new_exp_name,
             "Exp_ID": exp_id,
             "rows_inserted": inserted,
             "rows_updated": updated,
             "skipped_missing_lla": skipped_missing_lla
-        }
-
-    exp_names = {r.get("Exp_Name") for r in inactive_rows if r.get("Exp_Name")}
-    deactivated_experiments = []
-
-    for exp_name in exp_names:
-        deactivate_experiment(con, exp_name)
-        deactivated_experiments.append(exp_name)
-
-    boot_rows_added = 0
-    existing_boot_rows = 0
-    skipped_missing_lla = 0
-
-    for item in inactive_rows:
-        if not item.get("LLA"):
-            skipped_missing_lla += 1
-            continue
-
-        if ensure_boot_row(con, item):
-            boot_rows_added += 1
-        else:
-            existing_boot_rows += 1
+        })
 
     return {
-        "status": "inactive_payload_processed",
-        "deactivated_experiments": sorted(deactivated_experiments),
-        "boot_rows_added": boot_rows_added,
-        "existing_boot_rows": existing_boot_rows,
-        "skipped_missing_lla": skipped_missing_lla
+        "status": "multi_experiment_payload_processed",
+        "experiments_processed": len(results),
+        "skipped_unresolved_rows": skipped_unresolved_rows,
+        "results": results
     }
 
 

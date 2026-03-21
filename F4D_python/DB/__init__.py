@@ -10,3 +10,5 @@ from .flash_memory import (
     pop_flash_memory_snapshot,
     restore_flash_memory_snapshot,
 )
+
+from .f4d_bq_sync import run_sync

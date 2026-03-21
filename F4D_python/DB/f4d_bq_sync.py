@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Manual DuckDB -> BigQuery sync for Field4D.
+DuckDB -> BigQuery sync for Field4D.
 
 Location:
     /home/pi/F4D/DB/f4d_bq_sync.py
@@ -13,6 +13,7 @@ import json
 import math
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import date, datetime
@@ -44,8 +45,9 @@ TABLE_CONFIG: Dict[str, Dict[str, str]] = {
 }
 
 
-def log(message: str) -> None:
-    print(f"[BQ_SYNC] {message}")
+def log(message: str,Flag_Debug=True) -> None:
+    if Flag_Debug:
+        print(f"[BQ_SYNC debug] {message}")
 
 
 def load_env_file(env_path: str) -> Dict[str, str]:
@@ -74,7 +76,11 @@ def require_env(env: Dict[str, str], key: str) -> str:
     return value
 
 
-def post_json(url: str, payload: Dict[str, Any], timeout: int = HTTP_TIMEOUT_SECONDS) -> Dict[str, Any]:
+def post_json(
+    url: str,
+    payload: Dict[str, Any],
+    timeout: int = HTTP_TIMEOUT_SECONDS,
+) -> Dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url=url,
@@ -91,10 +97,12 @@ def post_json(url: str, payload: Dict[str, Any], timeout: int = HTTP_TIMEOUT_SEC
             raw = resp.read().decode("utf-8")
             if not raw:
                 return {"http_status": resp.status, "raw_text": ""}
+
             data = json.loads(raw)
             if isinstance(data, dict):
                 data["_http_status"] = resp.status
                 return data
+
             return {
                 "_http_status": resp.status,
                 "status": "unexpected_response_shape",
@@ -121,10 +129,13 @@ def post_json(url: str, payload: Dict[str, Any], timeout: int = HTTP_TIMEOUT_SEC
         }
 
 
-def get_db_connection(db_path: str) -> duckdb.DuckDBPyConnection:
+def get_db_connection(
+    db_path: str,
+    read_only: bool = True,
+) -> duckdb.DuckDBPyConnection:
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"DuckDB file not found: {db_path}")
-    return duckdb.connect(db_path, read_only=True)
+    return duckdb.connect(db_path, read_only=read_only)
 
 
 def table_exists(con: duckdb.DuckDBPyConnection, table_name: str) -> bool:
@@ -167,20 +178,43 @@ def normalize_value(value: Any) -> Any:
     return value
 
 
-def rows_to_dicts(columns: List[str], rows: Iterable[Iterable[Any]]) -> List[Dict[str, Any]]:
+def rows_to_dicts(
+    columns: List[str],
+    rows: Iterable[Iterable[Any]],
+) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     for row in rows:
-        item = {}
+        item: Dict[str, Any] = {}
         for col, value in zip(columns, row):
             item[col] = normalize_value(value)
         output.append(item)
     return output
 
 
-def chunk_list(items: List[Dict[str, Any]], chunk_size: int) -> List[List[Dict[str, Any]]]:
+def chunk_list(
+    items: List[Dict[str, Any]],
+    chunk_size: int,
+) -> List[List[Dict[str, Any]]]:
     if chunk_size <= 0:
         raise ValueError("chunk_size must be > 0")
     return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+
+
+def get_active_experiment_names(con: duckdb.DuckDBPyConnection) -> List[str]:
+    if not table_exists(con, "sensors_metadata"):
+        raise RuntimeError("Local DuckDB table does not exist: sensors_metadata")
+
+    sql = """
+    SELECT DISTINCT TRIM("Exp_Name") AS exp_name
+    FROM sensors_metadata
+    WHERE "Active_Exp" = TRUE
+      AND "Exp_Name" IS NOT NULL
+      AND TRIM("Exp_Name") <> ''
+    ORDER BY TRIM("Exp_Name")
+    """
+
+    rows = con.execute(sql).fetchall()
+    return [row[0] for row in rows if row and row[0]]
 
 
 def fetch_last_timestamp(
@@ -208,11 +242,13 @@ def fetch_last_timestamp(
         log(
             f"Cloud get_last_timestamp ok "
             f"(table_exists={table_exists_flag}, stream_exists={stream_exists_flag}, "
-            f"last_timestamp={last_timestamp})"
+            f"exp={experiment_name}, last_timestamp={last_timestamp})"
         )
         return last_timestamp
 
-    raise RuntimeError(f"get_last_timestamp failed: {json.dumps(response, ensure_ascii=False)}")
+    raise RuntimeError(
+        f"get_last_timestamp failed: {json.dumps(response, ensure_ascii=False)}"
+    )
 
 
 def build_select_query(
@@ -282,7 +318,11 @@ def query_new_rows_from_duckdb(
     return rows_to_dicts(columns, rows)
 
 
-def upload_batch(sync_url: str, bq_table_name: str, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+def upload_batch(
+    sync_url: str,
+    bq_table_name: str,
+    rows: List[Dict[str, Any]],
+) -> Dict[str, Any]:
     payload = {
         "action": "upload_rows",
         "table_name": bq_table_name,
@@ -291,7 +331,10 @@ def upload_batch(sync_url: str, bq_table_name: str, rows: List[Dict[str, Any]]) 
     return post_json(sync_url, payload)
 
 
-def get_range_for_rows(rows: List[Dict[str, Any]], incremental_column: str) -> tuple[Optional[str], Optional[str]]:
+def get_range_for_rows(
+    rows: List[Dict[str, Any]],
+    incremental_column: str,
+) -> tuple[Optional[str], Optional[str]]:
     if not rows:
         return None, None
 
@@ -323,6 +366,8 @@ def sync_one_table(
         f"dry_run={dry_run}"
     )
 
+    table_started_at = time.perf_counter()
+
     last_timestamp = fetch_last_timestamp(
         sync_url=sync_url,
         bq_table_name=bq_table_name,
@@ -352,8 +397,17 @@ def sync_one_table(
     )
 
     if not rows:
-        log(f"Nothing to upload for {table_name}")
+        table_total_runtime_seconds = time.perf_counter() - table_started_at
+        log(
+            f"DONE table={table_name} exp={experiment_name} uploaded=0 "
+            f"failed_batches=0 first=None last=None "
+            f"total_upload_runtime_seconds=0.000 "
+            f"avg_batch_runtime_seconds=0.000 "
+            f"table_total_runtime_seconds={table_total_runtime_seconds:.3f}"
+        )
         return {
+            "status": "ok",
+            "experiment_name": experiment_name,
             "table": table_name,
             "selected_rows": 0,
             "uploaded_rows": 0,
@@ -363,11 +417,20 @@ def sync_one_table(
             "last_selected_timestamp": None,
             "total_batches": 0,
             "batch_size": batch_size,
+            "total_upload_runtime_seconds": 0.0,
+            "avg_batch_runtime_seconds": 0.0,
+            "table_total_runtime_seconds": round(table_total_runtime_seconds, 3),
         }
 
     if dry_run:
-        log(f"DRY RUN: no upload performed for {table_name}")
+        table_total_runtime_seconds = time.perf_counter() - table_started_at
+        log(
+            f"DRY RUN table={table_name} exp={experiment_name} selected_rows={selected_rows} "
+            f"total_batches={total_batches} table_total_runtime_seconds={table_total_runtime_seconds:.3f}"
+        )
         return {
+            "status": "ok",
+            "experiment_name": experiment_name,
             "table": table_name,
             "selected_rows": selected_rows,
             "uploaded_rows": 0,
@@ -377,11 +440,15 @@ def sync_one_table(
             "last_selected_timestamp": last_ts,
             "total_batches": total_batches,
             "batch_size": batch_size,
+            "total_upload_runtime_seconds": 0.0,
+            "avg_batch_runtime_seconds": 0.0,
+            "table_total_runtime_seconds": round(table_total_runtime_seconds, 3),
         }
 
     batches = chunk_list(rows, batch_size)
     uploaded_rows = 0
     failed_batches = 0
+    batch_runtimes_seconds: List[float] = []
 
     for idx, batch in enumerate(batches, start=1):
         batch_first, batch_last = get_range_for_rows(batch, incremental_column)
@@ -390,30 +457,56 @@ def sync_one_table(
             f"first={batch_first} last={batch_last}"
         )
 
+        batch_started_at = time.perf_counter()
+
         response = upload_batch(
             sync_url=sync_url,
             bq_table_name=bq_table_name,
             rows=batch,
         )
 
+        batch_elapsed_seconds = time.perf_counter() - batch_started_at
+        batch_runtimes_seconds.append(batch_elapsed_seconds)
+
         if response.get("status") == "success":
             uploaded_rows += len(batch)
-            log(f"Batch {idx} success")
+            log(
+                f"Batch {idx} success "
+                f"runtime_seconds={batch_elapsed_seconds:.3f} "
+                f"rows={len(batch)}"
+            )
             continue
 
         failed_batches += 1
-        log(f"Batch {idx} FAILED: {json.dumps(response, ensure_ascii=False)}")
+        log(
+            f"Batch {idx} FAILED "
+            f"runtime_seconds={batch_elapsed_seconds:.3f}: "
+            f"{json.dumps(response, ensure_ascii=False)}"
+        )
         raise RuntimeError(
-            f"Upload failed for {table_name} batch {idx}/{len(batches)}: "
+            f"Upload failed for {table_name} batch {idx}/{len(batches)} "
+            f"(runtime_seconds={batch_elapsed_seconds:.3f}): "
             f"{json.dumps(response, ensure_ascii=False)}"
         )
 
+    total_upload_runtime_seconds = sum(batch_runtimes_seconds)
+    avg_batch_runtime_seconds = (
+        total_upload_runtime_seconds / len(batch_runtimes_seconds)
+        if batch_runtimes_seconds else 0.0
+    )
+    table_total_runtime_seconds = time.perf_counter() - table_started_at
+
     log(
-        f"DONE table={table_name} uploaded={uploaded_rows} failed_batches={failed_batches} "
-        f"first={first_ts} last={last_ts}"
+        f"DONE table={table_name} exp={experiment_name} uploaded={uploaded_rows} "
+        f"failed_batches={failed_batches} first={first_ts} last={last_ts} "
+        f"total_upload_runtime_seconds={total_upload_runtime_seconds:.3f} "
+        f"avg_batch_runtime_seconds={avg_batch_runtime_seconds:.3f} "
+        f"table_total_runtime_seconds={table_total_runtime_seconds:.3f}"
     )
 
     return {
+        "status": "ok",
+        "experiment_name": experiment_name,
         "table": table_name,
         "selected_rows": selected_rows,
         "uploaded_rows": uploaded_rows,
@@ -423,11 +516,193 @@ def sync_one_table(
         "last_selected_timestamp": last_ts,
         "total_batches": total_batches,
         "batch_size": batch_size,
+        "total_upload_runtime_seconds": round(total_upload_runtime_seconds, 3),
+        "avg_batch_runtime_seconds": round(avg_batch_runtime_seconds, 3),
+        "table_total_runtime_seconds": round(table_total_runtime_seconds, 3),
     }
 
 
+def resolve_tables_to_run(table_arg: str) -> List[str]:
+    return ["sensors_data", "packet_events"] if table_arg == "both" else [table_arg]
+
+
+def sync_for_experiment(
+    con: duckdb.DuckDBPyConnection,
+    sync_url: str,
+    owner: str,
+    mac_address: str,
+    experiment_name: str,
+    table: str = "both",
+    limit: Optional[int] = None,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    if batch_size <= 0:
+        raise ValueError("batch_size must be > 0")
+
+    experiment_started_at = time.perf_counter()
+
+    tables_to_run = resolve_tables_to_run(table)
+    table_results: List[Dict[str, Any]] = []
+
+    for table_name in tables_to_run:
+        result = sync_one_table(
+            con=con,
+            sync_url=sync_url,
+            table_name=table_name,
+            owner=owner,
+            mac_address=mac_address,
+            experiment_name=experiment_name,
+            limit=limit,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+        table_results.append(result)
+
+    experiment_total_runtime_seconds = time.perf_counter() - experiment_started_at
+
+    return {
+        "status": "ok",
+        "mode": "manual",
+        "experiment_name": experiment_name,
+        "owner": owner,
+        "mac_address": mac_address,
+        "table_results": table_results,
+        "dry_run": dry_run,
+        "experiment_total_runtime_seconds": round(experiment_total_runtime_seconds, 3),
+    }
+
+
+def sync_for_active_experiments(
+    con: duckdb.DuckDBPyConnection,
+    sync_url: str,
+    owner: str,
+    mac_address: str,
+    table: str = "both",
+    limit: Optional[int] = None,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    if batch_size <= 0:
+        raise ValueError("batch_size must be > 0")
+
+    active_started_at = time.perf_counter()
+
+    experiment_names = get_active_experiment_names(con)
+
+    if not experiment_names:
+        log("No active experiments found in sensors_metadata")
+        return {
+            "status": "no_active_experiments",
+            "mode": "active",
+            "owner": owner,
+            "mac_address": mac_address,
+            "experiments_found": [],
+            "results": [],
+            "dry_run": dry_run,
+            "active_sync_total_runtime_seconds": round(
+                time.perf_counter() - active_started_at, 3
+            ),
+        }
+
+    log(f"Active experiments found: {experiment_names}")
+
+    results: List[Dict[str, Any]] = []
+    failed_experiments: List[Dict[str, Any]] = []
+
+    for experiment_name in experiment_names:
+        try:
+            result = sync_for_experiment(
+                con=con,
+                sync_url=sync_url,
+                owner=owner,
+                mac_address=mac_address,
+                experiment_name=experiment_name,
+                table=table,
+                limit=limit,
+                batch_size=batch_size,
+                dry_run=dry_run,
+            )
+            results.append(result)
+        except Exception as e:
+            error_result = {
+                "status": "error",
+                "mode": "active",
+                "experiment_name": experiment_name,
+                "error": str(e),
+            }
+            results.append(error_result)
+            failed_experiments.append(error_result)
+
+    overall_status = "ok" if not failed_experiments else "partial_error"
+    active_sync_total_runtime_seconds = time.perf_counter() - active_started_at
+
+    return {
+        "status": overall_status,
+        "mode": "active",
+        "owner": owner,
+        "mac_address": mac_address,
+        "experiments_found": experiment_names,
+        "results": results,
+        "failed_experiments": failed_experiments,
+        "dry_run": dry_run,
+        "active_sync_total_runtime_seconds": round(active_sync_total_runtime_seconds, 3),
+    }
+
+
+def run_sync(
+    table: str,
+    exp_name: Optional[str] = None,
+    limit: Optional[int] = None,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    dry_run: bool = False,
+    owner: Optional[str] = None,
+    mac_address: Optional[str] = None,
+    sync_url: Optional[str] = None,
+    db_path: str = DB_PATH,
+) -> Dict[str, Any]:
+    env = load_env_file(ENV_PATH)
+
+    resolved_owner = owner or require_env(env, "HOSTNAME")
+    resolved_mac = mac_address or require_env(env, "MAC_ADDRESS")
+    resolved_sync_url = sync_url or require_env(env, "F4D_BQ_SYNC_URL")
+
+    con: Optional[duckdb.DuckDBPyConnection] = None
+
+    try:
+        con = get_db_connection(db_path)
+
+        if exp_name:
+            return sync_for_experiment(
+                con=con,
+                sync_url=resolved_sync_url,
+                owner=resolved_owner,
+                mac_address=resolved_mac,
+                experiment_name=exp_name,
+                table=table,
+                limit=limit,
+                batch_size=batch_size,
+                dry_run=dry_run,
+            )
+
+        return sync_for_active_experiments(
+            con=con,
+            sync_url=resolved_sync_url,
+            owner=resolved_owner,
+            mac_address=resolved_mac,
+            table=table,
+            limit=limit,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+
+    finally:
+        if con is not None:
+            con.close()
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Manual DuckDB -> BigQuery sync for Field4D")
+    parser = argparse.ArgumentParser(description="DuckDB -> BigQuery sync for Field4D")
     parser.add_argument(
         "--table",
         required=True,
@@ -436,14 +711,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--exp",
-        required=True,
-        help="Experiment name (must match Exp_Name in DuckDB / cloud filter)",
+        default=None,
+        help="Manual experiment name. If omitted, all active experiments from sensors_metadata are synced.",
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=None,
-        help="Optional row limit for manual testing",
+        help="Optional row limit for testing",
     )
     parser.add_argument(
         "--batch-size",
@@ -475,49 +750,36 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    con: Optional[duckdb.DuckDBPyConnection] = None
-
     try:
         args = parse_args()
-        env = load_env_file(ENV_PATH)
-
-        owner = args.owner or require_env(env, "HOSTNAME")
-        mac_address = args.mac or require_env(env, "MAC_ADDRESS")
-        sync_url = args.sync_url or require_env(env, "F4D_BQ_SYNC_URL")
 
         if args.batch_size <= 0:
             raise ValueError("--batch-size must be > 0")
 
         log(f"Using ENV_PATH={ENV_PATH}")
         log(f"Using DB_PATH={DB_PATH}")
-        log(f"Using sync URL={sync_url}")
         log(f"Dry run mode={args.dry_run}")
+        log(f"Mode={'manual' if args.exp else 'active'}")
 
-        con = get_db_connection(DB_PATH)
-
-        tables_to_run = ["sensors_data", "packet_events"] if args.table == "both" else [args.table]
-
-        results: List[Dict[str, Any]] = []
-
-        for table_name in tables_to_run:
-            result = sync_one_table(
-                con=con,
-                sync_url=sync_url,
-                table_name=table_name,
-                owner=owner,
-                mac_address=mac_address,
-                experiment_name=args.exp,
-                limit=args.limit,
-                batch_size=args.batch_size,
-                dry_run=args.dry_run,
-            )
-            results.append(result)
+        result = run_sync(
+            table=args.table,
+            exp_name=args.exp,
+            limit=args.limit,
+            batch_size=args.batch_size,
+            dry_run=args.dry_run,
+            owner=args.owner,
+            mac_address=args.mac,
+            sync_url=args.sync_url,
+            db_path=DB_PATH,
+        )
 
         log("SUMMARY")
-        for result in results:
-            log(json.dumps(result, ensure_ascii=False))
+        log(json.dumps(result, ensure_ascii=False))
 
-        return 0
+        if result.get("status") in {"ok", "no_active_experiments"}:
+            return 0
+
+        return 1
 
     except KeyboardInterrupt:
         log("Interrupted by user")
@@ -526,10 +788,6 @@ def main() -> int:
     except Exception as e:
         log(f"FATAL: {e}")
         return 1
-
-    finally:
-        if con is not None:
-            con.close()
 
 
 if __name__ == "__main__":

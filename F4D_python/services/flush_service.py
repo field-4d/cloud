@@ -5,6 +5,7 @@ from DB import (
     pop_flash_memory_snapshot,
     restore_flash_memory_snapshot,
     write_flash_buffer_to_sensors_data,
+    run_sync # this for upload to BQ
 )
 from services.metadata_service import sync_metadata_for_interval
 from helpers import get_next_3min_boundary, format_dt, sleep_until
@@ -48,6 +49,16 @@ def flush_worker():
 
             if write_result.get("status") == "ok":
                 print("[FLASH] Buffer handed off successfully for timed write to sensors_data + packet_events.")
+                try:
+                    print("[BQ SYNC] - Starting Automatic BigQuery sync for active experiments...")
+                    bq_result =  run_sync(
+                        table="both", # Sync both sensors_data and packet_events
+                        exp_name=None, # Sync all active experiments
+                        dry_run=False # Set to False to perform actual sync
+                    )
+                    print(f"[BQ SYNC RESULT] {bq_result}")
+                except Exception as e:
+                    print(f"[BQ SYNC ERROR] Automatic BigQuery sync failed: {e}")
             else:
                 print("[FLASH] Timed write failed. Restoring snapshot into flash buffer.")
                 restore_flash_memory_snapshot(flash_buffer)
