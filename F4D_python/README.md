@@ -45,7 +45,7 @@ flowchart TD
   Q --> R[f4d-bq-sync HTTP endpoint]
 
   S[Manual: python -m DB.f4d_bq_sync] --> R
-  R --> BQ1[(BigQuery F4D_sensors_data)]
+  R --> BQ1[(BigQuery \nF4D_sensors_data)]
   R --> BQ2[(BigQuery F4D_packet_events)]
 ```
 
