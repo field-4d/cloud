@@ -265,7 +265,26 @@ pip install -r requirements.txt
 python3 -m initializer.env_initializer
 ```
 
-4. Optional metadata sync:
+4. Install the DuckDB CLI (optional; useful for inspecting `local.duckdb` from the shell). Preferred method:
+
+```bash
+curl https://install.duckdb.org | sh
+```
+
+   Add the CLI to your `PATH` (default install location for user `pi`; change `/home/pi` if needed):
+
+```bash
+echo 'export PATH=$PATH:/home/pi/.duckdb/cli/latest' >> ~/.bashrc
+source ~/.bashrc
+```
+
+   Smoke test:
+
+```bash
+duckdb -readonly
+```
+
+5. Optional metadata sync:
 
 ```bash
 python3 -m DB.firestore_client
