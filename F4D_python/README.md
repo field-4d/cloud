@@ -31,7 +31,7 @@ flowchart TD
   C -->|antenna_log| E[Print antenna log]
   C -->|sensor_data| F[DB.update_flash_memory]
 
-  F --> G[sync.last_package]
+  F --> G[sync.enqueue_last_package]
   G --> H[ApiSync WebSocket /ws/ping]
 
   I[services.start_flush_thread] --> J[3-minute boundary]
@@ -45,6 +45,8 @@ flowchart TD
   Q --> R[f4d-bq-sync HTTP endpoint]
 
   S[Manual: python -m DB.f4d_bq_sync] --> R
+  R --> BQ1[(BigQuery F4D_sensors_data)]
+  R --> BQ2[(BigQuery F4D_packet_events)]
 ```
 
 ## Project Scheme
@@ -82,6 +84,9 @@ F4D/
 ├── main.py
 ├── README.md
 └── requirements.txt
+
+# Cloud (BigQuery) — written via f4d-bq-sync service, not local files:
+#   F4D_sensors_data, F4D_packet_events
 ```
 
 ## Sensor Package Roadmap
