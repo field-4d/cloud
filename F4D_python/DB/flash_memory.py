@@ -24,6 +24,16 @@ def update_flash_memory(packet: dict) -> None:
         raise ValueError("Packet must contain 'ipv6'")
 
     sensor_payload = {k: v for k, v in packet.items() if k != "ipv6"}
+    
+    # Detect advance packet by its unique fields
+    is_advanced_packet = (
+        "co2_ppm" in sensor_payload or
+        "air_velocity" in sensor_payload
+    )
+    # Rename only the advance packet counter
+    if is_advanced_packet and "package_number" in sensor_payload:
+        sensor_payload["advanced_package_number"] = sensor_payload.pop("package_number")
+
     now_dt = datetime.now(timezone.utc)
     now_str = now_dt.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
@@ -39,7 +49,10 @@ def update_flash_memory(packet: dict) -> None:
         entry = FLASH_MEMORY_BUFFER[ipv6]
         entry["packet_count"] += 1
         entry["last_packet_time"] = now_str
-        entry["packet"] = deepcopy(sensor_payload)
+        
+        # entry["packet"] = deepcopy(sensor_payload)
+        # Merge instead of overwrite to preserve all fields across packet types
+        entry["packet"].update(deepcopy(sensor_payload))
 
         entry["packet_events"].append({
             "LLA": ipv6,
@@ -75,7 +88,8 @@ def restore_flash_memory_snapshot(snapshot: dict) -> None:
     If the same sensor already has new data in the fresh buffer, merge:
     - packet_count
     - packet_events
-    - keep newest packet by last_packet_time
+    - packet payload (old + current)
+    - keep newest last_packet_time
     """
     if not snapshot:
         return
@@ -97,9 +111,16 @@ def restore_flash_memory_snapshot(snapshot: dict) -> None:
             current_data["packet_events"] = merged_events
             current_data["packet_count"] = len(merged_events)
 
+            old_packet = deepcopy(old_data.get("packet", {}))
+            current_packet = deepcopy(current_data.get("packet", {}))
+
+            merged_packet = old_packet.copy()
+            merged_packet.update(current_packet)
+            current_data["packet"] = merged_packet
+
             current_time = current_data.get("last_packet_time", "") or ""
             old_time = old_data.get("last_packet_time", "") or ""
 
             if old_time > current_time:
                 current_data["last_packet_time"] = old_time
-                current_data["packet"] = deepcopy(old_data.get("packet", {}))
+
