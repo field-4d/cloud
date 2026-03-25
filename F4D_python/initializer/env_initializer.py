@@ -2,9 +2,40 @@ import re
 import subprocess
 import socket
 import os
+import requests
 
 ENV_PATH = "/home/pi/F4D/.env"
 
+
+
+
+########
+REGISTER_URL = "https://us-central1-iucc-f4d.cloudfunctions.net/f4d-register-device"
+def register_device(mac, hostname):
+    """
+    Send device registration to Field4D Cloud Function.
+    This must NEVER crash the initializer.
+    """
+
+    payload = {
+        "mac_address": mac,
+        "owner": hostname,
+        # "device_name": f"{hostname}_{mac}",
+        # "description": f"F4D device {hostname}",
+        "source": "env_initializer"
+    }
+
+    try:
+        print("Registering device...")
+
+        res = requests.post(REGISTER_URL, json=payload, timeout=30)
+
+        print(f"Register status: {res.status_code}")
+        print(f"Register response: {res.text}")
+
+    except Exception as e:
+        print(f"Device registration failed (ignored): {e}")
+##########################
 
 def ensure_env_file_exists():
     """
@@ -82,10 +113,14 @@ def run_initializer():
         "https://f4d-bq-sync-1000435921680.me-west1.run.app"
     )
 
+    # New Step
+    register_device(mac, hostname)
 
     print("Initializer completed")
     print(f"MAC_ADDRESS={mac}")
     print(f"HOSTNAME={hostname}")
+
+
 
 
 if __name__ == "__main__":
