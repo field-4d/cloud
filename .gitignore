@@ -16,6 +16,8 @@
 !Reggie_Online/
 !F4D_python/
 !f4d_bq_sync/
+!/f4d-register-device/
+
 # Also keep their contents
 !process_files/**
 !query_last_timestamp/**
@@ -31,6 +33,7 @@
 !/Reggie_Online/**
 !/F4D_python/**
 !/f4d_bq_sync/**
+!/f4d-register-device/**
 
 # Ignore generated Python files in F4D_python
 F4D_python/venv/
@@ -48,5 +51,3 @@ F4D_python/**/*.pyc
 **/.env.*
 
 # Keep f4d-register-device ignored
-/f4d-register-device/
-/f4d-register-device/**
