@@ -810,11 +810,20 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
 
     for sensor_row in active_sensor_rows:
         processed_sensors += 1
+        lla = sensor_row["LLA"]
 
         for variable, value in sensor_row["packet"].items():
+            # Skip items / non-srnros fields if needed (when opt_3001 not connected and sends null)
+            if value is None:
+                # print(f"[Debug null sensor] {lla} | {variable} is null in this interval, skipping")
+                skipped_invalid_value += 1
+                continue
+                
+
             try:
                 numeric_value = float(value)
             except (TypeError, ValueError):
+                print(f"[Debug invalid value] {lla} | {variable} = {value}, skipping")
                 skipped_invalid_value += 1
                 continue
 
