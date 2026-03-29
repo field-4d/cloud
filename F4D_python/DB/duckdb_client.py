@@ -68,6 +68,32 @@ def to_json_text(value):
     except Exception:
         return str(value)
 
+def normalize_label(value):
+    """
+    Always return a JSON string array for Label.
+    Examples:
+    - "Z0" -> '["Z0"]'
+    - ["Z0", "Z1"] -> '["Z0","Z1"]'
+    - "[Z0, Z1]" -> '["Z0","Z1"]'
+    """
+    if value is None:
+        return None
+
+    # If already list → serialize
+    if isinstance(value, list):
+        return json.dumps([str(v).strip() for v in value if str(v).strip()])
+
+    text = str(value).strip()
+
+    # Case: bracket string like "[A, B]"
+    if text.startswith("[") and text.endswith("]"):
+        inner = text[1:-1]
+        parts = [p.strip() for p in inner.split(",") if p.strip()]
+        return json.dumps(parts)
+
+    # Case: normal string
+    return json.dumps([text])
+
 
 def make_timebucket(ts: datetime | None):
     if ts is None:
@@ -305,7 +331,8 @@ def update_existing_experiment_row(con, item, exp_id, exp_name):
         item.get("Mac_Address"),
         item.get("Exp_Location"),
         True,
-        item.get("Label"),
+        # item.get("Label"),
+        normalize_label(item.get("Label")),
         to_json_text(item.get("Label_Options")),
         item.get("Location"),
         item.get("RFID"),
@@ -372,7 +399,8 @@ def insert_new_experiment_row(con, item, exp_id, exp_name):
         exp_name,
         item.get("Exp_Location"),
         True,
-        item.get("Label"),
+        # item.get("Label"),
+        normalize_label(item.get("Label")),
         to_json_text(item.get("Label_Options")),
         item.get("Location"),
         item.get("RFID"),
