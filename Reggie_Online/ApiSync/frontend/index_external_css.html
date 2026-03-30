@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApiSync - Payload Monitor (External CSS)</title>
+</head>
+<body>
+    <noscript>This page requires JavaScript enabled.</noscript>
+    <script>
+        (async function bootstrapExternalCssVersion() {
+            function mountIframeFallback() {
+                document.body.innerHTML = '';
+                document.body.style.margin = '0';
+                const iframe = document.createElement('iframe');
+                iframe.src = './index.html';
+                iframe.style.width = '100vw';
+                iframe.style.height = '100vh';
+                iframe.style.border = '0';
+                iframe.onload = function () {
+                    try {
+                        const doc = iframe.contentDocument || iframe.contentWindow.document;
+                        const inlineStyle = doc.querySelector('style');
+                        if (inlineStyle) inlineStyle.remove();
+                    } catch (e) {
+                        // If browser blocks access in file:// mode, keep iframe content as-is.
+                    }
+                };
+                document.body.appendChild(iframe);
+            }
+
+            try {
+                const response = await fetch('./index.html', { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error('Failed to load index.html');
+                }
+                const html = await response.text();
+                const withoutInlineStyle = html.replace(/<style[\s\S]*?<\/style>/i, '');
+                document.open();
+                document.write(withoutInlineStyle);
+                document.close();
+            } catch (error) {
+                mountIframeFallback();
+            }
+        })();
+    </script>
+</body>
+</html>

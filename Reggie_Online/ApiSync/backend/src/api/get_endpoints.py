@@ -18,7 +18,7 @@ if not logger.handlers:
 router = APIRouter()
 
 
-@router.get("/health")
+@router.get("/health", tags=["system"])
 async def health_check():
     """Health check endpoint."""
     logger.info(f"[ENDPOINT] GET /health")
@@ -26,7 +26,7 @@ async def health_check():
     return {"status": "ok"}
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse, tags=["system"])
 async def frontend():
     """Serve the frontend HTML page."""
     frontend_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "index.html")

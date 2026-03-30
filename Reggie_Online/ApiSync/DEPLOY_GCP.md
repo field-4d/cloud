@@ -2,6 +2,16 @@
 
 Deploy the ApiSync backend as a container image. Credentials are provided at runtime via Secret Manager; `.env` is never baked into the image.
 
+Current frontend integration expects this Cloud Run backend to expose:
+- `GET /health`
+- `GET /GCP-FS/permissions/resolve`
+- `GET /GCP-FS/metadata/active`
+- `GET /GCP-FS/metadata/sensors`
+- `GET /GCP-FS/last-package`
+- `GET /GCP-FS/metadata/experiments`
+- `POST /FS/sensor/update-metadata`
+- `WebSocket /ws/ping`
+
 ## Prerequisites
 
 1. **Google Cloud SDK (gcloud)**  
@@ -146,6 +156,27 @@ gcloud run deploy apisync --source . --region us-central1 \
 - Service URL: shown in the deploy output (e.g. `https://apisync-XXXXX-uc.a.run.app`)
 - Health check: `curl https://YOUR_SERVICE_URL/health`
 - WebSocket: `wss://YOUR_SERVICE_URL/ws/ping`
+
+### Endpoint smoke tests
+
+Use your owner/mac/email values:
+
+```bash
+curl "https://YOUR_SERVICE_URL/GCP-FS/permissions/resolve?email=user@mail.com"
+curl "https://YOUR_SERVICE_URL/GCP-FS/metadata/experiments?owner=YOUR_OWNER&mac_address=YOUR_MAC"
+curl "https://YOUR_SERVICE_URL/GCP-FS/metadata/sensors?owner=YOUR_OWNER&mac_address=YOUR_MAC"
+curl "https://YOUR_SERVICE_URL/GCP-FS/last-package?owner=YOUR_OWNER&mac_address=YOUR_MAC"
+```
+
+### Frontend API base URL
+
+After backend redeploy (or URL change), update `frontend/index.html`:
+
+```js
+window.API_BASE_URL = 'https://YOUR_SERVICE_URL';
+```
+
+The frontend builds WebSocket URL automatically from `API_BASE_URL` and connects to `/ws/ping`.
 
 ## References
 

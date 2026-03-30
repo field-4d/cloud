@@ -23,8 +23,8 @@ def load_env_with_multiline_support(env_file_path: Path):
     """
     Load .env file with support for multiline private keys.
     Supports both formats:
-    1. Single-line with \\n: GCP_PRIVATE_KEY="-----BEGIN...\\n...\\n-----END..."
-    2. Multi-line (actual newlines): GCP_PRIVATE_KEY="-----BEGIN...
+    1. Single-line with \\n: FS_PRIVATE_KEY="-----BEGIN...\\n...\\n-----END..."
+    2. Multi-line (actual newlines): FS_PRIVATE_KEY="-----BEGIN...
     ...-----END..."
     """
     if not env_file_path.exists():
@@ -124,6 +124,18 @@ else:
 _client = None
 
 
+def _mask_email(email: str) -> str:
+    """Return a redacted email for logs."""
+    if not email or "@" not in email:
+        return "not-set"
+    local, domain = email.split("@", 1)
+    if len(local) <= 2:
+        masked_local = "*" * len(local)
+    else:
+        masked_local = f"{local[0]}***{local[-1]}"
+    return f"{masked_local}@{domain}"
+
+
 async def get_client():
     """
     Get or create a Firestore AsyncClient instance.
@@ -154,14 +166,14 @@ async def get_client():
     
     # Priority 2: Individual .env variables
     project_id = os.getenv("GCP_PROJECT_ID")
-    client_email = os.getenv("GCP_CLIENT_EMAIL")
-    private_key = os.getenv("GCP_PRIVATE_KEY")
+    client_email = os.getenv("FS_CLIENT_EMAIL")
+    private_key = os.getenv("FS_PRIVATE_KEY")
     
     # Log credential loading status to help diagnose issues
     logger.info(
         f"[FIRESTORE_CONFIG] Checking credentials | "
         f"Project ID: {'SET' if project_id else 'NOT SET'} | "
-        f"Client Email: {'SET' if client_email else 'NOT SET'} | "
+        f"FS_CLIENT_EMAIL: {'SET' if client_email else 'NOT SET'} ({_mask_email(client_email)}) | "
         f"Private Key: {'SET' if private_key else 'NOT SET'}"
     )
     
@@ -172,12 +184,12 @@ async def get_client():
         if abs_env_path.exists():
             load_dotenv(dotenv_path=str(abs_env_path), override=True)
             project_id = os.getenv("GCP_PROJECT_ID")
-            client_email = os.getenv("GCP_CLIENT_EMAIL")
-            private_key = os.getenv("GCP_PRIVATE_KEY")
+            client_email = os.getenv("FS_CLIENT_EMAIL")
+            private_key = os.getenv("FS_PRIVATE_KEY")
             logger.info(
                 f"[FIRESTORE_CONFIG] After reload | "
                 f"Project ID: {'SET' if project_id else 'NOT SET'} | "
-                f"Client Email: {'SET' if client_email else 'NOT SET'} | "
+                f"FS_CLIENT_EMAIL: {'SET' if client_email else 'NOT SET'} ({_mask_email(client_email)}) | "
                 f"Private Key: {'SET' if private_key else 'NOT SET'}"
             )
     
@@ -188,18 +200,21 @@ async def get_client():
         credentials_dict = {
             "type": "service_account",
             "project_id": project_id,
-            "private_key_id": os.getenv("GCP_PRIVATE_KEY_ID", ""),
+            "private_key_id": os.getenv("FS_PRIVATE_KEY_ID", ""),
             "private_key": private_key,
             "client_email": client_email,
-            "client_id": os.getenv("GCP_CLIENT_ID", ""),
-            "auth_uri": os.getenv("GCP_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
-            "token_uri": os.getenv("GCP_TOKEN_URI", "https://oauth2.googleapis.com/token"),
-            "client_x509_cert_url": os.getenv("GCP_CLIENT_X509_CERT_URL", ""),
+            "client_id": os.getenv("FS_CLIENT_ID", ""),
+            "auth_uri": os.getenv("FS_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
+            "token_uri": os.getenv("FS_TOKEN_URI", "https://oauth2.googleapis.com/token"),
+            "client_x509_cert_url": os.getenv("FS_CLIENT_X509_CERT_URL", ""),
         }
         
         credentials = service_account.Credentials.from_service_account_info(credentials_dict)
         _client = AsyncClient(credentials=credentials, project=project_id)
-        logger.info(f"[FIRESTORE_CONFIG] AsyncClient created using .env variables | Project: {project_id}")
+        logger.info(
+            f"[FIRESTORE_CONFIG] AsyncClient created using .env variables | "
+            f"Project: {project_id} | FS_CLIENT_EMAIL: {_mask_email(client_email)}"
+        )
         return _client
     
     # Priority 2: CREDENTIALS_JSON environment variable
@@ -237,7 +252,7 @@ async def get_client():
         logger.error(f"[FIRESTORE_CONFIG] Failed to create client: {e}")
         raise ValueError(
             "Could not load Firestore credentials. "
-            "Please set GCP_PROJECT_ID, GCP_CLIENT_EMAIL, and GCP_PRIVATE_KEY in auth/.env, "
+            "Please set GCP_PROJECT_ID, FS_CLIENT_EMAIL, and FS_PRIVATE_KEY in auth/.env, "
             "or set CREDENTIALS_JSON or CREDENTIALS_PATH environment variable."
         )
 

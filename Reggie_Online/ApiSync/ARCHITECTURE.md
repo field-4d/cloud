@@ -1,7 +1,7 @@
 # ApiSync Architecture Documentation
 
 **Author:** Nir Averbuch  
-**Last updated:** 2026-01-05
+**Last updated:** 2026-03-30
 
 This document provides a comprehensive overview of the ApiSync system architecture, including component interactions, data flows, and technology stack.
 
@@ -53,13 +53,14 @@ ApiSync is a FastAPI-based application that provides real-time sensor monitoring
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Router: get_endpoints.py                                │  │
 │  │  ├── GET /health                                          │  │
-│  │  └── GET /  (Frontend HTML)                               │  │
+│  │  └── GET /  (Frontend HTML fallback)                      │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Router: firestore_endpoints.py                          │  │
 │  │  ├── GET /GCP-FS/metadata/active                         │  │
 │  │  ├── GET /GCP-FS/metadata/sensors                         │  │
+│  │  ├── GET /GCP-FS/last-package                             │  │
 │  │  ├── GET /GCP-FS/metadata/experiments                     │  │
 │  │  ├── GET /GCP-FS/permissions/resolve                       │  │
 │  │  ├── POST /FS/sensor/register                              │  │
@@ -134,10 +135,10 @@ ApiSync is a FastAPI-based application that provides real-time sensor monitoring
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  permissions_client.py                                   │  │
-│  │  ├── resolve_owner_and_mac()                             │  │
-│  │  ├── resolve_all_owners_and_macs()                        │  │
-│  │  └── External Field4D permissions service integration     │  │
+│  │  permissions_service.py                                  │  │
+│  │  ├── resolve_permissions_by_email()                       │  │
+│  │  ├── Group by owner + unique mac_addresses                │  │
+│  │  └── Local BigQuery integration                           │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                   │
 └─────────┬─────────────────────────────────────────────────────────┘
@@ -186,8 +187,8 @@ ApiSync is a FastAPI-based application that provides real-time sensor monitoring
 - **WebSocket Manager**: Connection lifecycle management
 
 **Key Modules:**
-- `get_endpoints.py`: Health checks and frontend serving
-- `firestore_endpoints.py`: Firestore query and management endpoints
+- `get_endpoints.py`: Health checks and optional local frontend serving
+- `firestore_endpoints.py`: Firestore metadata, permissions-resolve, and sensor management endpoints
 - `websocket_endpoints.py`: WebSocket connection handling and payload processing
 
 ### 3. Firestore Integration Layer
@@ -207,10 +208,10 @@ ApiSync is a FastAPI-based application that provides real-time sensor monitoring
 - Automatic batch splitting for large operations
 - Atomic batch commits for data consistency
 
-**Permissions Client (`permissions_client.py`):**
-- Integrates with external Field4D permissions service
+**Permissions Service (`permissions_service.py`):**
+- Integrates with local BigQuery permissions tables
 - Resolves user email to owner/MAC combinations
-- Handles permissions service errors gracefully
+- Handles BigQuery/service errors gracefully
 
 ### 4. Google Cloud Firestore
 
@@ -461,6 +462,30 @@ WebSocket Payload Received
   - If active experiments found → Green card (green gradient background, green border, green shadow)
   - If only inactive experiments found → Gray card (gray gradient background, gray border, gray shadow)
 
+### g) Frontend Selection + Refresh Flow
+
+```
+Frontend Selection Panel
+    │
+    ├─► Resolve permissions by email
+    │   └─► GET /GCP-FS/permissions/resolve?email=user@mail.com
+    │
+    ├─► Load experiment dropdown
+    │   └─► GET /GCP-FS/metadata/experiments?owner=X&mac_address=Y
+    │
+    ├─► Load sensor cards (metadata view)
+    │   └─► GET /GCP-FS/metadata/sensors?owner=X&mac_address=Y[&exp_name=Z]
+    │
+    └─► Refresh sensor cards with package data
+        └─► GET /GCP-FS/last-package?owner=X&mac_address=Y[&exp_name=Z]
+```
+
+**Steps:**
+1. User enters email and resolves owner/MAC permissions using `/GCP-FS/permissions/resolve`
+2. Frontend loads experiment names and counts from `/GCP-FS/metadata/experiments`
+3. Frontend fetches sensor metadata list from `/GCP-FS/metadata/sensors`
+4. Frontend refreshes the same selection via `/GCP-FS/last-package` to include persisted `Last_Package` JSON per sensor
+
 ## Technology Stack
 
 ### Backend
@@ -495,8 +520,9 @@ WebSocket Payload Received
 | `GET /` | Frontend dashboard | None |
 | `GET /GCP-FS/metadata/active` | Query sensor metadata by LLA | `owner`/`hostname`, `mac_address`, `lla` |
 | `GET /GCP-FS/metadata/sensors` | Get all sensors metadata | `owner`, `mac_address`, `exp_name` (optional) |
+| `GET /GCP-FS/last-package` | Get metadata with persisted last_package payload | `owner`, `mac_address`, `exp_name` (optional) |
 | `GET /GCP-FS/metadata/experiments` | Get experiment names with stats | `owner`, `mac_address` |
-| `GET /GCP-FS/permissions/resolve` | Resolve owner/MAC from email | `email` |
+| `GET /GCP-FS/permissions/resolve` | Resolve owner/MAC combinations from email | `email` |
 
 ### HTTP POST Endpoints
 

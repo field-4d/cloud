@@ -1,7 +1,7 @@
 # ApiSync
 
 **Author:** Nir Averbuch  
-**Last updated:** 2026-03-10
+**Last updated:** 2026-03-29
 
 A FastAPI application with WebSocket support for real-time payload monitoring. Includes a web-based frontend dashboard to visualize received payloads with metadata management capabilities. Fully integrated with Google Cloud Firestore for sensor metadata storage and validation.
 
@@ -17,6 +17,9 @@ A FastAPI application with WebSocket support for real-time payload monitoring. I
 - **Metadata Management**: View and edit sensor metadata with active/inactive experiment separation
 - **Owner/MAC Reassignment (when inactive)**: When `active_exp` is false, owner and mac can be updated via PING, Last_Package, POST /FS/sensor/update, and update-metadata
 - **Flexible Metadata Updates**: Update any sensor field through the API or frontend interface (supports single and batch updates)
+- **Experiment Management UI**: Owner/device/experiment selection context with permission resolution and live device discovery
+- **Bulk Metadata Updates**: Update `label`, `location`, `exp_name`, and other metadata for multiple sensors keyed by `LLA`
+- **CSV Template Import/Export**: Download the current sensor list as CSV and upload edited CSV rows for batch metadata updates
 - **Frontend Dashboard**: Interactive web interface to monitor WebSocket payloads with validation status
 - **Connection Management**: Manages multiple WebSocket connections with broadcasting
 - **Structured Logging**: Comprehensive logging with timestamps, operation tracking, and performance metrics for all endpoints
@@ -30,31 +33,35 @@ A FastAPI application with WebSocket support for real-time payload monitoring. I
 ApiSync/
 ├── backend/
 │   ├── src/
-│   │   ├── main.py                    # Main FastAPI application
+│   │   ├── main.py                       # Main FastAPI application
 │   │   └── api/
 │   │       ├── __init__.py
-│   │       ├── get_endpoints.py      # GET endpoints (health, frontend)
-│   │       ├── websocket_endpoints.py # WebSocket endpoints (ping)
-│   │       ├── firestore_endpoints.py # Firestore query endpoints
-│   │       └── firestore_repository.py # Firestore operations and batch logic
+│   │       ├── get_endpoints.py          # GET endpoints (health, frontend)
+│   │       ├── websocket_endpoints.py    # WebSocket endpoints and payload handling
+│   │       ├── firestore_endpoints.py    # Firestore query/update endpoints
+│   │       ├── firestore_repository.py   # Firestore operations
+│   │       ├── firestore_batch.py        # Batch write utilities
+│   │       └── permissions_client.py     # Permissions resolve client
 │   ├── auth/
-│   │   ├── .env                       # Firestore credentials (not in git)
-│   │   └── firestore_config.py       # Firestore configuration and client setup
-│   └── requirements.txt               # Python dependencies
+│   │   ├── __init__.py
+│   │   └── firestore_config.py           # Firestore configuration and client setup
+│   └── requirements.txt                  # Python dependencies
 ├── frontend/
-│   └── index.html                 # Web dashboard interface
+│   └── index.html                        # Web dashboard interface
 ├── test_script/
-│   ├── README.md                  # Testing documentation
-│   ├── 1.test_websocket.py        # Python WebSocket test script
-│   ├── 2.test_update_metadata.py  # Metadata update test script
-│   ├── 3.test_last_package.py     # Last_Package test script
-│   ├── 4.test_batch_last_package.py # Batch Last_Package test script
-│   ├── 5.test_runner.py           # Test runner script
-│   ├── test_runner.py             # Test runner utility
-│   └── logs/                      # Test output files (CSV, TXT)
-├── Dockerfile                    # GCP Cloud Run build
-├── DEPLOY_GCP.md                 # GCP deployment guide
-└── README.md                     # This file
+│   ├── README.md                         # Testing documentation
+│   ├── 1.test_websocket.py               # Python WebSocket test script
+│   ├── 2.test_update_metadata.py         # Metadata update test script
+│   ├── 3.test_last_package.py            # Last_Package test script
+│   ├── 4.test_batch_last_package.py      # Batch Last_Package test script
+│   ├── 5.test_runner.py                  # Test runner script
+│   ├── 6.test_new_endpoints.py           # GET metadata/sensors & experiments (deployed API)
+│   └── test_runner.py                    # Test runner utility
+├── ARCHITECTURE.md                       # System architecture guide
+├── FRONTEND_API_GUIDE.md                 # Frontend/API integration notes
+├── DEPLOY_GCP.md                         # GCP deployment guide
+├── Dockerfile                            # GCP Cloud Run build
+└── README.md                             # This file
 ```
 
 ## Installation
@@ -63,7 +70,7 @@ ApiSync/
 
 2. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
 3. **For testing (optional):**
@@ -79,12 +86,12 @@ ApiSync/
 ### Start the FastAPI Server
 
 ```bash
-python -m uvicorn src.main:app --reload --reload-exclude "test_script/**"
+python -m uvicorn backend.src.main:app --reload --reload-exclude "test_script/**"
 ```
 
 Or run directly:
 ```bash
-python src/main.py
+python backend/src/main.py
 ```
 
 **Note:** The `--reload-exclude "test_script/**"` option prevents uvicorn from watching test script files, avoiding unnecessary server restarts when editing test files.
@@ -102,13 +109,43 @@ The server will start on `http://localhost:8000`
 - **Swagger UI**: `http://localhost:8000/docs`
 - **Health Check**: `http://localhost:8000/health`
 - **WebSocket Endpoint**: `ws://localhost:8000/ws/ping`
-- **Firestore Metadata**: `http://localhost:8000/GCP-FS/metadata/active?owner=<owner>&mac_address=<mac>&lla=<lla>`
+- **Permissions Resolve (Compatibility Alias)**: `GET http://localhost:8000/GCP-FS/permissions/resolve?email=<email>`
+- **Permissions Resolve (Canonical)**: `GET http://localhost:8000/api/permissions/resolve?email=<email>`
+- **Firestore Metadata (Active Sensor)**: `GET http://localhost:8000/GCP-FS/metadata/active?owner=<owner>&mac_address=<mac>&lla=<lla>`
+- **Verified Example Tuple (works together)**: `owner=f4dv2`, `mac_address=d83adde260d1`, `lla=fd002124b001204bd42`
 - **All Sensors Metadata**: `GET http://localhost:8000/GCP-FS/metadata/sensors?owner=<owner>&mac_address=<mac>&exp_name=<exp_name>`
+- **Last Package (metadata + Firestore last_package)**: `GET http://localhost:8000/GCP-FS/last-package?owner=<owner>&mac_address=<mac>&exp_name=<exp_name>`
 - **Experiment Names**: `GET http://localhost:8000/GCP-FS/metadata/experiments?owner=<owner>&mac_address=<mac>`
-- **Permissions Resolve**: `GET http://localhost:8000/GCP-FS/permissions/resolve?email=<email>`
 - **Sensor Registration**: `POST http://localhost:8000/FS/sensor/register`
 - **Sensor Update**: `POST http://localhost:8000/FS/sensor/update`
 - **Metadata Update**: `POST http://localhost:8000/FS/sensor/update-metadata`
+
+### OpenAPI / Swagger Organization
+
+Swagger UI groups endpoints by FastAPI tags and displays tag sections in the `openapi_tags` order from `backend/src/main.py`.
+
+Current tag groups are intentionally organized for user flow:
+
+1. **system**
+   - `GET /health`
+   - `GET /`
+2. **permissions**
+   - `GET /GCP-FS/permissions/resolve`
+   - `GET /api/permissions/resolve` (when enabled)
+3. **metadata**
+   - `GET /GCP-FS/metadata/active`
+   - `GET /GCP-FS/metadata/sensors`
+   - `GET /GCP-FS/last-package`
+   - `GET /GCP-FS/metadata/experiments`
+4. **sensors**
+   - `POST /FS/sensor/register`
+   - `POST /FS/sensor/update`
+   - `POST /FS/sensor/update-metadata`
+
+Notes:
+- This organization affects documentation presentation only.
+- Endpoint paths and runtime behavior remain unchanged.
+- Route declaration order can still affect endpoint order within a tag.
 
 ## API Endpoints
 
@@ -311,7 +348,7 @@ Query Firestore for sensor metadata by LLA.
 
 **Example:**
 ```
-GET /GCP-FS/metadata/active?owner=Icore_Pi&mac_address=2ccf6730ab5f&lla=fd002124b00ccf7399b
+GET /GCP-FS/metadata/active?owner=f4dv2&mac_address=d83adde260d1&lla=fd002124b001204bd42
 GET /GCP-FS/metadata/active?hostname=f4d_test&mac_address=aaaaaaaaaaaa&lla=fd002124b00ccf7399b
 ```
 
@@ -388,6 +425,25 @@ GET /GCP-FS/metadata/sensors?owner=Icore_Pi&mac_address=2ccf6730ab5f&exp_name=Im
 }
 ```
 
+Each row in `data` includes **`Last_Package`** (object from Firestore `last_package`, or `{}` if unset).
+
+#### `GET /GCP-FS/last-package`
+
+Same query and response envelope as **`GET /GCP-FS/metadata/sensors`**: returns all matching sensor documents for the owner and MAC, with optional exact **`exp_name`** filter. Each item in `data` includes full mapped metadata plus **`Last_Package`** (the stored last telemetry/package payload from Firestore).
+
+**Query Parameters:**
+- `owner` (required): Owner identifier (e.g., "Icore_Pi", "developerroom")
+- `mac_address` (required): MAC address (e.g., "2ccf6730ab5f")
+- `exp_name` (optional): Filter by exact experiment name match
+
+**Example:**
+```
+GET /GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f
+GET /GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f&exp_name=Image_V2
+```
+
+**Success Response:** Same structure as `/GCP-FS/metadata/sensors` (`success`, `project`, `dataset`, `table`, `full_table`, `count`, `data`). Each element of `data` includes **`Last_Package`** (object or `{}`).
+
 #### `GET /GCP-FS/metadata/experiments`
 
 Get all experiment names with statistics (total sensors, active count, inactive count) for a given owner and MAC address.
@@ -439,16 +495,16 @@ GET /GCP-FS/metadata/experiments?owner=Icore_Pi&mac_address=2ccf6730ab5f
 - Empty string `""` represents "Unnamed" experiments
 - Useful for filtering experiments by active status in the frontend
 
-#### `GET /GCP-FS/permissions/resolve`
+#### `GET /api/permissions/resolve` (Canonical)
 
-Resolve all owner and MAC address combinations from user email using external Field4D permissions backend.
+Resolve all owner and MAC address combinations from user email using internal BigQuery tables.
 
 **Query Parameters:**
 - `email` (required): User's email address
 
 **Example:**
 ```
-GET /GCP-FS/permissions/resolve?email=user@mail.com
+GET /api/permissions/resolve?email=user@mail.com
 ```
 
 **Success Response:**
@@ -475,13 +531,18 @@ GET /GCP-FS/permissions/resolve?email=user@mail.com
 
 **Error Responses:**
 - **HTTP 404**: No permissions found for this email
-- **HTTP 400/500**: Permissions service error
-- **HTTP 502/503**: Upstream permissions service unavailable
+- **HTTP 500**: Invalid response format
+- **HTTP 502/503**: BigQuery/service unavailable
 
 **Notes:**
 - Groups permissions by owner and collects unique MAC addresses for each owner
 - Returns all owner/MAC combinations the user has access to
 - Used by frontend to populate owner and MAC address dropdowns for experiment filtering
+- Table names are hardcoded internally and are not part of the request contract
+
+#### `GET /GCP-FS/permissions/resolve` (Compatibility Alias)
+
+Backward-compatible alias for legacy clients. This route delegates to the same internal implementation as `/api/permissions/resolve`.
 
 ### WebSocket Endpoints
 
@@ -543,12 +604,13 @@ Accepts WebSocket connections and handles ping payloads with automatic sensor va
 
 **Note:** `owner` and `mac_address` are required for Last_Package payloads. All sensors in the batch must belong to the same owner/MAC combination.
 
-**Response:**
+**Response (Ping):**
 ```json
 {
   "received": true,
-  "timestamp": "2024-01-15T10:30:45",
+  "timestamp": "2026-03-29T12:34:56Z",
   "payload": {
+    "owner": "<string>",
     "hostname": "<string>",
     "mac_address": "<string>",
     "type": "<string>",
@@ -559,6 +621,119 @@ Accepts WebSocket connections and handles ping payloads with automatic sensor va
       "error": null
     }
   }
+}
+```
+
+**Response (Last_Package):**
+```json
+{
+  "received": true,
+  "timestamp": "2026-03-29T12:35:02Z",
+  "type": "Last_Package",
+  "owner": "<string>",
+  "hostname": "<string>",
+  "mac_address": "<string>",
+  "updated_llas": ["<lla1>", "<lla2>"],
+  "registered_llas": null,
+  "sensors": {
+    "<lla1>": {
+      "temperature": 20.5,
+      "humidity": 60.0,
+      "solar_intensity": 800.0,
+      "battery": 3500
+    },
+    "<lla2>": {
+      "temperature": 21.0,
+      "humidity": 61.0,
+      "solar_intensity": 810.0,
+      "battery": 3550
+    }
+  },
+  "errors": null
+}
+```
+
+**Example (New Ping payload + response):**
+Request:
+```json
+{
+  "owner": "f4d_test",
+  "mac_address": "aaaaaaaaaaaa",
+  "type": "Ping",
+  "LLA": "fd002124b00ccf7399b"
+}
+```
+
+Broadcast response:
+```json
+{
+  "received": true,
+  "timestamp": "2026-03-29T12:40:00Z",
+  "payload": {
+    "owner": "f4d_test",
+    "hostname": "f4d_test",
+    "mac_address": "aaaaaaaaaaaa",
+    "type": "Ping",
+    "LLA": "fd002124b00ccf7399b",
+    "validation": {
+      "is_valid": true,
+      "message": "LLA found in metadata",
+      "error": null
+    }
+  }
+}
+```
+
+**Example (New Last_Package payload + response):**
+Request:
+```json
+{
+  "type": "Last_Package",
+  "owner": "f4d_test",
+  "mac_address": "aaaaaaaaaaaa",
+  "sensors": {
+    "fd002124b00ccf7399b": {
+      "temperature": 20.5,
+      "humidity": 60.0,
+      "solar_intensity": 800.0,
+      "battery": 3500
+    },
+    "fd002124b00ccf7399a": {
+      "temperature": 21.0,
+      "humidity": 61.0,
+      "solar_intensity": 810.0,
+      "battery": 3550
+    }
+  }
+}
+```
+
+Broadcast response:
+```json
+{
+  "received": true,
+  "timestamp": "2026-03-29T12:40:05Z",
+  "type": "Last_Package",
+  "owner": "f4d_test",
+  "hostname": "f4d_test",
+  "mac_address": "aaaaaaaaaaaa",
+  "updated_llas": ["fd002124b00ccf7399b", "fd002124b00ccf7399a"],
+  "registered_llas": null,
+  "sensors": {
+    "fd002124b00ccf7399b": {
+      "temperature": 20.5,
+      "humidity": 60.0,
+      "solar_intensity": 800.0,
+      "battery": 3500
+    },
+    "fd002124b00ccf7399a": {
+      "temperature": 21.0,
+      "humidity": 61.0,
+      "solar_intensity": 810.0,
+      "battery": 3550
+    }
+  },
+  "errors": null
 }
 ```
 
@@ -590,7 +765,7 @@ The WebSocket endpoint also supports metadata update messages (planned feature):
 {
   "status": "received",
   "message": "Metadata update received",
-  "timestamp": "2024-01-15T10:30:45"
+  "timestamp": "2024-01-15T10:30:45Z"
 }
 ```
 
@@ -633,8 +808,9 @@ The frontend dashboard (`http://localhost:8000/`) provides:
 
 1. **Connection Status**: Visual indicator and Connect/Disconnect buttons
 2. **Health Check Component**: Test the `/health` endpoint with visual feedback
-3. **Payload Monitor**: Real-time display of up to 10 sensors
-   - Grid layout: 5 sensors per row, 2 rows maximum (oldest to newest, left to right, top to bottom)
+3. **Payload Monitor**: Real-time display of recent payloads
+   - Configurable maximum payload count from the dashboard
+   - Grid layout with clickable cards and duplicate prevention by `LLA`
    - **Filtering Logic**: Shows sensors only if:
      - Validation is `true` (valid sensors found in metadata)
      - OR validation message contains "LLA not found in metadata"
@@ -646,19 +822,31 @@ The frontend dashboard (`http://localhost:8000/`) provides:
    - Clear Payloads button to reset the display
    - Automatic updates when payloads are received
 
-4. **Experiment Management**: Independent section for fetching and filtering experiments
-   - **Email Input**: Enter email address to resolve permissions
-   - **Resolve Permissions**: Calls `/GCP-FS/permissions/resolve` to get all owner/MAC combinations
-   - **Owner Selection**: Dropdown populated with all owners from permissions
-   - **MAC Address Selection**: Dropdown populated based on selected owner
+4. **Experiment Management**: Stable owner/device selection and experiment browsing
+   - **Selection Context**: One compact section for email, owner, device, and experiment selection
+   - **Resolve Permissions**: Calls `/api/permissions/resolve` to get owner/MAC combinations by email
+   - **Owner Selection**: Dropdown shows owners with per-owner device counts
+   - **Device Selection**: Dropdown shows MAC addresses for the chosen owner
+   - **Live Discovery**: WebSocket payloads can add owner/MAC combinations to the dropdowns without forcing the current selection to refresh on every payload
    - **Experiment Filtering**: Filter experiments by All/Active/Inactive status
-   - **Experiment Selection**: Select experiment to view associated sensors
-   - **Sensor Display**: Shows all sensors for selected experiment with metadata cards
+   - **Experiment Selection**: Select a named experiment or `All sensors`
    - **Statistics**: Displays total, active, and inactive experiment counts
-   - **Auto-detection**: Falls back to WebSocket-detected owner/MAC if permissions not resolved
-   - **Auto-select**: Automatically selects owner/MAC if only one combination exists
+   - **Stable Context**: Once a user selects owner/device, the experiment-management view stays static unless the user changes it or explicitly refreshes
 
-5. **Metadata Modal**: Clickable payload cards to view detailed sensor metadata
+5. **Bulk Metadata Management**: Multi-sensor editing keyed by `LLA`
+   - Available from the `All sensors` view after owner/device selection
+   - Checkbox selection for multiple sensors
+   - Bulk update fields for `Label`, `Location`, and `Exp Name`
+   - Sends one batch request to `/FS/sensor/update-metadata`
+   - Keeps experiment lifecycle actions separate from metadata editing
+
+6. **CSV Template Workflow**
+   - **Download CSV Template**: Exports the currently loaded sensor list
+   - **Upload CSV**: Imports edited rows back into the frontend
+   - Uses `LLA` as the required row key
+   - Supports batch metadata updates using the existing `/FS/sensor/update-metadata` endpoint
+
+7. **Metadata Modal**: Clickable payload cards to view detailed sensor metadata
    - Click any payload card to open a modal with sensor metadata
    - **Active Experiments**: Shows current state with green theme
      - Displays all active experiments directly
@@ -679,14 +867,14 @@ The frontend dashboard (`http://localhost:8000/`) provides:
    - **Empty States**: Handles "No metadata yet" and "No active experiments"
    - Modal can be closed by clicking outside, pressing ESC, or clicking X button
 
-6. **Visual Status Indicators**: Color-coded payload cards
+8. **Visual Status Indicators**: Color-coded payload cards
    - **Active Experiments**: Green gradient background, green left border, green shadow
      - Automatically updates when metadata is fetched
    - **Inactive Experiments**: Gray gradient background, gray left border, gray shadow
      - Status determined when clicking to view metadata
    - **Invalid Sensors**: Red validation section (failed validation)
 
-7. **Error/Debug Dashboard**: Separate section for validation errors
+9. **Error/Debug Dashboard**: Separate section for validation errors
    - Displays validation errors for sensors that don't meet display criteria
    - Shows error message and details from `validation.message` and `validation.error`
    - Displays LLA, MAC Address, and Hostname for each error
@@ -737,6 +925,11 @@ The frontend dashboard (`http://localhost:8000/`) provides:
   - "Save Changes" button sends updates to `/FS/sensor/update-metadata` endpoint
   - Updates are saved directly to Firestore
   - Frontend automatically reloads metadata after successful save
+- **Bulk Metadata Editing (Implemented)**:
+  - `All sensors` view supports multi-select by checkbox
+  - Bulk metadata form updates selected sensors by `LLA`
+  - CSV import/export works against the current owner/device sensor list
+  - Batch updates are submitted through `/FS/sensor/update-metadata`
 
 ## Testing
 
@@ -759,13 +952,19 @@ python test_script/1.test_websocket.py
 **Firestore Metadata Test:**
 ```bash
 # Test via browser or curl
-curl "http://localhost:8000/GCP-FS/metadata/active?owner=Icore_Pi&mac_address=2ccf6730ab5f&lla=fd002124b00ccf7399b"
+curl "http://localhost:8000/GCP-FS/metadata/active?owner=f4dv2&mac_address=d83adde260d1&lla=fd002124b001204bd42"
 ```
 
 **Get All Sensors Metadata:**
 ```bash
 curl "http://localhost:8000/GCP-FS/metadata/sensors?owner=Icore_Pi&mac_address=2ccf6730ab5f"
 curl "http://localhost:8000/GCP-FS/metadata/sensors?owner=Icore_Pi&mac_address=2ccf6730ab5f&exp_name=Image_V2"
+```
+
+**Get Last Package (metadata + Last_Package per sensor):**
+```bash
+curl "http://localhost:8000/GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f"
+curl "http://localhost:8000/GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f&exp_name=Image_V2"
 ```
 
 **Get Experiment Names:**
@@ -775,7 +974,7 @@ curl "http://localhost:8000/GCP-FS/metadata/experiments?owner=Icore_Pi&mac_addre
 
 **Resolve Permissions:**
 ```bash
-curl "http://localhost:8000/GCP-FS/permissions/resolve?email=user@mail.com"
+curl "http://localhost:8000/api/permissions/resolve?email=user@mail.com"
 ```
 
 ### Manual Testing
@@ -1018,6 +1217,7 @@ Example log output:
 │  ├── coordinates: {x: null, y: null, z: null} (nested)        │
 │  ├── is_active, is_valid, active_exp (flat fields)              │
 │  ├── alerts: {alerted, battery_percentage, email_sent} (nested)  │
+│  ├── last_package (nested object; last telemetry snapshot)     │
 │  ├── last_seen, exp_started_at, exp_ended_at                   │
 │  └── created_at, updated_at                                     │
 │                                                                   │
@@ -1148,7 +1348,7 @@ WebSocket Payload Received
 - WebSocket payloads are broadcast to all connected clients simultaneously
 - The frontend displays up to 10 unique sensors (prevented by LLA)
 - Duplicate sensors trigger blink animation if validation passes
-- Timestamps are in ISO 8601 format without milliseconds
+- WebSocket timestamps are in ISO 8601 UTC format (e.g. `2026-03-10T14:23:38Z`); the frontend converts to the user's local timezone for display
 - All endpoints support CORS for cross-origin requests
 - Firestore uses project ID configured in `auth/.env` (GCP_PROJECT_ID)
 - Firestore credentials are loaded from `auth/.env` file at startup
@@ -1169,6 +1369,23 @@ WebSocket Payload Received
 - **Performance**: Batch operations significantly improve throughput for multiple sensor updates
 
 ## Recent Updates
+
+### GET /GCP-FS/last-package (2026-03-29)
+- New read-only endpoint: same filters as **`GET /GCP-FS/metadata/sensors`** (`owner`, `mac_address`, optional `exp_name`).
+- Returns the same metadata envelope; each row includes **`Last_Package`** mapped from Firestore `last_package` (also present on **`/GCP-FS/metadata/sensors`** responses).
+
+### Experiment Management and Bulk Metadata UX (Implemented - 2026-03-18)
+- Added a unified `Selection Context` for email, owner, device, and experiment selection
+- Owner/device dropdowns now support both resolved permissions and live-discovered devices
+- Experiment Management no longer re-drives the current selection on every payload
+- Added bulk metadata editing for selected sensors in `All sensors` view
+- Added CSV template download and CSV upload for multi-sensor metadata updates
+- Kept experiment start/end actions visually separate from metadata editing
+
+### WebSocket Timestamp Fix (Implemented - 2026-03-10)
+- WebSocket responses (Ping, Last_Package, error) now send timestamps in UTC with `Z` suffix (e.g. `2026-03-10T14:23:38Z`)
+- Fixes a 2-hour display offset for users in GMT+2 and other non-UTC timezones
+- Frontend `formatDate()` correctly parses UTC and displays in user's local timezone
 
 ### active_exp Logic: Owner/MAC Update When Inactive (Implemented - 2026-03-10)
 - **Unified behavior** across PING, Last_Package, POST /FS/sensor/update, and update-metadata
@@ -1207,13 +1424,6 @@ WebSocket Payload Received
 - ✅ Automatic `updated_at` timestamp management
 - ✅ Frontend integration for easy metadata editing
 - ✅ Batch update support for multiple sensors in a single request
-
-## Planned Features
-
-### CSV Export (Planned)
-- Download button for sensors with `Active_Exp = False`
-- CSV format: one row per sensor with all metadata fields
-- Bulk update capability for multiple sensors
 
 ## License
 

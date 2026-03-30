@@ -27,6 +27,35 @@ logger = logging.getLogger(__name__)
 SENSORS_COLLECTION = "sensors"
 
 
+def _normalize_label_for_read(raw: Any) -> List[str]:
+    """
+    Normalize Firestore `label` for API: legacy documents may store a string;
+    new documents use a list of strings.
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if x is not None and str(x).strip()]
+    if isinstance(raw, str):
+        s = raw.strip()
+        return [s] if s else []
+    return []
+
+
+def _normalize_label_for_write(value: Any) -> List[str]:
+    """
+    Normalize client `label` update: accept str (legacy), list of str, or empty.
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if x is not None and str(x).strip()]
+    if isinstance(value, str):
+        s = value.strip()
+        return [s] if s else []
+    return []
+
+
 def _create_base_sensor_document(owner: str, mac: str, lla: str) -> Dict[str, Any]:
     """
     Create a base sensor document with minimal required fields.
@@ -48,7 +77,7 @@ def _create_base_sensor_document(owner: str, mac: str, lla: str) -> Dict[str, An
         "exp_id": "",
         "exp_name": "",
         "exp_location": None,
-        "label": "",
+        "label": [],
         "label_options": [],
         "location": None,
         "rfid": "",
@@ -114,7 +143,7 @@ def _map_firestore_to_api_format(doc_data: Dict[str, Any], lla: str) -> Dict[str
         "Exp_Name": doc_data.get("exp_name", ""),
         "Exp_Location": doc_data.get("exp_location", ""),
         "Active_Exp": doc_data.get("active_exp", False),
-        "Label": doc_data.get("label", ""),
+        "Label": _normalize_label_for_read(doc_data.get("label")),
         "Label_Options": doc_data.get("label_options", []),
         "Location": doc_data.get("location", ""),
         "RFID": doc_data.get("rfid", ""),
@@ -127,6 +156,8 @@ def _map_firestore_to_api_format(doc_data: Dict[str, Any], lla: str) -> Dict[str
         "Alerted": alerts.get("alerted", False),
         "Battery_Percentage": alerts.get("battery_percentage", None),
         "Email_Sent": alerts.get("email_sent", False),
+        # Nested last telemetry/package payload (Firestore: last_package)
+        "Last_Package": doc_data.get("last_package") if doc_data.get("last_package") is not None else {},
     }
     
     # Handle Timestamp fields - convert to ISO format strings
@@ -494,6 +525,18 @@ async def get_all_sensors_metadata(
         raise
 
 
+async def get_last_package_metadata(
+    owner: str,
+    mac_address: str,
+    exp_name: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Same query and response shape as get_all_sensors_metadata, with Last_Package on each row
+    (via _map_firestore_to_api_format). Intended for GET /GCP-FS/last-package.
+    """
+    return await get_all_sensors_metadata(owner, mac_address, exp_name)
+
+
 async def get_experiment_names(
     owner: str,
     mac_address: str
@@ -845,7 +888,7 @@ async def update_sensor_metadata(
         updates: Dictionary of fields to update. Can include:
             - exp_name: Experiment name
             - exp_location: Experiment location
-            - label: Sensor label
+            - label: Sensor label(s) as list of strings (legacy single string is coerced)
             - location: Sensor location
             - coordinates: Dict with x, y, z keys
             - Any other fields from the sensor document
@@ -966,6 +1009,8 @@ async def update_sensor_metadata(
                         "y": value.get("y") if "y" in value else None,
                         "z": value.get("z") if "z" in value else None
                     }
+                elif key == "label":
+                    firestore_updates[firestore_key] = _normalize_label_for_write(value)
                 else:
                     # Direct field update
                     firestore_updates[firestore_key] = value
@@ -1134,6 +1179,8 @@ async def batch_update_sensor_metadata(
                                 "y": value.get("y") if "y" in value else None,
                                 "z": value.get("z") if "z" in value else None
                             }
+                        elif key == "label":
+                            firestore_updates[firestore_key] = _normalize_label_for_write(value)
                         else:
                             firestore_updates[firestore_key] = value
                     else:

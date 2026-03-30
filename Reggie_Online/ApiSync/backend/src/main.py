@@ -18,7 +18,26 @@ from .api.get_endpoints import router as get_router
 from .api.firestore_endpoints import router as fs_router
 from .api.websocket_endpoints import websocket_ping
 
-app = FastAPI(title="ApiSync", version="1.0.0")
+openapi_tags = [
+    {
+        "name": "system",
+        "description": "System and service-level endpoints.",
+    },
+    {
+        "name": "permissions",
+        "description": "Resolve user access permissions.",
+    },
+    {
+        "name": "metadata",
+        "description": "Read-only metadata query endpoints.",
+    },
+    {
+        "name": "sensors",
+        "description": "Sensor registration and update actions.",
+    },
+]
+
+app = FastAPI(title="ApiSync", version="1.0.0", openapi_tags=openapi_tags)
 
 # Add CORS middleware
 app.add_middleware(

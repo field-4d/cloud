@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApiSync - Last Package Debug</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-grad-start: #667eea;
+            --bg-grad-end: #764ba2;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border: #d1d5db;
+            --accent: #4f46e5;
+            --success: #059669;
+            --error: #dc2626;
+            --warning-bg: #fef3c7;
+            --warning-text: #92400e;
+            --warning-border: #f59e0b;
+            --null-bg: #fef2f2;
+            --null-text: #b91c1c;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start) 0%, var(--bg-grad-end) 100%);
+            min-height: 100vh;
+            padding: 24px;
+            color: var(--text-main);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 18px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+        }
+
+        .subtitle {
+            color: #e5e7eb;
+            text-align: center;
+            margin-bottom: 22px;
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #ffffff;
+            padding: 10px 14px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .muted {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .status-line {
+            min-height: 20px;
+            font-size: 0.88rem;
+            margin-top: 8px;
+        }
+
+        .status-line.loading {
+            color: #1d4ed8;
+        }
+
+        .status-line.error {
+            color: var(--error);
+        }
+
+        .status-line.success {
+            color: var(--success);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .summary-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f9fafb;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        .summary-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .sensor-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 14px;
+        }
+
+        .sensor-card {
+            border: 1px solid #e5e7eb;
+            border-left: 5px solid var(--accent);
+            border-radius: 10px;
+            padding: 14px;
+            background: #ffffff;
+        }
+
+        .sensor-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sensor-lla {
+            font-weight: 700;
+            font-size: 0.98rem;
+            word-break: break-word;
+        }
+
+        .sensor-body {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 96px 1fr;
+            gap: 8px;
+            font-size: 0.88rem;
+        }
+
+        .field-name {
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .field-value {
+            word-break: break-word;
+        }
+
+        .value-missing {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
+            border-radius: 6px;
+            padding: 1px 6px;
+            display: inline-block;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .json-wrap {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-x: auto;
+            max-height: 340px;
+            border: 1px solid #1e293b;
+        }
+
+        pre {
+            margin: 0;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+        }
+
+        .json-key { color: #93c5fd; }
+        .json-string { color: #86efac; }
+        .json-number { color: #fca5a5; }
+        .json-boolean { color: #fcd34d; }
+        .json-null {
+            color: var(--null-text);
+            background: var(--null-bg);
+            padding: 0 2px;
+            border-radius: 3px;
+            font-weight: 700;
+        }
+
+        details > summary {
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+
+        .empty {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.92rem;
+            padding: 14px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        @media (max-width: 900px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ApiSync Last Package Debug</h1>
+        <p class="subtitle">Query <code>/GCP-FS/last-package</code> and inspect each sensor's latest package payload.</p>
+
+        <section class="card">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="ownerInput">owner (required)</label>
+                    <input id="ownerInput" type="text" placeholder="e.g. Icore_Pi" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="macInput">mac_address (required)</label>
+                    <input id="macInput" type="text" placeholder="e.g. 2ccf6730ab5f" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="expInput">exp_name (optional)</label>
+                    <input id="expInput" type="text" placeholder="e.g. Image_V2" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="pullBtn">Pull Last Package</button>
+                <button id="clearBtn" class="btn-secondary" type="button">Clear Results</button>
+                <span class="muted">API Base: <code id="apiBaseLabel"></code></span>
+            </div>
+            <div id="statusLine" class="status-line" aria-live="polite"></div>
+        </section>
+
+        <section id="summaryCard" class="card" style="display:none;">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">owner</div>
+                    <div class="summary-value" id="summaryOwner"></div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">mac_address</div>
+                    <div class="summary-value" id="summaryMac"></div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">total sensors</div>
+                    <div class="summary-value" id="summaryCount"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div id="resultsRoot" class="sensor-list"></div>
+        </section>
+    </div>
+
+    <script>
+        // Reused API base URL strategy from the main index page.
+        window.API_BASE_URL = "https://apisync-1000435921680.us-central1.run.app";
+        function getApiBaseUrl() {
+            return window.API_BASE_URL || window.location.origin;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return null;
+            try {
+                let str = String(dateString).trim();
+                const hasTimezone = /[Zz]$|[\+\-]\d{2}:?\d{2}$/.test(str);
+                if (!hasTimezone && /^\d{4}-\d{2}-\d{2}/.test(str)) {
+                    const hadSpace = /^\d{4}-\d{2}-\d{2} \d/.test(str);
+                    str = str.replace(" ", "T");
+                    if (hadSpace) str += "Z";
+                }
+                const date = new Date(str);
+                if (isNaN(date.getTime())) return dateString;
+                return date.toLocaleString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    timeZoneName: "short"
+                });
+            } catch (error) {
+                return dateString;
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function isMissing(value) {
+            return value === null || value === undefined || value === "";
+        }
+
+        function displayValue(value) {
+            if (isMissing(value)) return "<span class=\"value-missing\">missing</span>";
+            return escapeHtml(String(value));
+        }
+
+        function syntaxHighlightJson(value) {
+            const json = JSON.stringify(value ?? {}, null, 2);
+            const escaped = escapeHtml(json);
+            return escaped.replace(
+                /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+                function replacer(match, isKey) {
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) return "<span class=\"json-key\">" + match + "</span>";
+                        return "<span class=\"json-string\">" + match + "</span>";
+                    }
+                    if (match === "true" || match === "false") return "<span class=\"json-boolean\">" + match + "</span>";
+                    if (match === "null") return "<span class=\"json-null\">" + match + "</span>";
+                    return "<span class=\"json-number\">" + match + "</span>";
+                }
+            );
+        }
+
+        function setStatus(message, type) {
+            const el = document.getElementById("statusLine");
+            el.className = "status-line" + (type ? " " + type : "");
+            el.textContent = message || "";
+        }
+
+        function setLoading(isLoading) {
+            const btn = document.getElementById("pullBtn");
+            btn.disabled = isLoading;
+            btn.textContent = isLoading ? "Loading..." : "Pull Last Package";
+        }
+
+        function saveInputs(owner, mac, exp) {
+            localStorage.setItem("lastPackage.owner", owner);
+            localStorage.setItem("lastPackage.mac", mac);
+            localStorage.setItem("lastPackage.exp", exp);
+        }
+
+        function loadInputs() {
+            document.getElementById("ownerInput").value = localStorage.getItem("lastPackage.owner") || "";
+            document.getElementById("macInput").value = localStorage.getItem("lastPackage.mac") || "";
+            document.getElementById("expInput").value = localStorage.getItem("lastPackage.exp") || "";
+        }
+
+        function clearResults() {
+            document.getElementById("resultsRoot").innerHTML = "";
+            document.getElementById("summaryCard").style.display = "none";
+            setStatus("", "");
+        }
+
+        function buildFieldRow(label, value) {
+            return "<div class=\"field-row\"><div class=\"field-name\">" + label + "</div><div class=\"field-value\">" + displayValue(value) + "</div></div>";
+        }
+
+        function renderSummary(owner, mac, count) {
+            document.getElementById("summaryOwner").textContent = owner || "-";
+            document.getElementById("summaryMac").textContent = mac || "-";
+            document.getElementById("summaryCount").textContent = String(count ?? 0);
+            document.getElementById("summaryCard").style.display = "block";
+        }
+
+        function renderSensors(items) {
+            const root = document.getElementById("resultsRoot");
+            if (!Array.isArray(items) || items.length === 0) {
+                root.innerHTML = "<div class=\"empty\">No sensors matched your query.</div>";
+                return;
+            }
+
+            root.innerHTML = items.map(function(sensor, index) {
+                const lla = sensor.LLA;
+                const expName = sensor.Exp_Name;
+                const location = sensor.Location;
+                const lastSeen = formatDate(sensor.Last_Seen) || sensor.Last_Seen;
+                const lastPackage = sensor.Last_Package && typeof sensor.Last_Package === "object" ? sensor.Last_Package : {};
+                const jsonId = "json-" + index + "-" + Date.now();
+
+                return [
+                    "<article class=\"sensor-card\">",
+                    "  <div class=\"sensor-head\">",
+                    "    <div class=\"sensor-lla\">LLA: " + displayValue(lla) + "</div>",
+                    "  </div>",
+                    "  <div class=\"sensor-body\">",
+                         buildFieldRow("Exp_Name", expName),
+                         buildFieldRow("Location", location),
+                         buildFieldRow("Last_Seen", lastSeen),
+                    "  </div>",
+                    "  <details>",
+                    "    <summary>Last_Package JSON</summary>",
+                    "    <div class=\"actions\" style=\"margin-bottom:8px;\">",
+                    "      <button type=\"button\" class=\"btn-secondary copy-json-btn\" data-target=\"" + jsonId + "\">Copy JSON</button>",
+                    "    </div>",
+                    "    <div class=\"json-wrap\">",
+                    "      <pre id=\"" + jsonId + "\">" + syntaxHighlightJson(lastPackage) + "</pre>",
+                    "    </div>",
+                    "  </details>",
+                    "</article>"
+                ].join("");
+            }).join("");
+        }
+
+        async function pullLastPackage() {
+            const owner = document.getElementById("ownerInput").value.trim();
+            const mac = document.getElementById("macInput").value.trim();
+            const exp = document.getElementById("expInput").value.trim();
+
+            if (!owner || !mac) {
+                setStatus("owner and mac_address are required.", "error");
+                return;
+            }
+
+            saveInputs(owner, mac, exp);
+            setLoading(true);
+            setStatus("Fetching data...", "loading");
+
+            try {
+                const url = new URL(getApiBaseUrl() + "/GCP-FS/last-package");
+                url.searchParams.set("owner", owner);
+                url.searchParams.set("mac_address", mac);
+                if (exp) url.searchParams.set("exp_name", exp);
+
+                const response = await fetch(url.toString());
+                let payload;
+                try {
+                    payload = await response.json();
+                } catch (jsonError) {
+                    payload = null;
+                }
+
+                if (!response.ok) {
+                    const details = payload && (payload.detail || payload.message) ? String(payload.detail || payload.message) : "Request failed.";
+                    throw new Error(response.status + " " + response.statusText + " - " + details);
+                }
+
+                const data = payload && Array.isArray(payload.data) ? payload.data : [];
+                renderSummary(owner, mac, data.length);
+                renderSensors(data);
+                setStatus("Loaded " + data.length + " sensor(s).", "success");
+            } catch (error) {
+                clearResults();
+                setStatus("Error: " + (error && error.message ? error.message : String(error)), "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        document.getElementById("pullBtn").addEventListener("click", pullLastPackage);
+        document.getElementById("clearBtn").addEventListener("click", clearResults);
+        document.addEventListener("click", async function(event) {
+            const button = event.target.closest(".copy-json-btn");
+            if (!button) return;
+            const targetId = button.getAttribute("data-target");
+            const pre = targetId ? document.getElementById(targetId) : null;
+            if (!pre) return;
+
+            try {
+                const textOnly = pre.innerText;
+                await navigator.clipboard.writeText(textOnly);
+                const old = button.textContent;
+                button.textContent = "Copied";
+                setTimeout(function() {
+                    button.textContent = old;
+                }, 1200);
+            } catch (error) {
+                setStatus("Failed to copy JSON: " + (error && error.message ? error.message : String(error)), "error");
+            }
+        });
+
+        document.getElementById("ownerInput").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") pullLastPackage();
+        });
+        document.getElementById("macInput").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") pullLastPackage();
+        });
+        document.getElementById("expInput").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") pullLastPackage();
+        });
+
+        document.getElementById("apiBaseLabel").textContent = getApiBaseUrl();
+        loadInputs();
+    </script>
+</body>
+</html>

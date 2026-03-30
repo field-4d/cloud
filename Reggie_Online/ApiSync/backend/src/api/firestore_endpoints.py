@@ -9,8 +9,13 @@ from google.cloud.exceptions import NotFound
 import logging
 import time
 
-from .firestore_repository import get_sensor_metadata, get_all_sensors_metadata, get_experiment_names, register_sensor, update_sensor_last_seen, update_sensor_metadata, batch_update_sensor_metadata
-from .permissions_client import resolve_owner_and_mac, resolve_all_owners_and_macs, PermissionsNotFoundError, PermissionsServiceError
+from .firestore_repository import get_sensor_metadata, get_all_sensors_metadata, get_last_package_metadata, get_experiment_names, register_sensor, update_sensor_last_seen, update_sensor_metadata, batch_update_sensor_metadata
+from .permissions_service import (
+    PermissionsNotFoundError,
+    PermissionsResponseFormatError,
+    PermissionsServiceError,
+    resolve_permissions_by_email,
+)
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -62,7 +67,7 @@ class PermissionsResolveResponse(BaseModel):
     owners: List[OwnerMacGroup]
 
 
-@router.get("/GCP-FS/metadata/active")
+@router.get("/GCP-FS/metadata/active", tags=["metadata"])
 async def query_active_metadata(
     mac_address: str,
     lla: str,
@@ -172,7 +177,7 @@ async def query_active_metadata(
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-@router.post("/FS/sensor/register")
+@router.post("/FS/sensor/register", tags=["sensors"])
 async def register_sensor_endpoint(request: SensorRegisterRequest):
     """
     Register a new sensor in Firestore.
@@ -250,7 +255,7 @@ async def register_sensor_endpoint(request: SensorRegisterRequest):
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-@router.post("/FS/sensor/update")
+@router.post("/FS/sensor/update", tags=["sensors"])
 async def update_sensor_endpoint(request: SensorUpdateRequest):
     """
     Update existing sensor's last_seen timestamp.
@@ -331,7 +336,7 @@ async def update_sensor_endpoint(request: SensorUpdateRequest):
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-@router.post("/FS/sensor/update-metadata")
+@router.post("/FS/sensor/update-metadata", tags=["sensors"])
 async def update_sensor_metadata_endpoint(request: SensorMetadataUpdateRequest):
     """
     Update sensor metadata in Firestore with flexible field updates.
@@ -480,7 +485,7 @@ async def update_sensor_metadata_endpoint(request: SensorMetadataUpdateRequest):
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-@router.get("/GCP-FS/metadata/sensors")
+@router.get("/GCP-FS/metadata/sensors", tags=["metadata"])
 async def get_all_sensors_metadata_endpoint(
     owner: str,
     mac_address: str,
@@ -554,7 +559,69 @@ async def get_all_sensors_metadata_endpoint(
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-@router.get("/GCP-FS/metadata/experiments")
+@router.get("/GCP-FS/last-package", tags=["metadata"])
+async def get_last_package_endpoint(
+    owner: str,
+    mac_address: str,
+    exp_name: Optional[str] = None
+):
+    """
+    Get sensor metadata and Last_Package from Firestore filtered by owner and mac_address.
+
+    Query Parameters:
+        owner (required): Owner identifier (e.g., "f4d_test")
+        mac_address (required): MAC address (e.g., "aaaaaaaaaaaa")
+        exp_name (optional): Filter by exact experiment name match
+
+    Returns:
+        dict: Same shape as /GCP-FS/metadata/sensors; each item in data includes Last_Package.
+
+    Example:
+        GET /GCP-FS/last-package?owner=f4d_test&mac_address=aaaaaaaaaaaa
+        GET /GCP-FS/last-package?owner=f4d_test&mac_address=aaaaaaaaaaaa&exp_name=Image_V2
+    """
+    logger.info(f"[ENDPOINT] GET /GCP-FS/last-package | Owner: {owner} | MAC: {mac_address} | Exp_Name: {exp_name or 'None'}")
+    operation_start = time.time()
+    logger.info(
+        f"[GET_LAST_PACKAGE_ENDPOINT] Starting query | "
+        f"Owner: {owner} | "
+        f"MAC: {mac_address} | "
+        f"Exp_Name: {exp_name or 'None'}"
+    )
+
+    try:
+        result = await get_last_package_metadata(owner, mac_address, exp_name)
+
+        total_duration = time.time() - operation_start
+        logger.info(
+            f"[GET_LAST_PACKAGE_ENDPOINT] Query completed | "
+            f"Count: {result['count']} | "
+            f"Total duration: {total_duration:.3f}s"
+        )
+
+        return result
+
+    except Exception as e:
+        error_type = type(e).__name__
+        error_repr = repr(e)
+        error_str = str(e) if str(e) else "No error message available"
+
+        error_msg = (
+            f"Error querying last-package metadata: {error_str} "
+            f"(Type: {error_type})"
+        )
+        total_duration = time.time() - operation_start
+        logger.error(
+            f"[GET_LAST_PACKAGE_ENDPOINT] Unexpected error | "
+            f"Type: {error_type} | "
+            f"Error: {error_repr} | "
+            f"Duration: {total_duration:.3f}s",
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.get("/GCP-FS/metadata/experiments", tags=["metadata"])
 async def get_experiment_names_endpoint(
     owner: str,
     mac_address: str
@@ -627,12 +694,10 @@ async def get_experiment_names_endpoint(
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-@router.get("/GCP-FS/permissions/resolve", response_model=PermissionsResolveResponse, tags=["default"])
+@router.get("/GCP-FS/permissions/resolve", response_model=PermissionsResolveResponse, tags=["permissions"])
 async def resolve_permissions_endpoint(email: str = Query(..., description="User's email address")):
     """
-    Resolve all owner and MAC address combinations from user email using Field4D permissions backend.
-    Returns all permissions grouped by owner, since users can have access to multiple owners
-    and each owner can have multiple MAC addresses.
+    Resolve all owner and MAC address combinations from user email.
     
     Query Parameters:
         email (required): User's email address
@@ -642,14 +707,14 @@ async def resolve_permissions_endpoint(email: str = Query(..., description="User
         
     Raises:
         HTTPException 404: If no permissions found for the email
-        HTTPException 400/500: If permissions service returns error
-        HTTPException 502/503: If permissions service is unavailable
+        HTTPException 500: If response format is invalid
+        HTTPException 502/503: If BigQuery service is unavailable
     """
     logger.info(f"[ENDPOINT] GET /GCP-FS/permissions/resolve | Email: {email}")
     operation_start = time.time()
     
     try:
-        result = await resolve_all_owners_and_macs(email)
+        result = await resolve_permissions_by_email(email)
         
         total_duration = time.time() - operation_start
         logger.info(
@@ -666,7 +731,7 @@ async def resolve_permissions_endpoint(email: str = Query(..., description="User
             owners=result["owners"]
         )
         
-    except PermissionsNotFoundError as e:
+    except PermissionsNotFoundError:
         total_duration = time.time() - operation_start
         logger.warning(
             f"[RESOLVE_PERMISSIONS] No permissions found | "
@@ -677,6 +742,16 @@ async def resolve_permissions_endpoint(email: str = Query(..., description="User
             status_code=404,
             detail="No permissions found for this email"
         )
+    except PermissionsResponseFormatError as e:
+        total_duration = time.time() - operation_start
+        logger.error(
+            f"[RESOLVE_PERMISSIONS] Invalid response format | "
+            f"Email: {email} | "
+            f"Error: {str(e)} | "
+            f"Duration: {total_duration:.3f}s",
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=str(e))
     except PermissionsServiceError as e:
         total_duration = time.time() - operation_start
         status_code = e.status_code or 500

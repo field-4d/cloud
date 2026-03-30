@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ApiSync - Payload Monitor</title>
-    <style>
+    <link rel="stylesheet" href="./styles/base.css">
+    <link rel="stylesheet" href="./styles/payloads.css">
+    <link rel="stylesheet" href="./styles/experiments.css">
+    <link rel="stylesheet" href="./styles/modal.css">
+    <style media="not all">
         * {
             margin: 0;
             padding: 0;
@@ -177,6 +181,66 @@
             padding: 10px;
             background: #f8f9fa;
             border-radius: 5px;
+        }
+        
+        .payload-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 14px;
+            margin-top: 14px;
+            padding: 14px;
+            border: 1px solid #dbe3f3;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+        }
+        
+        .payload-filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 180px;
+        }
+        
+        .payload-filter-group.payload-filter-wide {
+            flex: 1;
+            min-width: 260px;
+        }
+        
+        .payload-filter-label {
+            font-size: 0.88em;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .payload-filter-select {
+            padding: 8px 12px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9em;
+            background: white;
+        }
+        
+        .payload-filter-select:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+            opacity: 0.75;
+        }
+        
+        .payload-device-select {
+            width: 100%;
+        }
+        
+        .payload-filter-note {
+            font-size: 0.82em;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        
+        .payload-filter-summary {
+            margin-top: 10px;
+            font-size: 0.84em;
+            color: #6b7280;
         }
         
         .payload-header {
@@ -966,6 +1030,57 @@
             background: #9ca3af;
             cursor: not-allowed;
         }
+
+        .auto-refresh-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .auto-refresh-toggle {
+            background: #374151;
+            color: white;
+            border: none;
+            border-radius: 999px;
+            font-size: 0.82em;
+            font-weight: 700;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .auto-refresh-toggle.active {
+            background: #0f766e;
+        }
+
+        .auto-refresh-toggle:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .auto-refresh-countdown {
+            min-width: 58px;
+            text-align: center;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 0.8em;
+            font-weight: 700;
+            border: 1px solid #d1d5db;
+            color: #4b5563;
+            background: #f3f4f6;
+        }
+
+        .auto-refresh-countdown.active {
+            color: #065f46;
+            background: #dcfce7;
+            border-color: #34d399;
+            animation: pulseCountdown 1s ease-in-out infinite;
+        }
+
+        @keyframes pulseCountdown {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.28); }
+            100% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        }
         
         .experiment-stats {
             display: flex;
@@ -1126,6 +1241,10 @@
             font-size: 0.9em;
             min-width: 160px;
         }
+
+        .sensor-sort-select {
+            min-width: 260px;
+        }
         
         .new-exp-input:focus {
             outline: none;
@@ -1208,6 +1327,53 @@
         .hidden-file-input {
             display: none;
         }
+
+        .last-package-field-missing {
+            color: #92400e;
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 1px 6px;
+            display: inline-block;
+            font-size: 0.82em;
+            font-weight: 600;
+        }
+
+        .json-wrap {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-x: auto;
+            max-height: 340px;
+            border: 1px solid #1e293b;
+        }
+
+        .json-wrap pre {
+            margin: 0;
+            font-size: 0.78em;
+            line-height: 1.5;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+        }
+
+        .json-key { color: #93c5fd; }
+        .json-string { color: #86efac; }
+        .json-number { color: #fca5a5; }
+        .json-boolean { color: #fcd34d; }
+        .json-null {
+            color: #fda4af;
+            background: rgba(190, 24, 93, 0.18);
+            padding: 0 2px;
+            border-radius: 3px;
+            font-weight: 700;
+        }
+
+        details > summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+        }
         
         .link-btn {
             background: none;
@@ -1265,6 +1431,14 @@
         .sensor-card-info-value {
             color: #374151;
             font-weight: 500;
+        }
+        
+        .sensor-card-label-options-row .sensor-card-label-options-text {
+            font-size: 0.9em;
+            color: #6b7280;
+            font-weight: 400;
+            text-align: right;
+            max-width: 65%;
         }
         
         .loading-spinner {
@@ -1396,6 +1570,10 @@
                     <span id="refreshIcon">🔄</span>
                     <span>Refresh</span>
                 </button>
+                <div class="auto-refresh-controls">
+                    <button id="autoRefreshToggleBtn" class="auto-refresh-toggle" type="button" onclick="toggleAutoRefresh()" disabled>Auto ON</button>
+                    <span id="autoRefreshCountdownChip" class="auto-refresh-countdown">00:30</span>
+                </div>
                 <div class="experiment-stats" id="experimentStats" style="display: none;">
                     <div class="experiment-stat">
                         <span>Total:</span>
@@ -1411,6 +1589,7 @@
                     </div>
                 </div>
             </div>
+
             </div>
             
             <!-- Sensors List Section (shown when experiment or All sensors is selected) -->
@@ -1428,24 +1607,22 @@
                 <div id="experimentActionNote" class="sensor-management-row" style="display: none;">
                     <div class="sensor-management-heading">
                         <div class="sensor-management-title">Experiment Actions</div>
-                        <div class="sensor-management-note">Start or end experiments separately from metadata updates. Ending an experiment clears experiment-related metadata for the visible sensors.</div>
+                        <div class="sensor-management-note">Start or end experiments separately from metadata updates. Ending an experiment clears experiment-related metadata for the visible sensors. Use Refresh to load Last_Package JSON under each LLA card.</div>
                     </div>
                 </div>
-                <div id="bulkMetadataRow" class="sensor-management-row" style="display: none;">
+                <div id="sensorSortRow" class="sensor-management-row" style="display: none;">
                     <div class="sensor-management-heading">
-                        <div class="sensor-management-title">Bulk Metadata</div>
-                        <div class="sensor-management-note">Apply non-empty fields to the selected sensors. Each update is keyed by LLA.</div>
+                        <div class="sensor-management-title">Sensor Grid Filter/Sort</div>
+                        <div class="sensor-management-note">Sort the visible sensors by location or by Last_Package time.</div>
                     </div>
-                    <label for="bulkLabelInput">Label:</label>
-                    <input type="text" id="bulkLabelInput" placeholder="New label" class="new-exp-input" oninput="updateSelectedCount()">
-                    <label for="bulkLocationInput">Location:</label>
-                    <input type="text" id="bulkLocationInput" placeholder="New location" class="new-exp-input" oninput="updateSelectedCount()">
-                    <label for="bulkExpNameInput">Exp Name:</label>
-                    <input type="text" id="bulkExpNameInput" placeholder="New experiment name" class="new-exp-input" oninput="updateSelectedCount()">
-                    <button type="button" id="applyBulkMetadataBtn" class="exp-action-btn bulk-action-btn" onclick="applyBulkMetadataUpdates()" disabled>Apply to selected</button>
-                    <span id="bulkSelectedCountSpan" class="selected-count"></span>
-                    <button type="button" class="link-btn" onclick="selectAllSensors()">Select all</button>
-                    <button type="button" class="link-btn" onclick="clearSensorSelection()">Clear selection</button>
+                    <label for="sensorSortSelect">Sort by:</label>
+                    <select id="sensorSortSelect" class="new-exp-input sensor-sort-select" onchange="onSensorSortChanged(this.value)">
+                        <option value="default">Default order</option>
+                        <option value="location_asc">Location (A -> Z)</option>
+                        <option value="location_desc">Location (Z -> A)</option>
+                        <option value="last_package_newest">Last_Package (newest first)</option>
+                        <option value="last_package_oldest">Last_Package (oldest first)</option>
+                    </select>
                 </div>
                 <div id="newExperimentFormRow" class="sensor-management-row" style="display: none;">
                     <div class="sensor-management-heading">
@@ -1483,6 +1660,32 @@
                     <button id="clearBtn" onclick="clearPayloads()">Clear Payloads</button>
                 </div>
             </div>
+            <div class="payload-filter-bar">
+                <div class="payload-filter-group">
+                    <label for="payloadOwnerFilter" class="payload-filter-label">Owner</label>
+                    <select id="payloadOwnerFilter" class="payload-filter-select" onchange="onPayloadOwnerFilterChanged(this.value)">
+                        <option value="all">All owners</option>
+                    </select>
+                    <div class="payload-filter-note">Filter only the cards shown in Received Payloads.</div>
+                </div>
+                <div class="payload-filter-group payload-filter-wide">
+                    <label for="payloadDeviceFilter" class="payload-filter-label">Device (MAC Address)</label>
+                    <select id="payloadDeviceFilter" class="payload-filter-select payload-device-select" onchange="onPayloadDeviceFilterChanged(this.value)" disabled>
+                        <option value="all">Choose one owner first</option>
+                    </select>
+                    <div id="payloadDeviceFilterNote" class="payload-filter-note">Select one owner first, then choose one device or all devices under that owner.</div>
+                </div>
+                <div class="payload-filter-group">
+                    <label for="payloadTypeFilter" class="payload-filter-label">Payload Type</label>
+                    <select id="payloadTypeFilter" class="payload-filter-select" onchange="onPayloadTypeFilterChanged(this.value)">
+                        <option value="both">Both</option>
+                        <option value="ping">Ping</option>
+                        <option value="last_package">Last_Package</option>
+                    </select>
+                    <div class="payload-filter-note">Keep live payload updates flowing without resetting the selected filters.</div>
+                </div>
+            </div>
+            <div id="payloadFilterSummary" class="payload-filter-summary">Showing all owners, all devices, and both payload types.</div>
             <div class="blink-color-config">
                 <label for="blinkColorPicker" style="font-weight: 600; color: #374151;">Blink Color (Valid Sensors):</label>
                 <input type="color" id="blinkColorPicker" value="#10b981" onchange="updateBlinkColor(this.value)">
@@ -1551,13 +1754,27 @@
         let experimentFilter = 'all'; // 'all', 'active', 'inactive'
         let resolvedPermissions = null; // Store resolved permissions from API
         let liveOwnerDevices = new Map(); // owner -> Set of MAC addresses discovered from payloads
+        let payloadFilters = {
+            owner: 'all',
+            payloadType: 'both',
+            device: 'all'
+        };
+        let payloadOwnerOptionsSignature = '';
+        let payloadDeviceOptionsSignature = '';
+        let lastPackageByLla = new Map(); // LLA -> Last_Package object
+        let lastPackageActivated = false; // Enabled by Refresh action in Experiment Management
+        let sensorSortMode = 'default'; // default | location_asc | location_desc | last_package_newest | last_package_oldest
+        const AUTO_REFRESH_INTERVAL_SECONDS = 30;
+        let autoRefreshEnabled = true;
+        let autoRefreshRemainingSeconds = AUTO_REFRESH_INTERVAL_SECONDS;
+        let autoRefreshTimerId = null;
         
         // Max payloads configuration (scalable: easy to add more options)
         const MAX_PAYLOADS_OPTIONS = [10, 15, 20];
         const DEFAULT_MAX_PAYLOADS = 10;
         
         // API base URL - set when frontend runs locally but backend is deployed
-        window.API_BASE_URL = 'https://apisync-1000435921680.us-central1.run.app';
+        window.API_BASE_URL = 'https://apisync-1000435921680.us-central1.run.app'; // 'http://127.0.0.1:8000'//'
         function getApiBaseUrl() {
             return window.API_BASE_URL || window.location.origin;
         }
@@ -1588,6 +1805,240 @@
             enforceMaxPayloads();
         }
         
+        function normalizePayloadType(value) {
+            const normalized = String(value || 'ping').trim().toLowerCase();
+            if (normalized === 'last_package') return 'last_package';
+            return 'ping';
+        }
+        
+        function setPayloadItemMetadata(item, owner, macAddress, payloadType) {
+            if (!item) return;
+            item.dataset.owner = owner || '';
+            item.dataset.mac = macAddress || '';
+            item.dataset.payloadType = normalizePayloadType(payloadType);
+        }
+        
+        function getPayloadOwnerGroups() {
+            const groups = new Map();
+            payloadDataMap.forEach(payload => {
+                const owner = payload?.owner || payload?.hostname;
+                const macAddress = payload?.mac_address;
+                if (!owner) return;
+                if (!groups.has(owner)) {
+                    groups.set(owner, new Set());
+                }
+                if (macAddress) {
+                    groups.get(owner).add(macAddress);
+                }
+            });
+            return Array.from(groups.entries())
+                .map(([owner, devices]) => ({
+                    owner,
+                    devices: Array.from(devices).sort()
+                }))
+                .sort((a, b) => a.owner.localeCompare(b.owner));
+        }
+        
+        function getPayloadDevicesForOwner(owner) {
+            if (!owner || owner === 'all') return [];
+            const ownerGroup = getPayloadOwnerGroups().find(group => group.owner === owner);
+            return ownerGroup?.devices || [];
+        }
+        
+        function getPayloadOwnerOptionsSignature() {
+            return JSON.stringify(getPayloadOwnerGroups());
+        }
+        
+        function getPayloadDeviceOptionsSignature() {
+            return JSON.stringify({
+                owner: payloadFilters.owner,
+                device: payloadFilters.device,
+                availableDevices: getPayloadDevicesForOwner(payloadFilters.owner)
+            });
+        }
+        
+        function syncPayloadOwnerFilterOptions(force = false) {
+            const ownerSelect = document.getElementById('payloadOwnerFilter');
+            if (!ownerSelect) return;
+            
+            const signature = getPayloadOwnerOptionsSignature();
+            if (!force && signature === payloadOwnerOptionsSignature) {
+                return;
+            }
+            
+            const ownerGroups = getPayloadOwnerGroups();
+            const previousOwner = payloadFilters.owner;
+            ownerSelect.innerHTML = '<option value="all">All owners</option>';
+            
+            ownerGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.owner;
+                option.textContent = `${group.owner} (${group.devices.length} device${group.devices.length !== 1 ? 's' : ''})`;
+                ownerSelect.appendChild(option);
+            });
+            
+            if (previousOwner !== 'all' && ownerGroups.some(group => group.owner === previousOwner)) {
+                ownerSelect.value = previousOwner;
+            } else {
+                payloadFilters.owner = 'all';
+                payloadFilters.device = 'all';
+                ownerSelect.value = 'all';
+            }
+            
+            payloadOwnerOptionsSignature = signature;
+        }
+        
+        function renderPayloadDeviceFilterOptions(force = false) {
+            const deviceSelect = document.getElementById('payloadDeviceFilter');
+            const deviceNote = document.getElementById('payloadDeviceFilterNote');
+            if (!deviceSelect) return;
+            
+            const signature = getPayloadDeviceOptionsSignature();
+            if (!force && signature === payloadDeviceOptionsSignature) {
+                return;
+            }
+            
+            const owner = payloadFilters.owner;
+            const devices = getPayloadDevicesForOwner(owner);
+            deviceSelect.innerHTML = '';
+            
+            if (owner === 'all') {
+                deviceSelect.disabled = true;
+                deviceSelect.innerHTML = '<option value="all">Choose one owner first</option>';
+                payloadFilters.device = 'all';
+                if (deviceNote) {
+                    deviceNote.textContent = 'Device filtering is available only after selecting a single owner.';
+                }
+                payloadDeviceOptionsSignature = signature;
+                return;
+            }
+            
+            if (devices.length === 0) {
+                deviceSelect.disabled = true;
+                deviceSelect.innerHTML = '<option value="all">No devices discovered yet</option>';
+                payloadFilters.device = 'all';
+                if (deviceNote) {
+                    deviceNote.textContent = 'Waiting for payloads from devices under the selected owner.';
+                }
+                payloadDeviceOptionsSignature = signature;
+                return;
+            }
+            
+            deviceSelect.disabled = false;
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'All devices';
+            deviceSelect.appendChild(allOption);
+
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device;
+                option.textContent = device;
+                deviceSelect.appendChild(option);
+            });
+
+            if (payloadFilters.device !== 'all' && devices.includes(payloadFilters.device)) {
+                deviceSelect.value = payloadFilters.device;
+            } else {
+                payloadFilters.device = 'all';
+                deviceSelect.value = 'all';
+            }
+            
+            if (deviceNote) {
+                deviceNote.textContent = payloadFilters.device === 'all'
+                    ? 'Showing payloads from every discovered device for this owner.'
+                    : `Showing payloads only from device ${payloadFilters.device}.`;
+            }
+            
+            payloadDeviceOptionsSignature = signature;
+        }
+        
+        function updatePayloadFilterSummary() {
+            const summary = document.getElementById('payloadFilterSummary');
+            if (!summary) return;
+            
+            const ownerLabel = payloadFilters.owner === 'all' ? 'all owners' : `owner "${payloadFilters.owner}"`;
+            const typeLabel = payloadFilters.payloadType === 'both'
+                ? 'both payload types'
+                : payloadFilters.payloadType === 'last_package'
+                    ? 'Last_Package only'
+                    : 'Ping only';
+            
+            let deviceLabel = 'all devices';
+            if (payloadFilters.owner !== 'all') {
+                deviceLabel = payloadFilters.device === 'all'
+                    ? 'all devices under that owner'
+                    : `device "${payloadFilters.device}"`;
+            }
+            
+            summary.textContent = `Showing ${ownerLabel}, ${deviceLabel}, and ${typeLabel}.`;
+        }
+        
+        function applyPayloadListFilters() {
+            const payloadList = document.getElementById('payloadList');
+            if (!payloadList) return;
+            
+            const payloadItems = payloadList.querySelectorAll('.payload-item');
+            let visibleCount = 0;
+            
+            payloadItems.forEach(item => {
+                const owner = item.dataset.owner || '';
+                const macAddress = item.dataset.mac || '';
+                const payloadType = normalizePayloadType(item.dataset.payloadType || 'ping');
+                
+                const ownerMatches = payloadFilters.owner === 'all' || owner === payloadFilters.owner;
+                const typeMatches = payloadFilters.payloadType === 'both' || payloadType === payloadFilters.payloadType;
+                const deviceMatches = payloadFilters.owner === 'all' ||
+                    payloadFilters.device === 'all' ||
+                    macAddress === payloadFilters.device;
+                
+                const isVisible = ownerMatches && typeMatches && deviceMatches;
+                item.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount += 1;
+            });
+            
+            const existingFilteredEmptyState = payloadList.querySelector('.empty-state.payload-filter-empty');
+            if (existingFilteredEmptyState) {
+                existingFilteredEmptyState.remove();
+            }
+            
+            const hasRealEmptyState = payloadList.querySelector('.empty-state:not(.payload-filter-empty)');
+            if (!hasRealEmptyState && visibleCount === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state payload-filter-empty';
+                emptyState.textContent = 'No payloads match the selected owner, device, and payload type filters.';
+                payloadList.appendChild(emptyState);
+            }
+            
+            updatePayloadFilterSummary();
+        }
+        
+        function refreshPayloadFilterUI(forceControls = false) {
+            syncPayloadOwnerFilterOptions(forceControls);
+            renderPayloadDeviceFilterOptions(forceControls);
+            applyPayloadListFilters();
+        }
+        
+        function onPayloadOwnerFilterChanged(owner) {
+            payloadFilters.owner = owner || 'all';
+            payloadFilters.device = 'all';
+            payloadDeviceOptionsSignature = '';
+            renderPayloadDeviceFilterOptions(true);
+            applyPayloadListFilters();
+        }
+        
+        function onPayloadTypeFilterChanged(payloadType) {
+            payloadFilters.payloadType = payloadType || 'both';
+            applyPayloadListFilters();
+        }
+        
+        function onPayloadDeviceFilterChanged(value) {
+            payloadFilters.device = value || 'all';
+            payloadDeviceOptionsSignature = '';
+            renderPayloadDeviceFilterOptions(true);
+            applyPayloadListFilters();
+        }
+        
         function enforceMaxPayloads() {
             const payloadList = document.getElementById('payloadList');
             const maxPayloads = getMaxPayloads();
@@ -1609,6 +2060,8 @@
                 }
                 console.log(`[CONFIG] Removed ${itemsToRemove} oldest payloads to enforce limit of ${maxPayloads}`);
             }
+            
+            refreshPayloadFilterUI();
         }
         
         function updateBlinkColor(color) {
@@ -1837,6 +2290,9 @@
             
             // Clear LLA tracking
             displayedLLAs.clear();
+            payloadDataMap.clear();
+            lastPackageMap.clear();
+            payloadExpStatusMap.clear();
             
             // Remove existing empty state if present
             const existingEmptyState = payloadList.querySelector('.empty-state');
@@ -1852,6 +2308,7 @@
             
             // Reset payload count
             payloadCount = 0;
+            refreshPayloadFilterUI();
         }
         
         function clearErrors() {
@@ -2019,6 +2476,7 @@
                                 }
                                 if (mac_address) payloadData.mac_address = mac_address;
                                 payloadDataMap.set(lla, payloadData);
+                                setPayloadItemMetadata(existingItem, payloadData.owner || payloadData.hostname, payloadData.mac_address, 'Last_Package');
                                 
                                 // Update owner/mac display in UI
                                 const payloadFields = existingItem.querySelectorAll('.payload-field');
@@ -2091,6 +2549,7 @@
                         // NO BLINK - component already exists, just update data
                         
                         console.log(`[LAST_PACKAGE] Updated existing Last_Package item for LLA: ${lla} (timestamp and data only, no blink)`);
+                        refreshPayloadFilterUI();
                     } else {
                         // Existing Ping item - update last_package data in it and trigger blink
                         lastPackageMap.set(lla, packageData);
@@ -2099,6 +2558,11 @@
                         const timestampEl = existingItem.querySelector('.timestamp');
                         if (timestampEl) {
                             timestampEl.textContent = formatDate(timestamp) || timestamp;
+                        }
+                        
+                        const payloadData = payloadDataMap.get(lla);
+                        if (payloadData) {
+                            setPayloadItemMetadata(existingItem, payloadData.owner || payloadData.hostname, payloadData.mac_address, 'Ping');
                         }
                         
                         // Trigger blink animation (like when Ping updates)
@@ -2159,6 +2623,7 @@
                         }
                         
                         console.log(`[LAST_PACKAGE] Updated Ping item with package data for LLA: ${lla} and triggered blink`);
+                        refreshPayloadFilterUI();
                     }
                 } else {
                     // NEW SENSOR: Create new Last_Package item for this LLA (like Ping - each LLA gets its own)
@@ -2308,6 +2773,7 @@
                 mac_address: mac_address,
                 LLA: lla
             });
+            setPayloadItemMetadata(payloadItem, hostname, mac_address, 'Last_Package');
             
             // Add click handler for metadata access (now enabled with owner/mac)
             payloadItem.addEventListener('click', () => {
@@ -2329,6 +2795,7 @@
             
             // Enforce max payloads limit
             enforceMaxPayloads();
+            refreshPayloadFilterUI();
             
             console.log(`[LAST_PACKAGE] Created new payload item for sensor ${lla} with blink animation`);
         }
@@ -2379,6 +2846,7 @@
                     mac_address: data.payload.mac_address,
                     LLA: LLA
                 });
+                setPayloadItemMetadata(existingItem, owner, data.payload.mac_address, data.payload?.type || 'Ping');
                 
                 // If valid and existing, trigger blink
                 if (isValid) {
@@ -2397,6 +2865,7 @@
                     fetchMetadataForLLA(owner, data.payload.mac_address, LLA);
                 };
                 
+                refreshPayloadFilterUI();
                 return; // Don't add duplicate
             }
             
@@ -2492,6 +2961,7 @@
                 mac_address: data.payload.mac_address,
                 LLA: LLA
             });
+            setPayloadItemMetadata(payloadItem, owner, data.payload.mac_address, payloadType);
             
             // Add click handler to fetch metadata
             payloadItem.addEventListener('click', () => {
@@ -2506,6 +2976,7 @@
             
             // Enforce max payloads limit
             enforceMaxPayloads();
+            refreshPayloadFilterUI();
             
             // Oldest payloads appear on the left, newest on the right
         }
@@ -2522,6 +2993,76 @@
         
         function hasCompleteSelection() {
             return Boolean(getActiveOwner() && getActiveMacAddress());
+        }
+
+        function canAutoRefreshRun() {
+            return hasCompleteSelection();
+        }
+
+        function formatAutoRefreshCountdown(totalSeconds) {
+            const safe = Math.max(0, Number(totalSeconds) || 0);
+            const minutes = Math.floor(safe / 60);
+            const seconds = safe % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function stopAutoRefreshTimer() {
+            if (autoRefreshTimerId !== null) {
+                clearInterval(autoRefreshTimerId);
+                autoRefreshTimerId = null;
+            }
+        }
+
+        function resetAutoRefreshCountdown() {
+            autoRefreshRemainingSeconds = AUTO_REFRESH_INTERVAL_SECONDS;
+            updateAutoRefreshControlUI();
+        }
+
+        function updateAutoRefreshControlUI() {
+            const toggleBtn = document.getElementById('autoRefreshToggleBtn');
+            const chip = document.getElementById('autoRefreshCountdownChip');
+            const canRun = canAutoRefreshRun();
+            if (toggleBtn) {
+                toggleBtn.disabled = !canRun;
+                toggleBtn.classList.toggle('active', autoRefreshEnabled && canRun);
+                toggleBtn.textContent = autoRefreshEnabled ? 'Auto ON' : 'Auto OFF';
+            }
+            if (chip) {
+                chip.textContent = formatAutoRefreshCountdown(autoRefreshRemainingSeconds);
+                chip.classList.toggle('active', autoRefreshEnabled && canRun);
+            }
+        }
+
+        function setAutoRefreshEnabled(nextEnabled) {
+            autoRefreshEnabled = Boolean(nextEnabled);
+            stopAutoRefreshTimer();
+            if (autoRefreshEnabled && canAutoRefreshRun()) {
+                autoRefreshRemainingSeconds = AUTO_REFRESH_INTERVAL_SECONDS;
+                autoRefreshTimerId = window.setInterval(() => {
+                    if (!autoRefreshEnabled) {
+                        stopAutoRefreshTimer();
+                        return;
+                    }
+                    if (!canAutoRefreshRun()) {
+                        stopAutoRefreshTimer();
+                        updateAutoRefreshControlUI();
+                        return;
+                    }
+                    autoRefreshRemainingSeconds -= 1;
+                    if (autoRefreshRemainingSeconds <= 0) {
+                        autoRefreshRemainingSeconds = AUTO_REFRESH_INTERVAL_SECONDS;
+                        refreshExperiments({ source: 'auto' });
+                    }
+                    updateAutoRefreshControlUI();
+                }, 1000);
+            } else {
+                autoRefreshRemainingSeconds = AUTO_REFRESH_INTERVAL_SECONDS;
+            }
+            updateAutoRefreshControlUI();
+        }
+
+        function toggleAutoRefresh() {
+            setAutoRefreshEnabled(!autoRefreshEnabled);
         }
         
         function registerLiveOwnerAndMac(owner, macAddress) {
@@ -2807,6 +3348,13 @@
             if (refreshBtn) {
                 refreshBtn.disabled = !hasSelection;
             }
+
+            if (hasSelection && autoRefreshEnabled && autoRefreshTimerId === null) {
+                setAutoRefreshEnabled(true);
+            } else {
+                updateAutoRefreshControlUI();
+            }
+
         }
         
         function detectOwnerAndMac(payload) {
@@ -2947,6 +3495,8 @@
                 setActiveSelection(null, null, 'idle');
                 populateMacAddressOptions(null);
                 resetExperimentContext('Choose a device first');
+                lastPackageActivated = false;
+                lastPackageByLla = new Map();
                 return;
             }
             
@@ -2957,12 +3507,16 @@
                 setActiveSelection(owner, null, 'manual');
                 populateMacAddressOptions(owner);
                 resetExperimentContext('No devices found for this owner');
+                lastPackageActivated = false;
+                lastPackageByLla = new Map();
                 return;
             }
             
             setActiveSelection(owner, null, 'manual');
             populateMacAddressOptions(owner);
             resetExperimentContext('Choose a device first');
+            lastPackageActivated = false;
+            lastPackageByLla = new Map();
             
             if (ownerGroup.mac_addresses.length === 1) {
                 const onlyMac = ownerGroup.mac_addresses[0];
@@ -2988,6 +3542,8 @@
                 console.warn('[PERMISSIONS] Cannot proceed: missing owner or MAC address');
                 setActiveSelection(owner, null, 'manual');
                 resetExperimentContext('Choose a device first');
+                lastPackageActivated = false;
+                lastPackageByLla = new Map();
                 return;
             }
             
@@ -2998,6 +3554,8 @@
                 expSelect.value = '';
             }
             clearSensorsList();
+            lastPackageActivated = false;
+            lastPackageByLla = new Map();
             
             fetchExperiments(owner, mac_address);
             
@@ -3199,6 +3757,8 @@
              */
             selectedExperiment = expName === '' ? null : expName;
             isAllSensorsView = expName === ALL_SENSORS_VALUE;
+            lastPackageActivated = false;
+            lastPackageByLla = new Map();
             
             if (expName === '') {
                 clearSensorsList();
@@ -3220,6 +3780,97 @@
             } else {
                 console.warn('[EXPERIMENTS] Cannot fetch sensors: missing owner or mac_address');
                 alert('Owner and MAC address are required. Please wait for WebSocket payload or refresh the page.');
+            }
+        }
+
+        function escapeHtmlForLastPackage(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function syntaxHighlightLastPackageJson(value) {
+            const json = JSON.stringify(value ?? {}, null, 2);
+            const escaped = escapeHtmlForLastPackage(json);
+            return escaped.replace(
+                /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+                match => {
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) return `<span class="json-key">${match}</span>`;
+                        return `<span class="json-string">${match}</span>`;
+                    }
+                    if (match === 'true' || match === 'false') return `<span class="json-boolean">${match}</span>`;
+                    if (match === 'null') return `<span class="json-null">${match}</span>`;
+                    return `<span class="json-number">${match}</span>`;
+                }
+            );
+        }
+
+        function buildSensorCardLastPackageHtml(sensor, cardIndex) {
+            if (!lastPackageActivated || !sensor?.LLA) {
+                return '';
+            }
+            const packageData = lastPackageByLla.get(sensor.LLA);
+            if (!packageData || typeof packageData !== 'object') {
+                return `
+                    <details>
+                        <summary>Last_Package JSON</summary>
+                        <div class="sensor-card-info-item">
+                            <span class="sensor-card-info-value">
+                                <span class="last-package-field-missing">No package data for this sensor.</span>
+                            </span>
+                        </div>
+                    </details>
+                `;
+            }
+            const safeLla = String(sensor.LLA).replace(/[^\w-]+/g, '_');
+            const jsonId = `sensor-card-json-${safeLla}-${cardIndex}`;
+            return `
+                <details>
+                    <summary>Last_Package JSON</summary>
+                    <div class="actions" style="margin-bottom:8px;">
+                        <button type="button" class="exp-action-btn copy-json-btn" data-target="${jsonId}" style="padding:6px 10px;">Copy JSON</button>
+                    </div>
+                    <div class="json-wrap">
+                        <pre id="${jsonId}">${syntaxHighlightLastPackageJson(packageData)}</pre>
+                    </div>
+                </details>
+            `;
+        }
+
+        async function fetchLastPackageForCurrentScope(owner, mac_address, exp_name = null) {
+            const effectiveOwner = owner || getActiveOwner();
+            const effectiveMac = mac_address || getActiveMacAddress();
+            if (!effectiveOwner || !effectiveMac) {
+                lastPackageByLla = new Map();
+                return;
+            }
+            try {
+                const url = new URL(getApiBaseUrl() + '/GCP-FS/last-package');
+                url.searchParams.set('owner', effectiveOwner);
+                url.searchParams.set('mac_address', effectiveMac);
+                if (exp_name !== null && exp_name !== undefined && exp_name !== '') {
+                    url.searchParams.set('exp_name', exp_name);
+                }
+                const response = await fetch(url.toString());
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const payload = await response.json();
+                const rows = Array.isArray(payload?.data) ? payload.data : [];
+                const mapped = new Map();
+                rows.forEach(row => {
+                    if (!row?.LLA) return;
+                    const pkg = row.Last_Package;
+                    mapped.set(row.LLA, pkg && typeof pkg === 'object' ? pkg : null);
+                });
+                lastPackageByLla = mapped;
+            } catch (error) {
+                console.error('[LAST_PACKAGE] Failed to load data for cards:', error);
+                lastPackageByLla = new Map();
             }
         }
         
@@ -3246,6 +3897,11 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 const data = await response.json();
                 if (data.success && data.data) {
+                    if (lastPackageActivated) {
+                        await fetchLastPackageForCurrentScope(effectiveOwner, effectiveMac, null);
+                    } else {
+                        lastPackageByLla = new Map();
+                    }
                     displaySensorsList(data.data, 'All sensors');
                 } else {
                     throw new Error(data.message || 'Failed to fetch sensors');
@@ -3307,6 +3963,11 @@
                 const data = await response.json();
                 
                 if (data.success && data.data) {
+                    if (lastPackageActivated) {
+                        await fetchLastPackageForCurrentScope(effectiveOwner, effectiveMac, expNameParam);
+                    } else {
+                        lastPackageByLla = new Map();
+                    }
                     displaySensorsList(data.data, exp_name);
                 } else {
                     throw new Error(data.message || 'Failed to fetch sensors');
@@ -3339,6 +4000,20 @@
             return lookup;
         }
         
+        /**
+         * Resolve CSV lla to a loaded sensor and canonical (full) LLA for Firestore.
+         * Exact match first; otherwise a single prefix match on sensor.LLA (e.g. short "fd002124b" -> full id).
+         */
+        function resolveSensorFromCsvLla(csvLla) {
+            const lookup = getCurrentSensorLookup();
+            const direct = lookup.get(csvLla);
+            if (direct) return { sensor: direct, lla: csvLla };
+            const matches = currentSensorsList.filter(s => s?.LLA && s.LLA.startsWith(csvLla));
+            if (matches.length === 1) return { sensor: matches[0], lla: matches[0].LLA };
+            if (matches.length > 1) return { ambiguous: true, count: matches.length };
+            return null;
+        }
+        
         function resetBulkMetadataForm() {
             const bulkLabel = document.getElementById('bulkLabelInput');
             const bulkLocation = document.getElementById('bulkLocationInput');
@@ -3362,11 +4037,14 @@
         
         function getPendingBulkMetadataUpdates() {
             const updates = {};
-            const label = document.getElementById('bulkLabelInput')?.value?.trim();
+            const labelRaw = document.getElementById('bulkLabelInput')?.value?.trim();
             const location = document.getElementById('bulkLocationInput')?.value?.trim();
             const expName = document.getElementById('bulkExpNameInput')?.value?.trim();
             
-            if (label) updates.label = label;
+            if (labelRaw) {
+                const labelArr = labelFormValueToLabelArray(labelRaw);
+                if (labelArr.length > 0) updates.label = labelArr;
+            }
             if (location) updates.location = location;
             if (expName) updates.exp_name = expName;
             
@@ -3421,13 +4099,140 @@
             if (uploadLabel) uploadLabel.style.display = isVisible ? 'inline-flex' : 'none';
         }
         
+        function escapeHtmlAttr(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        
+        /** API may return Label as string (legacy) or array of strings. */
+        function formatSensorLabelForDisplay(label) {
+            if (label === undefined || label === null) return '';
+            if (Array.isArray(label)) return label.filter(o => o != null && String(o).trim() !== '').map(String).join(' | ');
+            return String(label);
+        }
+        
+        /** Parse label form / bulk text into array for Firestore (same delimiters as CSV cells). */
+        function labelFormValueToLabelArray(raw) {
+            if (raw === null || raw === undefined) return [];
+            const s = String(raw).trim();
+            if (!s) return [];
+            const { segments } = parseLabelCellToLabelAndOptions(s);
+            return segments.length > 0 ? segments : [s];
+        }
+        
+        /** Experiment Management cards: label as plain text; optional "Label options" line from API. */
+        function buildSensorCardLabelBlockHtml(sensor) {
+            const optsFromApi = sensor.LabelOptions ?? sensor.Label_Options;
+            const rawOpts = Array.isArray(optsFromApi)
+                ? optsFromApi.filter(o => o != null && String(o).trim() !== '')
+                : [];
+            const esc = escapeHtmlAttr;
+            const labelShown = formatSensorLabelForDisplay(sensor.Label);
+            let html = `
+                        <div class="sensor-card-info-item">
+                            <span class="sensor-card-info-label">Label:</span>
+                            <span class="sensor-card-info-value">${esc(labelShown || 'N/A')}</span>
+                        </div>`;
+            if (rawOpts.length > 0) {
+                const optionsSummary = rawOpts.map(o => esc(String(o))).join(', ');
+                html += `
+                        <div class="sensor-card-info-item sensor-card-label-options-row">
+                            <span class="sensor-card-info-label">Label options:</span>
+                            <span class="sensor-card-info-value sensor-card-label-options-text">${optionsSummary}</span>
+                        </div>`;
+            }
+            return html;
+        }
+
+        function parseTimestampForSort(value) {
+            if (value === undefined || value === null || value === '') return null;
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return value > 1e12 ? value : value * 1000;
+            }
+            const trimmed = String(value).trim();
+            if (!trimmed) return null;
+            const asNumber = Number(trimmed);
+            if (Number.isFinite(asNumber)) {
+                return asNumber > 1e12 ? asNumber : asNumber * 1000;
+            }
+            const parsed = Date.parse(trimmed);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function getLastPackageSortMeta(sensor) {
+            const pkg = lastPackageByLla.get(sensor?.LLA);
+            if (!pkg || typeof pkg !== 'object') {
+                return { hasPackage: false, timestamp: null };
+            }
+            const candidates = [
+                pkg.hdc_time,
+                pkg.timestamp,
+                pkg.time,
+                pkg.ts,
+                pkg.created_at,
+                pkg.updated_at,
+                pkg.received_at,
+                sensor?.Last_Seen
+            ];
+            for (const c of candidates) {
+                const parsed = parseTimestampForSort(c);
+                if (parsed !== null) {
+                    return { hasPackage: true, timestamp: parsed };
+                }
+            }
+            return { hasPackage: true, timestamp: null };
+        }
+
+        function compareSensorsByLla(a, b) {
+            return String(a?.LLA || '').localeCompare(String(b?.LLA || ''));
+        }
+
+        function sortSensorsForGrid(sensors) {
+            const arr = Array.isArray(sensors) ? [...sensors] : [];
+            if (sensorSortMode === 'location_asc' || sensorSortMode === 'location_desc') {
+                arr.sort((a, b) => {
+                    const locA = String(a?.Location || '').trim().toLowerCase();
+                    const locB = String(b?.Location || '').trim().toLowerCase();
+                    if (locA === locB) return compareSensorsByLla(a, b);
+                    if (!locA) return 1;
+                    if (!locB) return -1;
+                    const cmp = locA.localeCompare(locB);
+                    return sensorSortMode === 'location_desc' ? -cmp : cmp;
+                });
+                return arr;
+            }
+            if (sensorSortMode === 'last_package_newest' || sensorSortMode === 'last_package_oldest') {
+                arr.sort((a, b) => {
+                    const metaA = getLastPackageSortMeta(a);
+                    const metaB = getLastPackageSortMeta(b);
+                    if (metaA.hasPackage !== metaB.hasPackage) return metaA.hasPackage ? -1 : 1;
+                    const tsA = metaA.timestamp ?? Number.NEGATIVE_INFINITY;
+                    const tsB = metaB.timestamp ?? Number.NEGATIVE_INFINITY;
+                    if (tsA === tsB) return compareSensorsByLla(a, b);
+                    if (sensorSortMode === 'last_package_oldest') return tsA - tsB;
+                    return tsB - tsA;
+                });
+                return arr;
+            }
+            return arr;
+        }
+
+        function onSensorSortChanged(value) {
+            sensorSortMode = value || 'default';
+            refreshCurrentSensorView();
+        }
+        
         function displaySensorsList(sensors, exp_name) {
             /**
              * Display sensors in a grid layout.
              * @param {Array} sensors - Array of sensor objects
              * @param {string} exp_name - Experiment name (or "All sensors")
              */
-            currentSensorsList = sensors || [];
+            const sensorsToRender = sortSensorsForGrid(sensors || []);
+            currentSensorsList = sensorsToRender;
             const sensorsList = document.getElementById('sensorsList');
             const sensorsListTitle = document.getElementById('sensorsListTitle');
             const startBtn = document.getElementById('startExperimentBtn');
@@ -3436,13 +4241,16 @@
             const newExpRow = document.getElementById('newExperimentFormRow');
             const bulkMetadataRow = document.getElementById('bulkMetadataRow');
             const experimentActionNote = document.getElementById('experimentActionNote');
+            const sensorSortRow = document.getElementById('sensorSortRow');
+            const sensorSortSelect = document.getElementById('sensorSortSelect');
             const newExpName = document.getElementById('newExpName');
             
             if (!sensorsList) return;
             setCsvActionVisibility(true);
+            if (sensorSortSelect) sensorSortSelect.value = sensorSortMode;
             
             if (sensorsListTitle) {
-                sensorsListTitle.textContent = `Sensors for "${exp_name || 'Unnamed'}" (${sensors.length} sensor${sensors.length !== 1 ? 's' : ''})`;
+                sensorsListTitle.textContent = `Sensors for "${exp_name || 'Unnamed'}" (${sensorsToRender.length} sensor${sensorsToRender.length !== 1 ? 's' : ''})`;
             }
             
             if (isAllSensorsView) {
@@ -3452,19 +4260,21 @@
                 if (newExpRow) newExpRow.style.display = 'flex';
                 if (bulkMetadataRow) bulkMetadataRow.style.display = 'flex';
                 if (experimentActionNote) experimentActionNote.style.display = 'none';
+                if (sensorSortRow) sensorSortRow.style.display = 'flex';
             } else {
                 resetBulkMetadataForm();
                 if (newExpRow) newExpRow.style.display = 'none';
                 if (bulkMetadataRow) bulkMetadataRow.style.display = 'none';
                 if (startSelectedBtn) startSelectedBtn.style.display = 'none';
-                const hasInactive = sensors.some(s => s.Active_Exp === false);
-                const hasActive = sensors.some(s => s.Active_Exp === true);
+                const hasInactive = sensorsToRender.some(s => s.Active_Exp === false);
+                const hasActive = sensorsToRender.some(s => s.Active_Exp === true);
                 if (startBtn) startBtn.style.display = hasInactive ? 'inline-block' : 'none';
                 if (endBtn) endBtn.style.display = hasActive ? 'inline-block' : 'none';
                 if (experimentActionNote) experimentActionNote.style.display = hasInactive || hasActive ? 'flex' : 'none';
+                if (sensorSortRow) sensorSortRow.style.display = 'flex';
             }
             
-            if (sensors.length === 0) {
+            if (sensorsToRender.length === 0) {
                 sensorsList.innerHTML = '<div class="metadata-empty">No sensors found for this experiment.</div>';
                 if (startBtn) startBtn.style.display = 'none';
                 if (endBtn) endBtn.style.display = 'none';
@@ -3472,6 +4282,7 @@
                 if (newExpRow) newExpRow.style.display = 'none';
                 if (bulkMetadataRow) bulkMetadataRow.style.display = 'none';
                 if (experimentActionNote) experimentActionNote.style.display = 'none';
+                if (sensorSortRow) sensorSortRow.style.display = 'none';
                 setCsvActionVisibility(false);
                 updateSelectedCount();
                 return;
@@ -3479,7 +4290,7 @@
             
             sensorsList.innerHTML = '';
             
-            sensors.forEach(sensor => {
+            sensorsToRender.forEach((sensor, sensorIndex) => {
                 const card = document.createElement('div');
                 const isActive = sensor.Active_Exp === true;
                 card.className = `sensor-card ${isActive ? 'active-exp' : 'inactive-exp'}`;
@@ -3497,10 +4308,7 @@
                             </div>
                         </div>
                         <div class="sensor-card-info">
-                            <div class="sensor-card-info-item">
-                                <span class="sensor-card-info-label">Label:</span>
-                                <span class="sensor-card-info-value">${sensor.Label || 'N/A'}</span>
-                            </div>
+                            ${buildSensorCardLabelBlockHtml(sensor)}
                             <div class="sensor-card-info-item">
                                 <span class="sensor-card-info-label">Location:</span>
                                 <span class="sensor-card-info-value">${sensor.Location || 'N/A'}</span>
@@ -3515,6 +4323,7 @@
                                 <span class="sensor-card-info-value">${formatDate(sensor.Last_Seen)}</span>
                             </div>
                             ` : ''}
+                            ${buildSensorCardLastPackageHtml(sensor, sensorIndex)}
                         </div>
                     `;
                     const cb = card.querySelector('.sensor-card-checkbox');
@@ -3534,10 +4343,7 @@
                             </div>
                         </div>
                         <div class="sensor-card-info">
-                            <div class="sensor-card-info-item">
-                                <span class="sensor-card-info-label">Label:</span>
-                                <span class="sensor-card-info-value">${sensor.Label || 'N/A'}</span>
-                            </div>
+                            ${buildSensorCardLabelBlockHtml(sensor)}
                             <div class="sensor-card-info-item">
                                 <span class="sensor-card-info-label">Location:</span>
                                 <span class="sensor-card-info-value">${sensor.Location || 'N/A'}</span>
@@ -3552,12 +4358,14 @@
                                 <span class="sensor-card-info-value">${formatDate(sensor.Last_Seen)}</span>
                             </div>
                             ` : ''}
+                            ${buildSensorCardLastPackageHtml(sensor, sensorIndex)}
                         </div>
                     `;
                 }
                 
                 card.addEventListener('click', (e) => {
                     if (isAllSensorsView && e.target.closest('.sensor-card-checkbox-label')) return;
+                    if (e.target.closest('details')) return;
                     fetchMetadataForLLA(sensor.Owner, sensor.Mac_Address, sensor.LLA);
                 });
                 
@@ -3631,7 +4439,7 @@
                 sensor.LLA || '',
                 sensor.Owner || getActiveOwner() || '',
                 sensor.Mac_Address || getActiveMacAddress() || '',
-                sensor.Label || '',
+                formatSensorLabelForDisplay(sensor.Label),
                 sensor.Location || '',
                 sensor.Exp_Name || ''
             ]));
@@ -3704,6 +4512,22 @@
                 .replace(/[\s-]+/g, '_');
         }
         
+        /** Split label cell on , ; | — trim, drop empties, dedupe (first occurrence wins). */
+        function parseLabelCellToLabelAndOptions(raw) {
+            const s = String(raw || '').trim();
+            if (!s) return { segments: [] };
+            const parts = s.split(/[,;|]/).map(p => p.trim()).filter(Boolean);
+            const seen = new Set();
+            const segments = [];
+            for (const p of parts) {
+                if (!seen.has(p)) {
+                    seen.add(p);
+                    segments.push(p);
+                }
+            }
+            return { segments };
+        }
+        
         async function handleMetadataCsvUpload(event) {
             const file = event?.target?.files?.[0];
             if (!file) return;
@@ -3728,9 +4552,8 @@
                     throw new Error('CSV must include an "LLA" column.');
                 }
                 
-                const sensorLookup = getCurrentSensorLookup();
-                const sensors = [];
                 const errors = [];
+                const validRows = [];
                 
                 rows.slice(1).forEach((row, index) => {
                     const lineNumber = index + 2;
@@ -3740,23 +4563,66 @@
                         return;
                     }
                     
-                    const currentSensor = sensorLookup.get(lla);
-                    if (!currentSensor) {
+                    const resolved = resolveSensorFromCsvLla(lla);
+                    if (resolved && resolved.ambiguous) {
+                        errors.push(
+                            `Line ${lineNumber}: LLA "${lla}" matches ${resolved.count} sensors; use the full LLA from Download CSV Template.`
+                        );
+                        return;
+                    }
+                    if (!resolved) {
                         errors.push(`Line ${lineNumber}: LLA ${lla} is not in the current sensor list.`);
                         return;
                     }
                     
-                    const updates = {};
-                    const label = labelIndex >= 0 ? (row[labelIndex] || '').trim() : '';
+                    validRows.push({ row, lineNumber, lla: resolved.lla, currentSensor: resolved.sensor });
+                });
+                
+                if (errors.length > 0) {
+                    throw new Error(errors.slice(0, 8).join('\n'));
+                }
+                
+                const globalLabelSeen = new Set();
+                const globalLabelOptions = [];
+                for (const vr of validRows) {
+                    const labelRaw = labelIndex >= 0 ? (vr.row[labelIndex] || '').trim() : '';
+                    const { segments } = parseLabelCellToLabelAndOptions(labelRaw);
+                    for (const seg of segments) {
+                        if (!globalLabelSeen.has(seg)) {
+                            globalLabelSeen.add(seg);
+                            globalLabelOptions.push(seg);
+                        }
+                    }
+                }
+                
+                const byLla = new Map();
+                for (const vr of validRows) {
+                    byLla.set(vr.lla, vr);
+                }
+                
+                const sensors = [];
+                for (const vr of byLla.values()) {
+                    const { row, currentSensor, lla } = vr;
+                    const labelRaw = labelIndex >= 0 ? (row[labelIndex] || '').trim() : '';
+                    const { segments: lastSegments } = parseLabelCellToLabelAndOptions(labelRaw);
                     const location = locationIndex >= 0 ? (row[locationIndex] || '').trim() : '';
                     const expName = expNameIndex >= 0 ? (row[expNameIndex] || '').trim() : '';
                     
-                    if (label) updates.label = label;
+                    const updates = {};
                     if (location) updates.location = location;
                     if (expName) updates.exp_name = expName;
                     
+                    if (globalLabelOptions.length >= 2) {
+                        updates.label_options = globalLabelOptions;
+                        updates.label = lastSegments.length > 0 ? lastSegments : [globalLabelOptions[0]];
+                    } else if (globalLabelOptions.length === 1) {
+                        updates.label = lastSegments.length > 0 ? lastSegments : [globalLabelOptions[0]];
+                    } else if (lastSegments.length > 0) {
+                        updates.label = lastSegments;
+                    }
+                    
                     if (Object.keys(updates).length === 0) {
-                        return;
+                        continue;
                     }
                     
                     sensors.push({
@@ -3770,10 +4636,6 @@
                             getActiveMacAddress(),
                         updates
                     });
-                });
-                
-                if (errors.length > 0) {
-                    throw new Error(errors.slice(0, 8).join('\n'));
                 }
                 
                 if (sensors.length === 0) {
@@ -3950,6 +4812,7 @@
             const newExpRow = document.getElementById('newExperimentFormRow');
             const bulkMetadataRow = document.getElementById('bulkMetadataRow');
             const experimentActionNote = document.getElementById('experimentActionNote');
+            const sensorSortRow = document.getElementById('sensorSortRow');
             if (sensorsListSection) sensorsListSection.style.display = 'none';
             if (startBtn) startBtn.style.display = 'none';
             if (endBtn) endBtn.style.display = 'none';
@@ -3958,20 +4821,27 @@
             if (newExpRow) newExpRow.style.display = 'none';
             if (bulkMetadataRow) bulkMetadataRow.style.display = 'none';
             if (experimentActionNote) experimentActionNote.style.display = 'none';
+            if (sensorSortRow) sensorSortRow.style.display = 'none';
             setCsvActionVisibility(false);
             resetBulkMetadataForm();
+            lastPackageByLla = new Map();
         }
         
-        function refreshExperiments() {
+        function refreshExperiments(options = {}) {
             /**
              * Refresh the experiments list.
              * Uses the active owner/device selection context.
              */
+            const source = options?.source || 'manual';
             const effectiveOwner = getActiveOwner();
             const effectiveMac = getActiveMacAddress();
             
             if (effectiveOwner && effectiveMac) {
-                fetchExperiments(effectiveOwner, effectiveMac);
+                lastPackageActivated = true;
+                refreshCurrentSensorView();
+                if (source === 'manual' && autoRefreshEnabled) {
+                    resetAutoRefreshCountdown();
+                }
             } else {
                 alert('Cannot refresh: Owner and MAC address not selected. Please select from dropdowns or wait for WebSocket payload.');
             }
@@ -4027,6 +4897,9 @@
             const newExpNameInput = document.getElementById('newExpName');
             if (newExpNameInput) newExpNameInput.addEventListener('input', updateSelectedCount);
             
+            refreshPayloadFilterUI();
+            updateAutoRefreshControlUI();
+            
             // Automatically connect on page load
             console.log('Auto-connecting WebSocket...');
             connectWebSocket();
@@ -4034,6 +4907,7 @@
         
         // Clean up on page unload
         window.addEventListener('beforeunload', () => {
+            stopAutoRefreshTimer();
             disconnectWebSocket();
         });
         
@@ -4135,6 +5009,22 @@
         
         // Close modal when clicking outside
         document.addEventListener('click', (event) => {
+            const copyBtn = event.target.closest('.copy-json-btn');
+            if (copyBtn) {
+                const targetId = copyBtn.getAttribute('data-target');
+                const pre = targetId ? document.getElementById(targetId) : null;
+                if (!pre) return;
+                navigator.clipboard.writeText(pre.innerText).then(() => {
+                    const oldLabel = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied';
+                    setTimeout(() => {
+                        copyBtn.textContent = oldLabel;
+                    }, 1200);
+                }).catch((error) => {
+                    alert(`Failed to copy JSON: ${error?.message || String(error)}`);
+                });
+                return;
+            }
             const modal = document.getElementById('metadataModal');
             if (event.target === modal) {
                 closeMetadataModal();
@@ -4251,7 +5141,7 @@
                             </div>
                             <div class="metadata-item inactive-item">
                                 <div class="metadata-item-label">Label</div>
-                                <input type="text" class="editable-field" name="label_${index}" value="${item.Label || ''}" placeholder="Enter label">
+                                <input type="text" class="editable-field" name="label_${index}" value="${escapeHtmlAttr(formatSensorLabelForDisplay(item.Label))}" placeholder="Enter label (use | between multiple)">
                             </div>
                             <div class="metadata-item inactive-item">
                                 <div class="metadata-item-label">Coordinates</div>
@@ -4309,7 +5199,7 @@
                 const coordY = formData.get(`coord_y_${idx}`);
                 const coordZ = formData.get(`coord_z_${idx}`);
                 if (loc !== null) updates.location = loc;
-                if (label !== null) updates.label = label;
+                if (label !== null) updates.label = labelFormValueToLabelArray(label);
                 const coords = {};
                 if (coordX !== null && coordX !== '') coords.x = parseFloat(coordX);
                 if (coordY !== null && coordY !== '') coords.y = parseFloat(coordY);
@@ -4383,7 +5273,7 @@
                             </div>
                             <div class="metadata-item ${itemClass}">
                                 <div class="metadata-item-label">Label</div>
-                                <input type="text" class="editable-field" name="label_${idx}" value="${(item.Label || '').replace(/"/g, '&quot;')}" placeholder="Enter label">
+                                <input type="text" class="editable-field" name="label_${idx}" value="${escapeHtmlAttr(formatSensorLabelForDisplay(item.Label))}" placeholder="Enter label (use | between multiple)">
                             </div>
                             <div class="metadata-item ${itemClass} ${lockedClass}">
                                 <div class="metadata-item-label">Location</div>
@@ -4428,7 +5318,7 @@
                             </div>
                             <div class="metadata-item ${itemClass}">
                                 <div class="metadata-item-label">Label</div>
-                                <div class="metadata-item-value">${item.Label || 'N/A'}</div>
+                                <div class="metadata-item-value">${formatSensorLabelForDisplay(item.Label) || 'N/A'}</div>
                             </div>
                             <div class="metadata-item ${itemClass}">
                                 <div class="metadata-item-label">Location</div>
@@ -4492,7 +5382,7 @@
                 exp_name: "",
                 exp_location: "",
                 exp_started_at: null,
-                label: "",
+                label: [],
                 label_options: [],
                 location: null,
                 coordinates: { x: null, y: null, z: null }
@@ -4558,7 +5448,7 @@
                 const coordY = formData.get(`coord_y_${index}`);
                 const coordZ = formData.get(`coord_z_${index}`);
                 const updates = {};
-                if (label !== null) updates.label = label;
+                if (label !== null) updates.label = labelFormValueToLabelArray(label);
                 const coordinates = {};
                 if (coordX !== null && coordX !== '') coordinates.x = parseFloat(coordX);
                 if (coordY !== null && coordY !== '') coordinates.y = parseFloat(coordY);
@@ -4641,7 +5531,7 @@
                     const coordZ = formData.get(`coord_z_${index}`);
                     
                     if (location !== null) updates.location = location;
-                    if (label !== null) updates.label = label;
+                    if (label !== null) updates.label = labelFormValueToLabelArray(label);
                     
                     // Build coordinates object if any coordinate is provided
                     const coordinates = {};

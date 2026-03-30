@@ -324,6 +324,22 @@ Performance Metrics:
 
 ---
 
+### 6. `6.test_new_endpoints.py`
+
+**Type:** Python script  
+**Purpose:** Exercise **`GET /GCP-FS/metadata/sensors`** (with optional `exp_name`) and **`GET /GCP-FS/metadata/experiments`** against the deployed backend.
+
+**Dependencies:** `requests` (`pip install requests`)
+
+**How to run:**
+```bash
+python test_script/6.test_new_endpoints.py
+```
+
+**Note:** **`GET /GCP-FS/last-package`** uses the same query parameters as **`/GCP-FS/metadata/sensors`**; test it with curl or Swagger (`/docs`)—see the curl examples above.
+
+---
+
 ### 5. `2.test_bigquery.py` (Deprecated)
 
 **Type:** Python Script  
@@ -700,6 +716,17 @@ ws.onopen = () => {
 };
 ws.onmessage = (event) => console.log('Received:', event.data);
 ```
+
+### GET /GCP-FS/last-package (metadata + Last_Package per sensor)
+
+Same query parameters as **`GET /GCP-FS/metadata/sensors`**: required `owner` and `mac_address`, optional `exp_name`. Use Swagger at `/docs` or curl:
+
+```bash
+curl "http://localhost:8000/GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f"
+curl "http://localhost:8000/GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f&exp_name=Image_V2"
+```
+
+Response shape matches the all-sensors metadata endpoint; each item in `data` includes **`Last_Package`**.
 
 ### Permissions Resolution Endpoint:
 Resolve all owner and MAC address combinations from user email (grouped by owner):

@@ -25,6 +25,7 @@ Each subfolder also contains its own `README.md` file with specific documentatio
 - **update-labels**: Scripts for dynamically updating metadata labels in Google Cloud resources.
 - **upload_To_bucket**: Logic for uploading local files and results to GCP Storage Buckets.
 - **users-devices-permission**: Utilities for managing permission mappings between users, devices, and experiments.
+- **Reggie_Online**: ApiSync FastAPI + WebSocket service for real-time sensor payloads, Firestore metadata management, and permissions resolve endpoints.
 
 Each directory supports a different stage of the data lifecycle—ranging from ingestion to permission management—and collectively powers the F4D data pipeline.
 
@@ -47,6 +48,7 @@ Each of these folders includes its own `README.md` for further documentation.
 - `f4d_bq_sync/`: HTTP service for syncing Field4D data into BigQuery (Cloud Run).
 - `login_and_issue_jwt/`: Isuue JWT token and handle login
 - `Field4D_Site/`: Field4d.com site front + back
+- `Reggie_Online/`: ApiSync service (FastAPI + WebSocket) with Firestore-backed sensor metadata, `last-package`, and permissions-resolve APIs.
 ---
 
 ## Key Scripts
