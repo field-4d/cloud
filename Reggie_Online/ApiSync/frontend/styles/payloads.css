@@ -1,8 +1,10 @@
 .payload-list {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
-    min-height: 300px;
+    min-height: 220px;
+    align-items: start;
+    align-content: start;
 }
 
 .payload-item {
@@ -15,6 +17,7 @@
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
+    height: fit-content;
 }
 
 .payload-item.active-exp {
@@ -52,6 +55,13 @@
 
 .payload-item.payload-type-ping {
     border-left: 4px solid #667eea;
+}
+
+.payload-item.payload-item-compact {
+    padding: 10px;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .payload-item.payload-type-last-package {
@@ -284,6 +294,15 @@
     border-bottom: 1px solid #e5e7eb;
 }
 
+.payload-item-compact .payload-monitor-header {
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    gap: 6px;
+    grid-template-columns: 1fr auto;
+    display: grid;
+    align-items: start;
+}
+
 .payload-monitor-title-wrap {
     display: flex;
     flex-direction: column;
@@ -314,6 +333,14 @@
     margin-bottom: 12px;
 }
 
+.payload-item-compact .payload-monitor-identity {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    gap: 4px;
+    margin-bottom: 0;
+    align-items: center;
+    justify-content: start;
+}
+
 .payload-monitor-identity-item {
     display: flex;
     align-items: center;
@@ -327,6 +354,10 @@
     color: #4b5563;
 }
 
+.payload-item-compact .payload-monitor-identity-label {
+    font-size: 0.76rem;
+}
+
 .payload-identity-chip {
     border: 1px solid #c7d2fe;
     background: #eef2ff;
@@ -337,6 +368,23 @@
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s, transform 0.2s;
+}
+
+.payload-item-compact .payload-identity-chip {
+    padding: 2px 7px;
+    font-size: 0.74rem;
+}
+
+.payload-item-compact .payload-monitor-lla {
+    font-size: 0.76rem;
+}
+
+.payload-item-compact .payload-monitor-time {
+    font-size: 0.72rem;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .payload-identity-chip:hover {
@@ -425,6 +473,10 @@
     }
 
     .payload-monitor-identity {
+        grid-template-columns: 1fr;
+    }
+
+    .payload-item-compact .payload-monitor-identity {
         grid-template-columns: 1fr;
     }
 }

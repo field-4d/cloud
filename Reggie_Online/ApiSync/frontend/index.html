@@ -2435,7 +2435,7 @@
         }
 
         function renderPingPayloadCard(payloadItem, data, options = {}) {
-            const incrementCounter = options.incrementCounter === true;
+            payloadItem.classList.add('payload-item-compact');
             const payload = data.payload || {};
             const lla = payload.LLA || 'N/A';
             const owner = payload.owner || payload.hostname || 'N/A';
@@ -2443,19 +2443,9 @@
             const safeOwner = escapeHtmlAttr(owner);
             const safeMac = escapeHtmlAttr(macAddress);
 
-            const pingStatusHtml = `
-                <div class="payload-monitor-status-row">
-                    <span class="payload-monitor-status-badge">Status: Ping received</span>
-                </div>
-            `;
-
-            const telemetryData = extractPingLastPackage(payload) || lastPackageMap.get(lla);
-            const telemetryHtml = buildPingTelemetryHtml(telemetryData);
-
             payloadItem.innerHTML = `
                 <div class="payload-monitor-header">
                     <div class="payload-monitor-title-wrap">
-                        <div class="payload-monitor-title">Ping Event</div>
                         <div class="payload-monitor-lla">LLA: ${escapeHtmlAttr(lla)}</div>
                     </div>
                     <div class="payload-monitor-time">${formatDate(data.timestamp) || 'N/A'}</div>
@@ -2470,9 +2460,6 @@
                         <button type="button" class="payload-identity-chip">${safeMac}</button>
                     </div>
                 </div>
-                ${pingStatusHtml}
-                ${telemetryHtml}
-                ${incrementCounter ? `<div class="payload-monitor-seq">Event #${++payloadCount}</div>` : ''}
             `;
 
             bindPayloadIdentityActions(payloadItem, owner, macAddress);
@@ -3038,7 +3025,7 @@
             
             // Create new payload item
             const payloadItem = document.createElement('div');
-            payloadItem.className = 'payload-item payload-type-ping';
+            payloadItem.className = 'payload-item payload-type-ping payload-item-compact';
             payloadItem.setAttribute('data-lla', LLA); // Store LLA as data attribute
             
             // Add 'valid' class if validation is true (triggers blink animation)
@@ -3916,6 +3903,109 @@
             );
         }
 
+        function getLastPackageMetricUnit(keyLower) {
+            if (/(temp|temperature)$/.test(keyLower)) return '°C';
+            if (/humidity$/.test(keyLower)) return '%';
+            if (/pressure$/.test(keyLower)) return 'hPa';
+            return '';
+        }
+
+        function formatLastPackageMetricValue(keyLower, value) {
+            if (value === null || value === undefined || value === '') return 'N/A';
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                const text = Number.isInteger(value) ? String(value) : value.toFixed(2);
+                const unit = getLastPackageMetricUnit(keyLower);
+                return unit ? `${text} ${unit}` : text;
+            }
+            return String(value);
+        }
+
+        function getLastPackageMetricLabel(key) {
+            return String(key || '')
+                .replace(/_/g, ' ')
+                .replace(/\b([a-z])/g, (_, ch) => ch.toUpperCase());
+        }
+
+        function groupLastPackageMetrics(lastPackage) {
+            const groups = {
+                temperature: [],
+                humidity: [],
+                light: [],
+                battery: [],
+                pressure: [],
+                packageMeta: [],
+                other: []
+            };
+
+            Object.keys(lastPackage || {}).forEach(key => {
+                const normalized = String(key).toLowerCase();
+                const value = lastPackage[key];
+                const metric = {
+                    label: getLastPackageMetricLabel(key),
+                    value: formatLastPackageMetricValue(normalized, value)
+                };
+
+                if (normalized === 'package_number' || normalized.includes('package')) {
+                    groups.packageMeta.push(metric);
+                } else if (normalized.includes('battery') || normalized.includes('batmon')) {
+                    groups.battery.push(metric);
+                } else if (normalized.includes('humidity')) {
+                    groups.humidity.push(metric);
+                } else if (normalized.includes('light') || normalized.includes('intensity') || normalized.includes('opt_')) {
+                    groups.light.push(metric);
+                } else if (normalized.includes('pressure') || normalized.includes('bmp_press')) {
+                    groups.pressure.push(metric);
+                } else if (normalized.includes('temp') || normalized.includes('temperature')) {
+                    groups.temperature.push(metric);
+                } else {
+                    groups.other.push(metric);
+                }
+            });
+
+            return groups;
+        }
+
+        function renderLastPackageTelemetrySection(icon, title, items) {
+            if (!items || items.length === 0) return '';
+            const metricsHtml = items.map(item => `
+                <div class="last-package-telemetry-metric">
+                    <span class="last-package-telemetry-label">${escapeHtmlForLastPackage(item.label)}</span>
+                    <span class="last-package-telemetry-value">${escapeHtmlForLastPackage(item.value)}</span>
+                </div>
+            `).join('');
+            return `
+                <div class="last-package-telemetry-card">
+                    <div class="last-package-telemetry-title">${icon} ${title}</div>
+                    ${metricsHtml}
+                </div>
+            `;
+        }
+
+        function renderLastPackageTelemetryPanel(lastPackage) {
+            if (!lastPackage || typeof lastPackage !== 'object') return '';
+            const grouped = groupLastPackageMetrics(lastPackage);
+            const sections = [
+                renderLastPackageTelemetrySection('🌡', 'Temperature', grouped.temperature),
+                renderLastPackageTelemetrySection('💧', 'Humidity', grouped.humidity),
+                renderLastPackageTelemetrySection('☀', 'Light', grouped.light),
+                renderLastPackageTelemetrySection('🔋', 'Battery', grouped.battery),
+                renderLastPackageTelemetrySection('🧭', 'Pressure', grouped.pressure),
+                renderLastPackageTelemetrySection('📦', 'Package', grouped.packageMeta),
+                renderLastPackageTelemetrySection('🧪', 'Other', grouped.other)
+            ].filter(Boolean);
+
+            if (sections.length === 0) return '';
+
+            return `
+                <div class="last-package-telemetry-panel">
+                    <div class="last-package-telemetry-panel-title">Device Telemetry</div>
+                    <div class="last-package-telemetry-grid">
+                        ${sections.join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         function buildSensorCardLastPackageHtml(sensor, cardIndex) {
             if (!lastPackageActivated || !sensor?.LLA) {
                 return '';
@@ -3935,9 +4025,11 @@
             }
             const safeLla = String(sensor.LLA).replace(/[^\w-]+/g, '_');
             const jsonId = `sensor-card-json-${safeLla}-${cardIndex}`;
+            const telemetryHtml = renderLastPackageTelemetryPanel(packageData);
             return `
                 <details>
                     <summary>Last_Package JSON</summary>
+                    ${telemetryHtml}
                     <div class="actions" style="margin-bottom:8px;">
                         <button type="button" class="exp-action-btn copy-json-btn" data-target="${jsonId}" style="padding:6px 10px;">Copy JSON</button>
                     </div>
@@ -4331,6 +4423,26 @@
             sensorSortMode = value || 'default';
             refreshCurrentSensorView();
         }
+
+        function getSensorPingStatusFromLastSeen(lastSeen) {
+            const parsedMs = Date.parse(lastSeen || '');
+            if (!Number.isFinite(parsedMs)) {
+                return { cssClass: 'offline', text: '🔴 Offline', title: 'Invalid or missing Last Seen' };
+            }
+            const deltaSeconds = Math.max(0, Math.floor((Date.now() - parsedMs) / 1000));
+            if (deltaSeconds < 180) {
+                return { cssClass: 'online', text: '🟢 Online', title: `Last Seen ${deltaSeconds}s ago` };
+            }
+            if (deltaSeconds > 180*3) {
+                return { cssClass: 'offline', text: '🔴 Offline', title: `Last Seen ${deltaSeconds}s ago` };
+            }
+            return { cssClass: 'delayed', text: '🟡 Delayed', title: `Last Seen ${deltaSeconds}s ago` };
+        }
+
+        function renderSensorStatusBadgeHtml(lastSeen) {
+            const status = getSensorPingStatusFromLastSeen(lastSeen);
+            return `<span class="sensor-card-status-chip ${status.cssClass}" title="${escapeHtmlForLastPackage(status.title)}">${status.text}</span>`;
+        }
         
         function displaySensorsList(sensors, exp_name) {
             /**
@@ -4405,6 +4517,7 @@
                 
                 if (isAllSensorsView) {
                     card.innerHTML = `
+                        ${renderSensorStatusBadgeHtml(sensor.Last_Seen)}
                         <div class="sensor-card-header">
                             <label class="sensor-card-checkbox-label" onclick="event.stopPropagation()">
                                 <input type="checkbox" class="sensor-card-checkbox" data-lla="${lla.replace(/"/g, '&quot;')}">
@@ -4443,6 +4556,7 @@
                     }
                 } else {
                     card.innerHTML = `
+                        ${renderSensorStatusBadgeHtml(sensor.Last_Seen)}
                         <div class="sensor-card-header">
                             <div class="sensor-card-lla">${sensor.LLA || 'N/A'}</div>
                             <div class="sensor-card-badge ${isActive ? 'active' : 'inactive'}">

@@ -7,10 +7,53 @@ Minimal endpoint guide for frontend development, ordered exactly like Swagger ta
 3. `metadata`
 4. `sensors`
 
+## Mini Frontend (What It Is)
+
+This project also includes a very small frontend shell in `frontend/index_external_css.html`.  
+It is intentionally minimal: the file only renders a full-page `<iframe>` that loads `frontend/index.html`.
+
+- `index_external_css.html`: tiny wrapper/entry page (iframe host)
+- `index.html`: the actual app UI (WebSocket monitor + API-driven controls)
+- `frontend/styles/*.css`: external style files used by `index.html`
+
+## Mini Frontend Features (What Each One Does + How It Works)
+
+1. **WebSocket Connection (Ping monitor)**
+   - **What it does:** Connects/disconnects from `/ws/ping` and shows live connection state.
+   - **How it works:** user clicks Connect -> browser opens WS -> incoming Ping payloads are rendered as cards in "Received Payloads".
+
+2. **Health Check**
+   - **What it does:** Verifies backend availability quickly.
+   - **How it works:** calls `GET /health` and displays status + raw response in the health panel.
+
+3. **Permissions Resolve (Owner/MAC context)**
+   - **What it does:** Loads allowed owners and devices for a user email.
+   - **How it works:** calls `GET /GCP-FS/permissions/resolve?email=...`, then populates owner/device dropdowns used by experiment and metadata views.
+
+4. **Experiment Browser + Stats**
+   - **What it does:** Shows experiments for selected owner/MAC, with active/inactive filtering.
+   - **How it works:** calls metadata experiment endpoints, fills experiment dropdown, updates totals (total/active/inactive), and supports manual/auto refresh.
+
+5. **Sensors List and Metadata Panel**
+   - **What it does:** Displays sensors for selected experiment (or all sensors) and enables metadata review/edit flows.
+   - **How it works:** uses metadata endpoints to fetch rows and render cards; modal/details views are populated from API responses.
+
+6. **Payload Filters and UX Controls**
+   - **What it does:** Filters visible Ping cards by owner/device and controls visual behavior.
+   - **How it works:** UI-only filtering is applied on already-received payload cards; includes clear list, max payload count, blink color, and blink duration controls.
+
+7. **CSV Import/Export for Metadata**
+   - **What it does:** Supports bulk metadata edits using CSV templates.
+   - **How it works:** frontend exports current sensor set to CSV template, user edits, then upload parses CSV and sends update requests to metadata endpoints.
+
+8. **Last_Package Handling in Current Mode**
+   - **What it does:** Backend still stores `Last_Package` in Firestore, but frontend Ping monitor stays Ping-only.
+   - **How it works:** with `LAST_PACKAGE_WS_ENABLED = False` (default), sender receives WS ack, and frontend does not get broadcast Last_Package cards.
+
 ## Base URL and Example Values
 
 - Base URL (GCP): `https://apisync-1000435921680.us-central1.run.app`
-- Email: `nir.averbuch@mail.huji.ac.il`
+- Email: `Field4D_ADMIN@field4d.com`
 - Owner: `f4dv2`
 - MAC examples: `d83adde260d1`, `d83adde261b0`
 - `exp_name` is optional and dynamic during testing.
@@ -86,7 +129,7 @@ Resolves all owner/MAC combinations available for a user email.
 **Request example**
 
 ```bash
-curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/permissions/resolve?email=nir.averbuch@mail.huji.ac.il"
+curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/permissions/resolve?email=Field4D_ADMIN@field4d.com"
 ```
 
 **Response**
@@ -94,7 +137,7 @@ curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/permissions/resol
 ```json
 {
   "success": true,
-  "email": "nir.averbuch@mail.huji.ac.il",
+  "email": "Field4D_ADMIN@field4d.com",
   "owners": [
     {
       "owner": "f4dv2",

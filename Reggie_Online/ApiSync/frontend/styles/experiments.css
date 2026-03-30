@@ -366,6 +366,7 @@
     padding: 15px;
     cursor: pointer;
     transition: all 0.2s;
+    position: relative;
 }
 
 .sensor-card:hover {
@@ -384,11 +385,49 @@
     background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
 }
 
-.sensor-card-header {
-    display: flex;
-    justify-content: space-between;
+.sensor-card-header { /* Header row inside each sensor card */
+    display: flex; /* Use flex layout for LLA/status alignment */
+    justify-content: space-between; /* Push left and right header items apart */
+    align-items: center; /* Vertically center header contents */
+    margin-top: 18px; /* Push header lower to clear top badge */
+    margin-bottom: 10px; /* Space below header before card details */
+    min-height: 24px; /* Keep a stable minimum header height */
+    padding-left: 0; /* Move content further left */
+} /* End sensor header styling */
+
+.sensor-card-status-chip {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 10px;
+    justify-content: center;
+    padding: 3px 9px;
+    min-width: 88px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.sensor-card-status-chip.online {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+.sensor-card-status-chip.delayed {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.sensor-card-status-chip.offline {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
 }
 
 .sensor-card-checkbox-label {
@@ -573,6 +612,59 @@ details > summary {
     margin-bottom: 8px;
 }
 
+.last-package-telemetry-panel {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #d1d5db;
+}
+
+.last-package-telemetry-panel-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.last-package-telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+}
+
+.last-package-telemetry-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+
+.last-package-telemetry-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.last-package-telemetry-metric {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.8rem;
+    padding: 2px 0;
+}
+
+.last-package-telemetry-label {
+    color: #6b7280;
+}
+
+.last-package-telemetry-value {
+    color: #111827;
+    font-weight: 700;
+    text-align: right;
+}
+
 .link-btn {
     background: none;
     border: none;
@@ -620,15 +712,22 @@ details > summary {
 .sensor-card-info-item {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
 }
 
 .sensor-card-info-label {
     color: #6b7280;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .sensor-card-info-value {
     color: #374151;
     font-weight: 500;
+    text-align: right;
+    max-width: 70%;
+    word-break: break-word;
 }
 
 .sensor-card-label-options-row .sensor-card-label-options-text {
