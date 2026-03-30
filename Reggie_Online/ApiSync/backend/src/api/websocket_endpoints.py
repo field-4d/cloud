@@ -13,6 +13,11 @@ from .firestore_repository import validate_sensor_lla, register_sensor, update_s
 # Set up logger
 logger = logging.getLogger(__name__)
 
+# --- TEMPORARILY DISABLED: Last_Package over WebSocket ---
+# Keep False for now to allow Ping-only behavior on /ws/ping.
+# --- RESTORE: set True to re-enable Last_Package WebSocket processing ---
+LAST_PACKAGE_WS_ENABLED = False
+
 
 class ConnectionManager:
     """Manages WebSocket connections and broadcasts messages to all clients."""
@@ -230,6 +235,13 @@ async def websocket_ping(websocket: WebSocket):
             
             # Handle Last_Package type messages
             if payload_type and payload_type.lower() == "last_package":
+                if not LAST_PACKAGE_WS_ENABLED:
+                    logger.warning(
+                        "[WEBSOCKET_LAST_PACKAGE] Frontend forwarding disabled; "
+                        "processing and Firestore storage remain enabled"
+                    )
+
+                # --- RESTORE: active Last_Package logic below ---
                 package_start = time.time()
                 # Extract owner and mac_address for auto-registration (support both 'owner' and 'hostname')
                 package_owner = payload.get("owner") or payload.get("hostname")
@@ -339,17 +351,35 @@ async def websocket_ping(websocket: WebSocket):
                     "errors": errors if errors else None
                 }
                 
-                # Broadcast to all connected clients (including frontend)
-                broadcast_start = time.time()
-                await manager.broadcast(response)
-                broadcast_duration = time.time() - broadcast_start
-                
-                total_duration = time.time() - payload_start
-                logger.info(
-                    f"[WEBSOCKET_LAST_PACKAGE] Payload processed | "
-                    f"Total duration: {total_duration:.3f}s | "
-                    f"Broadcast: {broadcast_duration:.3f}s"
-                )
+                if not LAST_PACKAGE_WS_ENABLED:
+                    # --- TEMPORARILY DISABLED: Last_Package frontend WS flow ---
+                    # Store in Firestore, but acknowledge only to the sender.
+                    disabled_ack = {
+                        "received": True,
+                        "disabled": True,
+                        "stored": True,
+                        "type": "Last_Package",
+                        "message": "Stored in Firestore but not forwarded over WebSocket"
+                    }
+                    await websocket.send_json(disabled_ack)
+                    total_duration = time.time() - payload_start
+                    logger.info(
+                        f"[WEBSOCKET_LAST_PACKAGE] Payload stored (sender-only ack) | "
+                        f"Total duration: {total_duration:.3f}s"
+                    )
+                else:
+                    # Broadcast to all connected clients (including frontend)
+                    broadcast_start = time.time()
+                    await manager.broadcast(response)
+                    broadcast_duration = time.time() - broadcast_start
+                    
+                    total_duration = time.time() - payload_start
+                    logger.info(
+                        f"[WEBSOCKET_LAST_PACKAGE] Payload processed | "
+                        f"Total duration: {total_duration:.3f}s | "
+                        f"Broadcast: {broadcast_duration:.3f}s"
+                    )
+                # --- END RESTORE block ---
                 continue
             
             # Create response with the payload information and validation (for Ping type)

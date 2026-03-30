@@ -3,46 +3,364 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ApiSync - Payload Monitor (External CSS)</title>
+    <title>ApiSync - External CSS Dashboard</title>
+    <style>
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: #f3f4f6;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        .shell {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .shell-banner {
+            padding: 8px 12px;
+            background: #111827;
+            color: #d1d5db;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+        }
+
+        .shell-frame {
+            border: 0;
+            width: 100%;
+            height: calc(100% - 32px);
+            background: white;
+        }
+    </style>
 </head>
 <body>
-    <noscript>This page requires JavaScript enabled.</noscript>
+    <div class="shell">
+        <div class="shell-banner">External CSS mode (runtime patched)</div>
+        <iframe id="appFrame" class="shell-frame" src="./index.html"></iframe>
+    </div>
     <script>
-        (async function bootstrapExternalCssVersion() {
-            function mountIframeFallback() {
-                document.body.innerHTML = '';
-                document.body.style.margin = '0';
-                const iframe = document.createElement('iframe');
-                iframe.src = './index.html';
-                iframe.style.width = '100vw';
-                iframe.style.height = '100vh';
-                iframe.style.border = '0';
-                iframe.onload = function () {
-                    try {
-                        const doc = iframe.contentDocument || iframe.contentWindow.document;
-                        const inlineStyle = doc.querySelector('style');
-                        if (inlineStyle) inlineStyle.remove();
-                    } catch (e) {
-                        // If browser blocks access in file:// mode, keep iframe content as-is.
-                    }
-                };
-                document.body.appendChild(iframe);
+        (function bootstrapExternalCssVersion() {
+            const frame = document.getElementById('appFrame');
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
             }
 
-            try {
-                const response = await fetch('./index.html', { cache: 'no-store' });
-                if (!response.ok) {
-                    throw new Error('Failed to load index.html');
-                }
-                const html = await response.text();
-                const withoutInlineStyle = html.replace(/<style[\s\S]*?<\/style>/i, '');
-                document.open();
-                document.write(withoutInlineStyle);
-                document.close();
-            } catch (error) {
-                mountIframeFallback();
+            function injectRuntimeStyles(doc) {
+                const style = doc.createElement('style');
+                style.id = 'external-runtime-style-patches';
+                style.textContent = `
+                    .payload-monitor-title::before { content: "📡 "; }
+                    .payload-monitor-time { font-weight: 600; }
+
+                    .payload-telemetry-title { display: flex; align-items: center; gap: 6px; }
+                    .payload-telemetry-card { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+                    .sensor-live-status-badge {
+                        margin-left: 8px;
+                        padding: 2px 8px;
+                        border-radius: 999px;
+                        font-size: 12px;
+                        font-weight: 700;
+                        border: 1px solid transparent;
+                    }
+                    .sensor-live-status-online {
+                        color: #065f46;
+                        background: #d1fae5;
+                        border-color: #6ee7b7;
+                    }
+                    .sensor-live-status-delayed {
+                        color: #92400e;
+                        background: #fef3c7;
+                        border-color: #fcd34d;
+                    }
+                    .sensor-live-status-offline {
+                        color: #991b1b;
+                        background: #fee2e2;
+                        border-color: #fca5a5;
+                    }
+                `;
+                doc.head.appendChild(style);
             }
+
+            function installTelemetryOverride(win) {
+                function toTitleCase(text) {
+                    return text
+                        .replace(/_/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .replace(/\b\w/g, ch => ch.toUpperCase());
+                }
+
+                function metricLabel(key) {
+                    const map = {
+                        bmp_temp: 'BMP Temp',
+                        hdc_temp: 'HDC Temp',
+                        hdc_humidity: 'RH',
+                        light: 'Light Intensity',
+                        battery: 'Voltage',
+                        battery_t: 'Battery Temp',
+                        package_number: 'Package Number',
+                        bmp_press: 'BMP Pressure'
+                    };
+                    return map[key] || toTitleCase(key);
+                }
+
+                function metricUnit(key) {
+                    const k = String(key || '').toLowerCase();
+                    if (k.includes('humidity')) return '%';
+                    if (k.includes('temp') || k.includes('temperature')) return '°C';
+                    if (k.includes('press') || k.includes('pressure')) return 'hPa';
+                    return '';
+                }
+
+                function formatMetricValue(value, unit) {
+                    if (value === null || value === undefined || value === '') return 'N/A';
+                    if (typeof value === 'number' && Number.isFinite(value)) {
+                        const formatted = Number.isInteger(value) ? String(value) : value.toFixed(2);
+                        return unit ? `${formatted} ${unit}` : formatted;
+                    }
+                    return unit ? `${String(value)} ${unit}` : String(value);
+                }
+
+                function pushMetric(groups, section, key, value) {
+                    if (value === undefined || value === null) return;
+                    groups[section].push({
+                        label: metricLabel(key),
+                        value: formatMetricValue(value, metricUnit(key))
+                    });
+                }
+
+                win.buildPingTelemetryHtml = function (lastPackage) {
+                    if (!lastPackage || typeof lastPackage !== 'object') return '';
+
+                    const groups = {
+                        temperature: [],
+                        humidity: [],
+                        light: [],
+                        battery: [],
+                        pressure: [],
+                        package: [],
+                        other: []
+                    };
+
+                    Object.entries(lastPackage).forEach(([key, value]) => {
+                        const k = key.toLowerCase();
+                        if (k === 'package_number') {
+                            pushMetric(groups, 'package', key, value);
+                            return;
+                        }
+                        if (k.includes('batmon') || k === 'battery' || k === 'battery_t' || k.includes('battery') || k.includes('voltage')) {
+                            pushMetric(groups, 'battery', key, value);
+                            return;
+                        }
+                        if (k.includes('humidity')) {
+                            pushMetric(groups, 'humidity', key, value);
+                            return;
+                        }
+                        if (k.includes('light')) {
+                            pushMetric(groups, 'light', key, value);
+                            return;
+                        }
+                        if (k.includes('press') || k.includes('pressure')) {
+                            pushMetric(groups, 'pressure', key, value);
+                            return;
+                        }
+                        if (k.includes('temp') || k.includes('temperature')) {
+                            pushMetric(groups, 'temperature', key, value);
+                            return;
+                        }
+                        pushMetric(groups, 'other', key, value);
+                    });
+
+                    function section(icon, title, rows) {
+                        if (!rows.length) return '';
+                        const metrics = rows.map(row => `
+                            <div class="payload-telemetry-row">
+                                <span class="payload-telemetry-metric-label">${escapeHtml(row.label)}</span>
+                                <span class="payload-telemetry-metric-value">${escapeHtml(row.value)}</span>
+                            </div>
+                        `).join('');
+                        return `
+                            <div class="payload-telemetry-card">
+                                <div class="payload-telemetry-title">${icon} ${title}</div>
+                                ${metrics}
+                            </div>
+                        `;
+                    }
+
+                    const sections = [
+                        section('🌡', 'Temperature', groups.temperature),
+                        section('💧', 'Humidity', groups.humidity),
+                        section('☀', 'Light', groups.light),
+                        section('🔋', 'Battery', groups.battery),
+                        section('🌪', 'Pressure', groups.pressure),
+                        section('📦', 'Package', groups.package),
+                        section('🧩', 'Other Metrics', groups.other)
+                    ].filter(Boolean);
+
+                    if (!sections.length) return '';
+                    return `
+                        <div class="payload-telemetry-panel">
+                            <div class="payload-telemetry-panel-title">Device Telemetry</div>
+                            <div class="payload-telemetry-grid">
+                                ${sections.join('')}
+                            </div>
+                        </div>
+                    `;
+                };
+            }
+
+            function installOwnerDeviceResolvePatch(win, doc) {
+                async function resolveAndSelect(owner, macAddress) {
+                    if (!owner || !macAddress) return;
+                    const emailInput = doc.getElementById('emailInput');
+                    const email = emailInput && emailInput.value ? emailInput.value.trim() : '';
+                    if (!email) {
+                        win.alert('Enter Email first, then click Owner/Device.');
+                        return;
+                    }
+
+                    if (typeof win.resolvePermissions !== 'function') {
+                        win.alert('resolvePermissions() is not available.');
+                        return;
+                    }
+
+                    await win.resolvePermissions();
+
+                    const ownerSelect = doc.getElementById('ownerSelect');
+                    const macSelect = doc.getElementById('macAddressSelect');
+                    if (!ownerSelect || !macSelect) return;
+
+                    const ownerExists = Array.from(ownerSelect.options).some(opt => opt.value === owner);
+                    if (!ownerExists) {
+                        win.alert(`Owner "${owner}" was not found in resolved permissions.`);
+                        return;
+                    }
+
+                    ownerSelect.value = owner;
+                    if (typeof win.onOwnerSelected === 'function') {
+                        win.onOwnerSelected(owner);
+                    }
+
+                    window.setTimeout(() => {
+                        const macExists = Array.from(macSelect.options).some(opt => opt.value === macAddress);
+                        if (!macExists) {
+                            win.alert(`Device "${macAddress}" is not available under owner "${owner}".`);
+                            return;
+                        }
+                        macSelect.value = macAddress;
+                        if (typeof win.onMacAddressSelected === 'function') {
+                            win.onMacAddressSelected(macAddress);
+                        }
+                    }, 0);
+                }
+
+                doc.addEventListener('click', (event) => {
+                    const chip = event.target.closest('.payload-identity-chip');
+                    if (!chip) return;
+                    const card = chip.closest('.payload-item');
+                    if (!card) return;
+
+                    const chips = card.querySelectorAll('.payload-identity-chip');
+                    if (chips.length < 2) return;
+                    const owner = chips[0].textContent.trim();
+                    const macAddress = chips[1].textContent.trim();
+                    event.preventDefault();
+                    event.stopPropagation();
+                    resolveAndSelect(owner, macAddress);
+                }, true);
+            }
+
+            function installSensorStatusBadges(win, doc) {
+                function getStatus(ageMs) {
+                    if (ageMs < 60000) {
+                        return { cls: 'sensor-live-status-online', text: '🟢 Online' };
+                    }
+                    if (ageMs > 180000) {
+                        return { cls: 'sensor-live-status-offline', text: '🔴 Offline' };
+                    }
+                    return { cls: 'sensor-live-status-delayed', text: '🟡 Delayed' };
+                }
+
+                function parseLastSeenValue(card) {
+                    const rows = card.querySelectorAll('.sensor-card-info-item');
+                    for (const row of rows) {
+                        const label = row.querySelector('.sensor-card-info-label');
+                        const value = row.querySelector('.sensor-card-info-value');
+                        if (!label || !value) continue;
+                        if (label.textContent && label.textContent.toLowerCase().includes('last seen')) {
+                            const raw = value.textContent.trim();
+                            const ts = Date.parse(raw);
+                            return Number.isFinite(ts) ? ts : null;
+                        }
+                    }
+                    return null;
+                }
+
+                function decorateCard(card) {
+                    const header = card.querySelector('.sensor-card-header');
+                    if (!header) return;
+                    const lastSeenTs = parseLastSeenValue(card);
+                    if (!lastSeenTs) return;
+
+                    const ageMs = Date.now() - lastSeenTs;
+                    const status = getStatus(ageMs);
+
+                    let badge = header.querySelector('.sensor-live-status-badge');
+                    if (!badge) {
+                        badge = doc.createElement('span');
+                        badge.className = 'sensor-live-status-badge';
+                        header.appendChild(badge);
+                    }
+                    badge.className = `sensor-live-status-badge ${status.cls}`;
+                    badge.textContent = status.text;
+                    badge.title = `Last seen ${(ageMs / 1000).toFixed(0)}s ago`;
+                }
+
+                function refreshAll() {
+                    const cards = doc.querySelectorAll('#sensorsList .sensor-card');
+                    cards.forEach(decorateCard);
+                }
+
+                const sensorsRoot = doc.getElementById('sensorsList');
+                if (sensorsRoot) {
+                    const observer = new MutationObserver(() => refreshAll());
+                    observer.observe(sensorsRoot, { childList: true, subtree: true });
+                }
+                refreshAll();
+                window.setInterval(refreshAll, 5000);
+            }
+
+            frame.addEventListener('load', () => {
+                let doc;
+                let win;
+                try {
+                    doc = frame.contentDocument || frame.contentWindow.document;
+                    win = frame.contentWindow;
+                } catch (e) {
+                    return;
+                }
+
+                // Remove inline style blocks to force external stylesheet behavior.
+                const inlineStyles = doc.querySelectorAll('style');
+                inlineStyles.forEach(node => node.remove());
+
+                injectRuntimeStyles(doc);
+                installTelemetryOverride(win);
+                installOwnerDeviceResolvePatch(win, doc);
+                installSensorStatusBadges(win, doc);
+            });
         })();
     </script>
+    <noscript>This page requires JavaScript enabled.</noscript>
 </body>
 </html>

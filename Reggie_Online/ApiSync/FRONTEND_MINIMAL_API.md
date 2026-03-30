@@ -15,6 +15,23 @@ Minimal endpoint guide for frontend development, ordered exactly like Swagger ta
 - MAC examples: `d83adde260d1`, `d83adde261b0`
 - `exp_name` is optional and dynamic during testing.
 
+### WebSocket Note (Current Backend Behavior)
+
+- `Ping` remains the frontend real-time WebSocket flow.
+- `Last_Package` received over WebSocket is processed and stored in Firestore.
+- With `LAST_PACKAGE_WS_ENABLED = False` (current default), `Last_Package` is not forwarded/broadcast to frontend clients.
+- Sender receives an acknowledge payload:
+
+```json
+{
+  "received": true,
+  "disabled": true,
+  "stored": true,
+  "type": "Last_Package",
+  "message": "Stored in Firestore but not forwarded over WebSocket"
+}
+```
+
 ## 1) System
 
 ### GET /health

@@ -1675,17 +1675,8 @@
                     </select>
                     <div id="payloadDeviceFilterNote" class="payload-filter-note">Select one owner first, then choose one device or all devices under that owner.</div>
                 </div>
-                <div class="payload-filter-group">
-                    <label for="payloadTypeFilter" class="payload-filter-label">Payload Type</label>
-                    <select id="payloadTypeFilter" class="payload-filter-select" onchange="onPayloadTypeFilterChanged(this.value)">
-                        <option value="both">Both</option>
-                        <option value="ping">Ping</option>
-                        <option value="last_package">Last_Package</option>
-                    </select>
-                    <div class="payload-filter-note">Keep live payload updates flowing without resetting the selected filters.</div>
-                </div>
             </div>
-            <div id="payloadFilterSummary" class="payload-filter-summary">Showing all owners, all devices, and both payload types.</div>
+            <div id="payloadFilterSummary" class="payload-filter-summary">Showing all owners and all devices for Ping monitoring.</div>
             <div class="blink-color-config">
                 <label for="blinkColorPicker" style="font-weight: 600; color: #374151;">Blink Color (Valid Sensors):</label>
                 <input type="color" id="blinkColorPicker" value="#10b981" onchange="updateBlinkColor(this.value)">
@@ -1756,7 +1747,6 @@
         let liveOwnerDevices = new Map(); // owner -> Set of MAC addresses discovered from payloads
         let payloadFilters = {
             owner: 'all',
-            payloadType: 'both',
             device: 'all'
         };
         let payloadOwnerOptionsSignature = '';
@@ -1958,11 +1948,6 @@
             if (!summary) return;
             
             const ownerLabel = payloadFilters.owner === 'all' ? 'all owners' : `owner "${payloadFilters.owner}"`;
-            const typeLabel = payloadFilters.payloadType === 'both'
-                ? 'both payload types'
-                : payloadFilters.payloadType === 'last_package'
-                    ? 'Last_Package only'
-                    : 'Ping only';
             
             let deviceLabel = 'all devices';
             if (payloadFilters.owner !== 'all') {
@@ -1971,7 +1956,7 @@
                     : `device "${payloadFilters.device}"`;
             }
             
-            summary.textContent = `Showing ${ownerLabel}, ${deviceLabel}, and ${typeLabel}.`;
+            summary.textContent = `Showing ${ownerLabel} and ${deviceLabel} for Ping monitoring.`;
         }
         
         function applyPayloadListFilters() {
@@ -1984,15 +1969,13 @@
             payloadItems.forEach(item => {
                 const owner = item.dataset.owner || '';
                 const macAddress = item.dataset.mac || '';
-                const payloadType = normalizePayloadType(item.dataset.payloadType || 'ping');
                 
                 const ownerMatches = payloadFilters.owner === 'all' || owner === payloadFilters.owner;
-                const typeMatches = payloadFilters.payloadType === 'both' || payloadType === payloadFilters.payloadType;
                 const deviceMatches = payloadFilters.owner === 'all' ||
                     payloadFilters.device === 'all' ||
                     macAddress === payloadFilters.device;
                 
-                const isVisible = ownerMatches && typeMatches && deviceMatches;
+                const isVisible = ownerMatches && deviceMatches;
                 item.style.display = isVisible ? '' : 'none';
                 if (isVisible) visibleCount += 1;
             });
@@ -2006,7 +1989,7 @@
             if (!hasRealEmptyState && visibleCount === 0) {
                 const emptyState = document.createElement('div');
                 emptyState.className = 'empty-state payload-filter-empty';
-                emptyState.textContent = 'No payloads match the selected owner, device, and payload type filters.';
+                emptyState.textContent = 'No Ping payloads match the selected owner and device filters.';
                 payloadList.appendChild(emptyState);
             }
             
@@ -2027,10 +2010,7 @@
             applyPayloadListFilters();
         }
         
-        function onPayloadTypeFilterChanged(payloadType) {
-            payloadFilters.payloadType = payloadType || 'both';
-            applyPayloadListFilters();
-        }
+        function onPayloadTypeFilterChanged() {}
         
         function onPayloadDeviceFilterChanged(value) {
             payloadFilters.device = value || 'all';
@@ -2333,6 +2313,170 @@
             emptyState.textContent = 'No errors yet. Errors will appear here when validation fails.';
             errorListEl.appendChild(emptyState);
         }
+
+        function extractPingLastPackage(payload) {
+            if (!payload || typeof payload !== 'object') return null;
+            return payload.last_package || payload.Last_Package || payload.lastPackage || null;
+        }
+
+        function formatMetricValue(value, unit = '') {
+            if (value === null || value === undefined || value === '') return 'N/A';
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                const formatted = Number.isInteger(value) ? String(value) : value.toFixed(2);
+                return unit ? `${formatted} ${unit}` : formatted;
+            }
+            const text = String(value);
+            return unit ? `${text} ${unit}` : text;
+        }
+
+        function buildTelemetrySection(iconLabel, title, rows) {
+            if (!rows || rows.length === 0) return '';
+            const rowHtml = rows.map(row => `
+                <div class="payload-telemetry-row">
+                    <span class="payload-telemetry-metric-label">${row.label}</span>
+                    <span class="payload-telemetry-metric-value">${row.value}</span>
+                </div>
+            `).join('');
+            return `
+                <div class="payload-telemetry-card">
+                    <div class="payload-telemetry-title">${iconLabel} ${title}</div>
+                    ${rowHtml}
+                </div>
+            `;
+        }
+
+        function buildPingTelemetryHtml(lastPackage) {
+            if (!lastPackage || typeof lastPackage !== 'object') return '';
+            const temperatureRows = [];
+            if (lastPackage.bmp_temp !== undefined) temperatureRows.push({ label: 'BMP Temp', value: formatMetricValue(lastPackage.bmp_temp, '°C') });
+            if (lastPackage.hdc_temp !== undefined) temperatureRows.push({ label: 'HDC Temp', value: formatMetricValue(lastPackage.hdc_temp, '°C') });
+
+            const humidityRows = [];
+            if (lastPackage.hdc_humidity !== undefined) humidityRows.push({ label: 'RH', value: formatMetricValue(lastPackage.hdc_humidity, '%') });
+
+            const lightRows = [];
+            if (lastPackage.light !== undefined) lightRows.push({ label: 'Light Intensity', value: formatMetricValue(lastPackage.light) });
+
+            const batteryRows = [];
+            if (lastPackage.battery !== undefined) batteryRows.push({ label: 'Voltage', value: formatMetricValue(lastPackage.battery) });
+            if (lastPackage.battery_t !== undefined) batteryRows.push({ label: 'Battery Temp', value: formatMetricValue(lastPackage.battery_t, '°C') });
+
+            const packageRows = [];
+            if (lastPackage.package_number !== undefined) packageRows.push({ label: 'Package Number', value: formatMetricValue(lastPackage.package_number) });
+
+            const sections = [
+                buildTelemetrySection('🌡', 'Temperature', temperatureRows),
+                buildTelemetrySection('💧', 'Humidity', humidityRows),
+                buildTelemetrySection('☀', 'Light', lightRows),
+                buildTelemetrySection('🔋', 'Battery', batteryRows),
+                buildTelemetrySection('📦', 'Package', packageRows)
+            ].filter(Boolean);
+
+            if (sections.length === 0) return '';
+
+            return `
+                <div class="payload-telemetry-panel">
+                    <div class="payload-telemetry-panel-title">Device Telemetry</div>
+                    <div class="payload-telemetry-grid">
+                        ${sections.join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function handlePayloadIdentityClick(owner, macAddress) {
+            const safeOwner = owner || '';
+            const safeMac = macAddress || '';
+            if (!safeOwner || !safeMac) {
+                alert('Owner and device are required.');
+                return;
+            }
+
+            const emailInput = document.getElementById('emailInput');
+            const email = emailInput?.value?.trim();
+            if (!email) {
+                alert('Enter an email first, then click Owner/Device to resolve and select context.');
+                return;
+            }
+
+            await resolvePermissions();
+
+            const ownerSelect = document.getElementById('ownerSelect');
+            const macSelect = document.getElementById('macAddressSelect');
+            if (!ownerSelect || !macSelect) return;
+
+            const ownerExists = Array.from(ownerSelect.options).some(opt => opt.value === safeOwner);
+            if (!ownerExists) {
+                alert(`Resolved permissions do not include owner "${safeOwner}".`);
+                return;
+            }
+
+            ownerSelect.value = safeOwner;
+            onOwnerSelected(safeOwner);
+
+            const macExists = Array.from(macSelect.options).some(opt => opt.value === safeMac);
+            if (!macExists) {
+                alert(`Owner "${safeOwner}" does not include device "${safeMac}" in resolved permissions.`);
+                return;
+            }
+
+            macSelect.value = safeMac;
+            onMacAddressSelected(safeMac);
+        }
+
+        function bindPayloadIdentityActions(payloadItem, owner, macAddress) {
+            const identityButtons = payloadItem.querySelectorAll('.payload-identity-chip');
+            identityButtons.forEach(btn => {
+                btn.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    await handlePayloadIdentityClick(owner, macAddress);
+                });
+            });
+        }
+
+        function renderPingPayloadCard(payloadItem, data, options = {}) {
+            const incrementCounter = options.incrementCounter === true;
+            const payload = data.payload || {};
+            const lla = payload.LLA || 'N/A';
+            const owner = payload.owner || payload.hostname || 'N/A';
+            const macAddress = payload.mac_address || 'N/A';
+            const safeOwner = escapeHtmlAttr(owner);
+            const safeMac = escapeHtmlAttr(macAddress);
+
+            const pingStatusHtml = `
+                <div class="payload-monitor-status-row">
+                    <span class="payload-monitor-status-badge">Status: Ping received</span>
+                </div>
+            `;
+
+            const telemetryData = extractPingLastPackage(payload) || lastPackageMap.get(lla);
+            const telemetryHtml = buildPingTelemetryHtml(telemetryData);
+
+            payloadItem.innerHTML = `
+                <div class="payload-monitor-header">
+                    <div class="payload-monitor-title-wrap">
+                        <div class="payload-monitor-title">Ping Event</div>
+                        <div class="payload-monitor-lla">LLA: ${escapeHtmlAttr(lla)}</div>
+                    </div>
+                    <div class="payload-monitor-time">${formatDate(data.timestamp) || 'N/A'}</div>
+                </div>
+                <div class="payload-monitor-identity">
+                    <div class="payload-monitor-identity-item">
+                        <span class="payload-monitor-identity-label">Owner:</span>
+                        <button type="button" class="payload-identity-chip">${safeOwner}</button>
+                    </div>
+                    <div class="payload-monitor-identity-item">
+                        <span class="payload-monitor-identity-label">Device:</span>
+                        <button type="button" class="payload-identity-chip">${safeMac}</button>
+                    </div>
+                </div>
+                ${pingStatusHtml}
+                ${telemetryHtml}
+                ${incrementCounter ? `<div class="payload-monitor-seq">Event #${++payloadCount}</div>` : ''}
+            `;
+
+            bindPayloadIdentityActions(payloadItem, owner, macAddress);
+        }
         
         function displayError(data) {
             const errorListEl = document.getElementById('errorList');
@@ -2414,7 +2558,8 @@
         }
         
         function handleLastPackage(data) {
-            // Handle Last_Package WebSocket event
+            // Ping monitoring mode: keep Last_Package as telemetry data only.
+            // We do not render standalone Last_Package cards in Received Payloads.
             console.log('[LAST_PACKAGE] Received Last_Package event:', data);
             
             // Extract owner and mac_address from Last_Package data (if available)
@@ -2434,6 +2579,31 @@
             
             // Use owner as hostname for backward compatibility
             const hostname = owner;
+
+            allProcessedLLAs.forEach(lla => {
+                const packageData = sensorsData[lla] || {};
+                lastPackageMap.set(lla, packageData);
+                const existingItem = findPayloadByLLA(lla);
+                if (!existingItem) return;
+
+                const payloadData = payloadDataMap.get(lla) || {};
+                const syntheticPing = {
+                    timestamp,
+                    payload: {
+                        type: 'Ping',
+                        LLA: lla,
+                        owner: payloadData.owner || payloadData.hostname || hostname || 'N/A',
+                        hostname: payloadData.hostname || hostname || 'N/A',
+                        mac_address: payloadData.mac_address || mac_address || 'N/A',
+                        last_package: packageData,
+                        validation: { valid: true }
+                    }
+                };
+                renderPingPayloadCard(existingItem, syntheticPing, { incrementCounter: false });
+                triggerBlink(existingItem);
+            });
+            refreshPayloadFilterUI();
+            return;
             
             // Process each sensor - each unique LLA gets its own component (like Ping)
             // Process both updated and registered sensors
@@ -2804,6 +2974,10 @@
             const validation = data.payload?.validation;
             const isValid = validation?.is_valid === true;
             const message = validation?.message || '';
+            const payloadType = normalizePayloadType(data.payload?.type || 'ping');
+            if (payloadType !== 'ping') {
+                return;
+            }
             
             // Detect owner and mac_address from payload
             if (data.payload) {
@@ -2821,7 +2995,6 @@
             }
             
             const payloadList = document.getElementById('payloadList');
-            const MAX_PAYLOADS = getMaxPayloads();
             
             // Remove empty state if exists
             const emptyState = payloadList.querySelector('.empty-state');
@@ -2833,36 +3006,30 @@
             
             // Check if LLA already exists
             const existingItem = findPayloadByLLA(LLA);
+            const owner = data.payload?.owner || data.payload?.hostname;
+            const macAddress = data.payload?.mac_address;
+            const lastPackageData = extractPingLastPackage(data.payload);
+            if (lastPackageData) {
+                lastPackageMap.set(LLA, lastPackageData);
+            }
+            payloadDataMap.set(LLA, {
+                owner: owner,
+                hostname: owner,  // Keep for backward compatibility
+                mac_address: macAddress,
+                LLA: LLA
+            });
             
             if (existingItem) {
                 // LLA already exists - don't add duplicate
                 console.log(`[FRONTEND] LLA ${LLA} already displayed, skipping duplicate`);
-                
-                // Update payload data
-                const owner = data.payload?.owner || data.payload?.hostname;
-                payloadDataMap.set(LLA, {
-                    owner: owner,
-                    hostname: owner,  // Keep for backward compatibility
-                    mac_address: data.payload.mac_address,
-                    LLA: LLA
-                });
-                setPayloadItemMetadata(existingItem, owner, data.payload.mac_address, data.payload?.type || 'Ping');
-                
-                // If valid and existing, trigger blink
-                if (isValid) {
-                    console.log(`[FRONTEND] Existing LLA ${LLA} is valid, triggering blink`);
-                    triggerBlink(existingItem);
-                    
-                    // Update timestamp in existing item
-                    const timestampEl = existingItem.querySelector('.timestamp');
-                    if (timestampEl) {
-                        timestampEl.textContent = formatDate(data.timestamp) || 'N/A';
+                setPayloadItemMetadata(existingItem, owner, macAddress, 'Ping');
+                renderPingPayloadCard(existingItem, data, { incrementCounter: false });
+                if (isValid) triggerBlink(existingItem);
+                existingItem.onclick = (event) => {
+                    if (event.target.closest('.payload-identity-chip')) {
+                        return;
                     }
-                }
-                
-                // Ensure click handler is attached
-                existingItem.onclick = () => {
-                    fetchMetadataForLLA(owner, data.payload.mac_address, LLA);
+                    fetchMetadataForLLA(owner, macAddress, LLA);
                 };
                 
                 refreshPayloadFilterUI();
@@ -2871,7 +3038,7 @@
             
             // Create new payload item
             const payloadItem = document.createElement('div');
-            payloadItem.className = 'payload-item';
+            payloadItem.className = 'payload-item payload-type-ping';
             payloadItem.setAttribute('data-lla', LLA); // Store LLA as data attribute
             
             // Add 'valid' class if validation is true (triggers blink animation)
@@ -2895,77 +3062,17 @@
                 }
             }
             
-            // Build validation status HTML
-            let validationHtml = '';
-            if (validation) {
-                const validationIcon = isValid ? '✓' : '✗';
-                const validationColor = isValid ? '#10b981' : '#ef4444';
-                const validationText = validation.message || (isValid ? 'Valid' : 'Invalid');
-                validationHtml = `
-                    <div class="payload-field" style="background: ${isValid ? '#d1fae5' : '#fee2e2'};">
-                        <div class="payload-label">Validation</div>
-                        <div class="payload-value" style="color: ${validationColor}; font-weight: bold;">
-                            ${validationIcon} ${validationText}
-                            ${validation.error ? '<br><small style="color: #ef4444;">' + validation.error + '</small>' : ''}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // Determine type badge
-            const payloadType = data.payload?.type || 'Ping';
-            const typeBadgeClass = payloadType.toLowerCase() === 'last_package' ? 'type-badge-last-package' : 'type-badge-ping';
-            const typeBadgeText = payloadType.toLowerCase() === 'last_package' ? '📦 Last Package' : 'Ping';
-            
-            // Add type-specific class
-            if (payloadType.toLowerCase() === 'last_package') {
-                payloadItem.classList.add('payload-type-last-package');
-            } else {
-                payloadItem.classList.add('payload-type-ping');
-            }
-            
-            payloadItem.innerHTML = `
-                <div class="payload-header">
-                    <div>
-                        <span class="type-badge ${typeBadgeClass}">${typeBadgeText}</span>
-                        <strong>Payload #${++payloadCount}</strong>
-                    </div>
-                    <span class="timestamp">${formatDate(data.timestamp) || 'N/A'}</span>
-                </div>
-                <div class="payload-content">
-                    <div class="payload-field">
-                        <div class="payload-label">Hostname</div>
-                        <div class="payload-value">${data.payload.hostname || 'N/A'}</div>
-                    </div>
-                    <div class="payload-field">
-                        <div class="payload-label">MAC Address</div>
-                        <div class="payload-value">${data.payload.mac_address || 'N/A'}</div>
-                    </div>
-                    <div class="payload-field">
-                        <div class="payload-label">Type</div>
-                        <div class="payload-value">${data.payload.type || 'N/A'}</div>
-                    </div>
-                    <div class="payload-field">
-                        <div class="payload-label">LLA</div>
-                        <div class="payload-value">${data.payload.LLA || 'N/A'}</div>
-                    </div>
-                    ${validationHtml}
-                </div>
-            `;
+            renderPingPayloadCard(payloadItem, data, { incrementCounter: true });
             
             // Store payload data for metadata fetching
-            const owner = data.payload?.owner || data.payload?.hostname;
-            payloadDataMap.set(LLA, {
-                owner: owner,
-                hostname: owner,  // Keep for backward compatibility
-                mac_address: data.payload.mac_address,
-                LLA: LLA
-            });
-            setPayloadItemMetadata(payloadItem, owner, data.payload.mac_address, payloadType);
+            setPayloadItemMetadata(payloadItem, owner, macAddress, 'Ping');
             
             // Add click handler to fetch metadata
-            payloadItem.addEventListener('click', () => {
-                fetchMetadataForLLA(owner, data.payload.mac_address, LLA);
+            payloadItem.addEventListener('click', (event) => {
+                if (event.target.closest('.payload-identity-chip')) {
+                    return;
+                }
+                fetchMetadataForLLA(owner, macAddress, LLA);
             });
             
             // Track this LLA

@@ -548,7 +548,7 @@ Backward-compatible alias for legacy clients. This route delegates to the same i
 
 #### `WebSocket /ws/ping`
 
-Accepts WebSocket connections and handles ping payloads with automatic sensor validation.
+Accepts WebSocket connections and handles `Ping` payloads with automatic sensor validation. `Last_Package` payloads are still processed and stored in Firestore, while frontend forwarding can be disabled with `LAST_PACKAGE_WS_ENABLED = False` (current default).
 
 **Request Payload (Ping):**
 ```json
@@ -604,6 +604,8 @@ Accepts WebSocket connections and handles ping payloads with automatic sensor va
 
 **Note:** `owner` and `mac_address` are required for Last_Package payloads. All sensors in the batch must belong to the same owner/MAC combination.
 
+**Current behavior (default):** With `LAST_PACKAGE_WS_ENABLED = False`, `Last_Package` is stored in Firestore and acknowledged only to the sender (`websocket.send_json`), and is **not** broadcast to frontend WebSocket clients.
+
 **Response (Ping):**
 ```json
 {
@@ -624,32 +626,14 @@ Accepts WebSocket connections and handles ping payloads with automatic sensor va
 }
 ```
 
-**Response (Last_Package):**
+**Response (Last_Package, current default with forwarding disabled):**
 ```json
 {
   "received": true,
-  "timestamp": "2026-03-29T12:35:02Z",
+  "disabled": true,
+  "stored": true,
   "type": "Last_Package",
-  "owner": "<string>",
-  "hostname": "<string>",
-  "mac_address": "<string>",
-  "updated_llas": ["<lla1>", "<lla2>"],
-  "registered_llas": null,
-  "sensors": {
-    "<lla1>": {
-      "temperature": 20.5,
-      "humidity": 60.0,
-      "solar_intensity": 800.0,
-      "battery": 3500
-    },
-    "<lla2>": {
-      "temperature": 21.0,
-      "humidity": 61.0,
-      "solar_intensity": 810.0,
-      "battery": 3550
-    }
-  },
-  "errors": null
+  "message": "Stored in Firestore but not forwarded over WebSocket"
 }
 ```
 
@@ -708,32 +692,14 @@ Request:
 }
 ```
 
-Broadcast response:
+Sender-only response (current default with forwarding disabled):
 ```json
 {
   "received": true,
-  "timestamp": "2026-03-29T12:40:05Z",
+  "disabled": true,
+  "stored": true,
   "type": "Last_Package",
-  "owner": "f4d_test",
-  "hostname": "f4d_test",
-  "mac_address": "aaaaaaaaaaaa",
-  "updated_llas": ["fd002124b00ccf7399b", "fd002124b00ccf7399a"],
-  "registered_llas": null,
-  "sensors": {
-    "fd002124b00ccf7399b": {
-      "temperature": 20.5,
-      "humidity": 60.0,
-      "solar_intensity": 800.0,
-      "battery": 3500
-    },
-    "fd002124b00ccf7399a": {
-      "temperature": 21.0,
-      "humidity": 61.0,
-      "solar_intensity": 810.0,
-      "battery": 3550
-    }
-  },
-  "errors": null
+  "message": "Stored in Firestore but not forwarded over WebSocket"
 }
 ```
 
@@ -794,7 +760,8 @@ The WebSocket endpoint also supports metadata update messages (planned feature):
 - When `active_exp` is False: Includes `owner` and `mac` in the update when hostname/mac_address are provided.
 
 **Features:**
-- Broadcasts received payloads to all connected clients
+- Broadcasts `Ping` payloads to connected clients
+- Stores `Last_Package` in Firestore and returns sender-only acknowledge when forwarding is disabled (`LAST_PACKAGE_WS_ENABLED = False`)
 - Manages multiple concurrent WebSocket connections
 - Automatic cleanup of disconnected clients
 - Real-time sensor validation against Firestore
@@ -1386,6 +1353,12 @@ WebSocket Payload Received
 - WebSocket responses (Ping, Last_Package, error) now send timestamps in UTC with `Z` suffix (e.g. `2026-03-10T14:23:38Z`)
 - Fixes a 2-hour display offset for users in GMT+2 and other non-UTC timezones
 - Frontend `formatDate()` correctly parses UTC and displays in user's local timezone
+
+### WebSocket Last_Package Forwarding Control (Implemented - 2026-03-30)
+- `Last_Package` received on `/ws/ping` is still processed and stored in Firestore
+- With `LAST_PACKAGE_WS_ENABLED = False` (default), backend returns sender-only ack:
+  - `{"received": true, "disabled": true, "stored": true, "type": "Last_Package", "message": "Stored in Firestore but not forwarded over WebSocket"}`
+- `Last_Package` is not broadcast to frontend WebSocket clients in disabled mode; Ping broadcast behavior is unchanged
 
 ### active_exp Logic: Owner/MAC Update When Inactive (Implemented - 2026-03-10)
 - **Unified behavior** across PING, Last_Package, POST /FS/sensor/update, and update-metadata
