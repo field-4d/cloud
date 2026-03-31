@@ -1,0 +1,15 @@
+[Unit]
+Description=F4D Main Serial Ingest Service
+After=network.target f4d-env-initializer.service
+Requires=f4d-env-initializer.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/F4D
+ExecStart=/home/pi/F4D/venv/bin/python -u /home/pi/F4D/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

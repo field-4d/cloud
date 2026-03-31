@@ -1,0 +1,13 @@
+[Unit]
+Description=F4D Env Initializer Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/F4D
+ExecStart=/home/pi/F4D/venv/bin/python -m initializer.env_initializer
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
