@@ -475,7 +475,7 @@ def get_active_experiment_name_by_lla(con, lla):
     return row[0] if row else None
 
 
-def apply_sensor_metadata_payload(response_payload):
+def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
     if not response_payload.get("ok"):
         raise ValueError(f"Firestore request failed: {response_payload}")
 
@@ -577,13 +577,28 @@ def apply_sensor_metadata_payload(response_payload):
             exp_name=exp_name
         )
 
+        firestore_exp_id_sync = None
+        if exp_id_sync_callback and active_rows:
+            try:
+                firestore_exp_id_sync = exp_id_sync_callback(
+                    exp_name=exp_name,
+                    exp_id=exp_id,
+                    rows=active_rows
+                )
+            except Exception as e:
+                firestore_exp_id_sync = {
+                    "status": "error",
+                    "message": str(e)
+                }
+
         results.append({
             "experiment_name": exp_name,
             "status": "active_experiment_processed",
             "Exp_ID": exp_id,
             "rows_inserted": inserted,
             "rows_updated": updated,
-            "skipped_missing_lla": skipped_missing_lla
+            "skipped_missing_lla": skipped_missing_lla,
+            "firestore_exp_id_sync": firestore_exp_id_sync
         })
 
     return {
