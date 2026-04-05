@@ -1,0 +1,14 @@
+[Unit]
+Description=Field4D Auto Update Service
+Wants=network-online.target
+After=network-online.target
+Before=f4d-env-initializer.service
+Before=f4d-main.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/F4D_install/update_f4d.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

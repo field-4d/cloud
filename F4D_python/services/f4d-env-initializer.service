@@ -1,13 +1,13 @@
 [Unit]
-Description=F4D Env Initializer Service
-After=network.target
+Description=Field4D Environment Initializer
+Wants=network-online.target
+After=network-online.target f4d-update.service
+Requires=f4d-update.service
 
 [Service]
 Type=oneshot
-User=pi
-WorkingDirectory=/home/pi/F4D
-ExecStart=/home/pi/F4D/venv/bin/python -m initializer.env_initializer
-RemainAfterExit=true
+ExecStart=/home/pi/F4D/venv/bin/python /home/pi/F4D/initializer/env_initializer.py
+RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
