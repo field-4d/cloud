@@ -2443,6 +2443,16 @@
             const safeOwner = escapeHtmlAttr(owner);
             const safeMac = escapeHtmlAttr(macAddress);
 
+            const moduleRenderer = window.AppModules?.receivedPayloads?.renderPingCard;
+            if (typeof moduleRenderer === 'function') {
+                payloadItem.innerHTML = moduleRenderer({
+                    ...payload,
+                    timestamp: data.timestamp
+                });
+                bindPayloadIdentityActions(payloadItem, owner, macAddress);
+                return;
+            }
+
             payloadItem.innerHTML = `
                 <div class="payload-monitor-header">
                     <div class="payload-monitor-title-wrap">
@@ -3773,7 +3783,7 @@
                 return true;
             });
             
-            // Clear and populate dropdown: All Experiments, All sensors, then named experiments
+            // Clear and populate dropdown: All Experiments, All sensors, then experiment options
             select.innerHTML = '<option value="">All Experiments</option><option value="__all_sensors__">All sensors</option>';
             
             if (filteredExperiments.length === 0) {
@@ -3795,15 +3805,23 @@
                 const option = document.createElement('option');
                 // Handle empty exp_name - use empty string for API calls, but display as "Unnamed"
                 const expName = exp.exp_name || '';
-                option.value = expName; // Use empty string for empty exp_name
+                option.value = expName ? expName : UNNAMED_EXPERIMENT_VALUE;
                 const displayName = expName || 'Unnamed';
                 option.textContent = `${displayName} (${exp.total_sensors} sensors)`;
                 select.appendChild(option);
             });
             
-            // Restore selected experiment if it still exists in filtered list (or "All sensors")
+            // Restore selected experiment if it still exists in filtered list (or special views)
             if (selectedExperiment === ALL_SENSORS_VALUE) {
                 select.value = ALL_SENSORS_VALUE;
+            } else if (selectedExperiment === UNNAMED_EXPERIMENT_VALUE) {
+                const hasUnnamed = filteredExperiments.some(exp => !String(exp?.exp_name || '').trim());
+                if (hasUnnamed) {
+                    select.value = UNNAMED_EXPERIMENT_VALUE;
+                } else {
+                    selectedExperiment = null;
+                    clearSensorsList();
+                }
             } else if (selectedExperiment !== null) {
                 const stillExists = filteredExperiments.some(exp => {
                     const expName = exp.exp_name || '';
@@ -3830,6 +3848,9 @@
             if (selectedExperiment !== null) {
                 const selectedExp = filteredExperiments.find(exp => {
                     const expName = exp.exp_name || '';
+                    if (selectedExperiment === UNNAMED_EXPERIMENT_VALUE) {
+                        return !String(expName).trim();
+                    }
                     return expName === selectedExperiment;
                 });
                 if (!selectedExp) {
@@ -3842,12 +3863,13 @@
         }
         
         const ALL_SENSORS_VALUE = '__all_sensors__';
+        const UNNAMED_EXPERIMENT_VALUE = '__unnamed_experiment__';
         let isAllSensorsView = false;
         
         function onExperimentSelected(expName) {
             /**
              * Handle experiment selection from dropdown.
-             * @param {string} expName - Selected experiment name, empty string for "All Experiments", __all_sensors__ for "All sensors", or experiment name
+             * @param {string} expName - Selected experiment name, empty string for "All Experiments", __all_sensors__ for "All sensors", __unnamed_experiment__ for unnamed sensors, or experiment name
              */
             selectedExperiment = expName === '' ? null : expName;
             isAllSensorsView = expName === ALL_SENSORS_VALUE;
@@ -3864,6 +3886,16 @@
                     fetchAllSensors(getActiveOwner(), getActiveMacAddress());
                 } else {
                     console.warn('[EXPERIMENTS] Cannot fetch all sensors: missing owner or mac_address');
+                    alert('Owner and MAC address are required.');
+                }
+                return;
+            }
+
+            if (expName === UNNAMED_EXPERIMENT_VALUE) {
+                if (hasCompleteSelection()) {
+                    fetchAllSensors(getActiveOwner(), getActiveMacAddress(), { unnamedOnly: true });
+                } else {
+                    console.warn('[EXPERIMENTS] Cannot fetch unnamed sensors: missing owner or mac_address');
                     alert('Owner and MAC address are required.');
                 }
                 return;
@@ -4073,11 +4105,12 @@
             }
         }
         
-        async function fetchAllSensors(owner, mac_address) {
+        async function fetchAllSensors(owner, mac_address, options = {}) {
             /**
              * Fetch all sensors for owner/mac (no exp_name filter).
              * Backend returns all sensors when exp_name is omitted.
              */
+            const unnamedOnly = options?.unnamedOnly === true;
             const effectiveOwner = owner || getActiveOwner();
             const effectiveMac = mac_address || getActiveMacAddress();
             if (!effectiveOwner || !effectiveMac) {
@@ -4088,7 +4121,7 @@
             const sensorsList = document.getElementById('sensorsList');
             const sensorsListTitle = document.getElementById('sensorsListTitle');
             if (sensorsListSection) sensorsListSection.style.display = 'block';
-            if (sensorsListTitle) sensorsListTitle.textContent = 'Loading all sensors...';
+            if (sensorsListTitle) sensorsListTitle.textContent = unnamedOnly ? 'Loading unnamed sensors...' : 'Loading all sensors...';
             if (sensorsList) sensorsList.innerHTML = '<div class="metadata-loading">Loading sensors...</div>';
             try {
                 const url = getApiBaseUrl() + `/GCP-FS/metadata/sensors?owner=${encodeURIComponent(effectiveOwner)}&mac_address=${encodeURIComponent(effectiveMac)}`;
@@ -4096,12 +4129,15 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 const data = await response.json();
                 if (data.success && data.data) {
+                    const sensorsData = unnamedOnly
+                        ? data.data.filter(sensor => !String(sensor?.Exp_Name || '').trim())
+                        : data.data;
                     if (lastPackageActivated) {
                         await fetchLastPackageForCurrentScope(effectiveOwner, effectiveMac, null);
                     } else {
                         lastPackageByLla = new Map();
                     }
-                    displaySensorsList(data.data, 'All sensors');
+                    displaySensorsList(sensorsData, unnamedOnly ? 'All unnamed' : 'All sensors');
                 } else {
                     throw new Error(data.message || 'Failed to fetch sensors');
                 }
@@ -4227,7 +4263,9 @@
             
             fetchExperiments(getActiveOwner(), getActiveMacAddress());
             
-            if (isAllSensorsView || selectedExperiment === ALL_SENSORS_VALUE) {
+            if (selectedExperiment === UNNAMED_EXPERIMENT_VALUE) {
+                fetchAllSensors(getActiveOwner(), getActiveMacAddress(), { unnamedOnly: true });
+            } else if (isAllSensorsView || selectedExperiment === ALL_SENSORS_VALUE) {
                 fetchAllSensors(getActiveOwner(), getActiveMacAddress());
             } else if (selectedExperiment !== null) {
                 fetchSensorsForExperiment(getActiveOwner(), getActiveMacAddress(), selectedExperiment);
@@ -4440,6 +4478,10 @@
         }
 
         function renderSensorStatusBadgeHtml(lastSeen) {
+            const moduleRenderer = window.AppModules?.experimentManagement?.renderSensorStatusChip;
+            if (typeof moduleRenderer === 'function') {
+                return moduleRenderer(lastSeen);
+            }
             const status = getSensorPingStatusFromLastSeen(lastSeen);
             return `<span class="sensor-card-status-chip ${status.cssClass}" title="${escapeHtmlForLastPackage(status.title)}">${status.text}</span>`;
         }
@@ -5802,6 +5844,7 @@
             }
         }
     </script>
+    <script type="module" src="./src/main.js"></script>
 </body>
 </html>
 
