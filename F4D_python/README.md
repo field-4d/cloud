@@ -14,6 +14,7 @@ This project reads messages from a serial-connected device, parses structured pa
     - sends live `Last_Package` payload to ApiSync (queued sender thread),
     - and gets persisted to DuckDB on the next 3-minute flush.
 - Syncs metadata from the Firestore-backed API into DuckDB `sensors_metadata`, including multiple active experiments when the payload contains more than one `Exp_Name`.
+- **Exp_ID round-trip:** DuckDB assigns or reuses an integer `Exp_ID` per active experiment when applying the API payload. If a sensor row’s Firestore `Exp_ID` is missing or differs from that DuckDB value, the service pushes corrections back to Firestore with `POST .../FS/sensor/update-metadata` (batch), so cloud metadata stays aligned with the local registry.
 - Uploads DuckDB `sensors_data` and `packet_events` to BigQuery through the `f4d-bq-sync` HTTP service:
   - **Automatic:** after a successful timed flush, `services/flush_service.py` calls `DB.run_sync()` for all experiments marked active in `sensors_metadata`.
   - **Manual:** `python3 -m DB.f4d_bq_sync` or `run_sync(...)` in Python (single experiment or all active experiments).
@@ -195,10 +196,12 @@ sequenceDiagram
   - Writes packet-level ordering rows into `packet_events`.
   - Normalizes incoming timestamps into local naive DuckDB `TIMESTAMP` values.
   - Applies Firestore metadata into `sensors_metadata` (payloads may update several experiments in one response; inactive rows deactivate by experiment name).
+  - For each active experiment group, reuses the existing DuckDB `Exp_ID` for that experiment name when present; otherwise allocates the next id via `MAX(Exp_ID)+1`. After upserting rows, optionally invokes a callback so Firestore can receive the authoritative `Exp_ID`.
 
 - `DB/firestore_client.py`
-  - Pulls metadata from API endpoint.
-  - Syncs metadata payload into DuckDB.
+  - Pulls metadata from the ApiSync `GET /GCP-FS/metadata/sensors` endpoint (with optional `exp_name` filter).
+  - Applies the JSON payload into DuckDB via `apply_sensor_metadata_payload(..., exp_id_sync_callback=push_exp_id_batch_to_firestore)`.
+  - **`push_exp_id_batch_to_firestore`:** for sensors in the active batch that still need alignment, sends a batch `POST /FS/sensor/update-metadata` with `updates.exp_id` and `updates.exp_name` (ApiSync field names). Skips rows where Firestore already matches DuckDB.
 
 - `sync/ApiSync_client.py`
   - WebSocket client for:
@@ -221,6 +224,7 @@ sequenceDiagram
 
 - `sensors_metadata`:
   - Experiment and sensor metadata synced from the Firestore-backed API.
+  - **`Exp_ID`:** Integer key used locally for joins and BigQuery uploads. DuckDB is the source of truth for new ids when an experiment first appears; after each successful apply, mismatched Firestore `exp_id` values on active rows are updated in place via ApiSync (see `DB/firestore_client.py`).
   - Multiple rows may be active at once (distinct `Exp_Name` values with `Active_Exp = true`); BQ sync iterates those names when `exp_name` is not specified.
 
 - `sensors_data`:
@@ -338,7 +342,7 @@ Expected:
 
 ### 2) Metadata sync validation
 
-Run metadata sync directly:
+Run metadata sync directly (this also runs **Exp_ID write-back** to Firestore when DuckDB and the API disagree):
 
 ```bash
 python3 - <<'PY'
@@ -347,6 +351,8 @@ result = sync_sensor_metadata_to_duckdb()
 print(result)
 PY
 ```
+
+Inspect `result["db_result"]["results"][*]["firestore_exp_id_sync"]` in the printed structure for per-experiment push status (`rows_to_update`, `status`, and ApiSync response).
 
 Inspect DuckDB metadata rows:
 
