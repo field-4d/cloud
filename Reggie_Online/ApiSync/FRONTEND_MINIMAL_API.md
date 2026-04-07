@@ -1,3 +1,15 @@
+# Frontend WebSocket Ping (Minimal)
+
+```js
+const ws = new WebSocket("ws://localhost:8000/ws/ping");
+
+ws.onopen = () => console.log("connected");
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  if (msg.type === "Ping") console.log("Ping:", msg);
+};
+ws.onclose = () => console.log("disconnected");
+```
 # Frontend Minimal API Guide
 
 Minimal endpoint guide for frontend development, ordered exactly like Swagger tags in `backend/src/main.py`:

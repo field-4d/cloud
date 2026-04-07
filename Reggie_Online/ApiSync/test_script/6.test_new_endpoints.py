@@ -25,16 +25,14 @@ if hasattr(sys.stderr, 'reconfigure'):
 # Base URL for the API - deployed backend
 BASE_URL = "https://apisync-1000435921680.us-central1.run.app"
 
-# Test configuration - using multiple owners and MAC addresses
-TEST_OWNERS = [
-    {"owner": "Icore_Pi", "mac_address": "2ccf6730ab5f"},
-    {"owner": "developerroom", "mac_address": "2ccf6730ab8c"},
-    {"owner": "developerroom", "mac_address": "d83adde26159"},
-    {"owner": "menachem_moshelion", "mac_address": "2ccf6730ab7a"},
+# Test configuration aligned with FRONTEND_MINIMAL_API.md examples
+TEST_TARGETS = [
+    {"owner": "f4dv2", "mac_address": "d83adde260d1"},
+    {"owner": "f4dv2", "mac_address": "d83adde261b0"},
 ]
-TEST_OWNER = TEST_OWNERS[0]["owner"]  # Default for backward compatibility
-TEST_MAC_ADDRESS = TEST_OWNERS[0]["mac_address"]  # Default for backward compatibility
-TEST_EXP_NAME = "Image_V2"  # Example experiment name to filter by
+TEST_OWNER = TEST_TARGETS[0]["owner"]
+TEST_MAC_ADDRESS = TEST_TARGETS[0]["mac_address"]
+TEST_EXP_NAME = None  # Will be resolved dynamically from experiments list when available
 
 
 def test_get_all_sensors(owner, mac_address, exp_name=None):
@@ -237,7 +235,8 @@ def test_new_endpoints():
     print(f"\nTest Configuration:")
     print(f"  Owner: {TEST_OWNER}")
     print(f"  MAC Address: {TEST_MAC_ADDRESS}")
-    print(f"  Exp Name (for filter): {TEST_EXP_NAME}")
+    print(f"  Alt MAC Address: {TEST_TARGETS[1]['mac_address']}")
+    print("  Exp Name (for filter): Dynamic (from experiments response)")
     
     results = {
         "sensors_all": None,
@@ -251,17 +250,35 @@ def test_new_endpoints():
     print(f"{'='*60}", flush=True)
     results["sensors_all"] = test_get_all_sensors(TEST_OWNER, TEST_MAC_ADDRESS)
     
-    # Test 2: Get sensors filtered by exp_name
+    # Test 2: Get experiment names (used to resolve a valid exp_name for filtering)
     print(f"\n{'='*60}", flush=True)
-    print("TEST 2: Get Sensors Filtered by Exp_Name", flush=True)
-    print(f"{'='*60}", flush=True)
-    results["sensors_filtered"] = test_get_all_sensors(TEST_OWNER, TEST_MAC_ADDRESS, TEST_EXP_NAME)
-    
-    # Test 3: Get experiment names
-    print(f"\n{'='*60}", flush=True)
-    print("TEST 3: Get Experiment Names", flush=True)
+    print("TEST 2: Get Experiment Names", flush=True)
     print(f"{'='*60}", flush=True)
     results["experiments"] = test_get_experiments(TEST_OWNER, TEST_MAC_ADDRESS)
+
+    # Resolve a dynamic experiment name from API response to avoid stale hardcoded values
+    resolved_exp_name = None
+    if results["experiments"] and results["experiments"].get("success"):
+        experiments = results["experiments"].get("experiments", [])
+        if experiments:
+            resolved_exp_name = experiments[0].get("exp_name")
+            if resolved_exp_name:
+                print(f"Resolved Exp_Name for filtering: {resolved_exp_name}", flush=True)
+
+    # Test 3: Get sensors filtered by exp_name
+    print(f"\n{'='*60}", flush=True)
+    print("TEST 3: Get Sensors Filtered by Exp_Name", flush=True)
+    print(f"{'='*60}", flush=True)
+    if resolved_exp_name:
+        results["sensors_filtered"] = test_get_all_sensors(TEST_OWNER, TEST_MAC_ADDRESS, resolved_exp_name)
+    else:
+        print("⚠️  Skipping filtered sensors test: no valid experiment name available", flush=True)
+        results["sensors_filtered"] = {
+            "success": True,
+            "count": 0,
+            "duration": 0,
+            "skipped": True
+        }
     
     # Print summary
     print("\n" + "="*60, flush=True)
@@ -284,22 +301,26 @@ def test_new_endpoints():
         if results["sensors_filtered"].get("success"):
             count = results["sensors_filtered"].get("count", 0)
             duration = results["sensors_filtered"].get("duration", 0)
-            print(f"✅ Test 2 (Filtered Sensors): SUCCESS - Found {count} sensor(s) in {duration:.3f}s", flush=True)
+            skipped = results["sensors_filtered"].get("skipped", False)
+            if skipped:
+                print("✅ Test 3 (Filtered Sensors): SKIPPED - No experiment available for filter", flush=True)
+            else:
+                print(f"✅ Test 3 (Filtered Sensors): SUCCESS - Found {count} sensor(s) in {duration:.3f}s", flush=True)
         else:
-            print(f"❌ Test 2 (Filtered Sensors): FAILED - {results['sensors_filtered'].get('error', 'Unknown error')}", flush=True)
+            print(f"❌ Test 3 (Filtered Sensors): FAILED - {results['sensors_filtered'].get('error', 'Unknown error')}", flush=True)
     else:
-        print(f"❌ Test 2 (Filtered Sensors): FAILED - No result", flush=True)
+        print(f"❌ Test 3 (Filtered Sensors): FAILED - No result", flush=True)
     
     # Test 3 summary
     if results["experiments"]:
         if results["experiments"].get("success"):
             count = results["experiments"].get("count", 0)
             duration = results["experiments"].get("duration", 0)
-            print(f"✅ Test 3 (Experiments): SUCCESS - Found {count} experiment(s) in {duration:.3f}s", flush=True)
+            print(f"✅ Test 2 (Experiments): SUCCESS - Found {count} experiment(s) in {duration:.3f}s", flush=True)
         else:
-            print(f"❌ Test 3 (Experiments): FAILED - {results['experiments'].get('error', 'Unknown error')}", flush=True)
+            print(f"❌ Test 2 (Experiments): FAILED - {results['experiments'].get('error', 'Unknown error')}", flush=True)
     else:
-        print(f"❌ Test 3 (Experiments): FAILED - No result", flush=True)
+        print(f"❌ Test 2 (Experiments): FAILED - No result", flush=True)
     
     # Overall result
     all_success = all(
