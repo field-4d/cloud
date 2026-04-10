@@ -458,6 +458,170 @@ def get_active_experiment_by_name(con, exp_name):
         LIMIT 1
     """, [exp_name]).fetchone()
 
+
+def deactivate_sensor_row(con, lla, exp_id=None, exp_name=None):
+    """
+    Deactivate only one sensor row locally.
+    Used for replacement flow:
+    old sensor becomes inactive, but the rest of the experiment stays active.
+    I intentionally did not update Exp_Ended_At
+    """
+    if not lla:
+        return 0
+
+    if exp_id is not None:
+        count_row = con.execute("""
+            SELECT COUNT(*)
+            FROM sensors_metadata
+            WHERE LLA = ?
+              AND Exp_ID = ?
+              AND Active_Exp = true
+        """, [lla, exp_id]).fetchone()
+
+        rows_to_update = int(count_row[0]) if count_row else 0
+
+        con.execute("""
+            UPDATE sensors_metadata
+            SET
+                Active_Exp = false,
+                Updated_At = ?,
+                Snapshot_At = current_timestamp
+            WHERE LLA = ?
+              AND Exp_ID = ?
+              AND Active_Exp = true
+        """, [now_local(), lla, exp_id])
+
+        return rows_to_update
+
+    if exp_name:
+        count_row = con.execute("""
+            SELECT COUNT(*)
+            FROM sensors_metadata
+            WHERE LLA = ?
+              AND Exp_Name = ?
+              AND Active_Exp = true
+        """, [lla, exp_name]).fetchone()
+
+        rows_to_update = int(count_row[0]) if count_row else 0
+
+        con.execute("""
+            UPDATE sensors_metadata
+            SET
+                Active_Exp = false,
+                Updated_At = ?,
+                Snapshot_At = current_timestamp
+            WHERE LLA = ?
+              AND Exp_Name = ?
+              AND Active_Exp = true
+        """, [now_local(), lla, exp_name])
+
+        return rows_to_update
+
+    return 0
+
+def update_inactive_sensor_row_fields(con, item, exp_id=None, exp_name=None):
+    """
+    After an inactive row is processed, copy the latest inactive metadata fields
+    from Firestore into the matching local DuckDB row.
+    This is needed for replacement flow so old sensor can become:
+    - Active_Exp = false
+    - Is_Active = false
+    - Location = '<old>-replaced'
+    while keeping experiment history.
+    """
+    lla = item.get("LLA")
+    if not lla:
+        return 0
+
+    location = item.get("Location")
+    is_active = item.get("Is_Active")
+    is_valid = item.get("Is_Valid")
+    exp_location = item.get("Exp_Location")
+    label = normalize_label(item.get("Label"))
+    label_options = to_json_text(item.get("Label_Options"))
+    rfid = item.get("RFID")
+    coord_x = item.get("Coordinates_X")
+    coord_y = item.get("Coordinates_Y")
+    coord_z = item.get("Coordinates_Z")
+    frequency = item.get("Frequency")
+    updated_at = parse_timestamp(item.get("Updated_At")) or now_local()
+
+    if exp_id is not None:
+        result = con.execute("""
+            UPDATE sensors_metadata
+            SET
+                Exp_Location = ?,
+                Label = ?,
+                Label_Options = ?,
+                Location = ?,
+                RFID = ?,
+                Coordinates_X = ?,
+                Coordinates_Y = ?,
+                Coordinates_Z = ?,
+                Frequency = ?,
+                Is_Active = ?,
+                Is_Valid = ?,
+                Updated_At = ?,
+                Snapshot_At = current_timestamp
+            WHERE LLA = ?
+              AND Exp_ID = ?
+        """, [
+            exp_location,
+            label,
+            label_options,
+            location,
+            rfid,
+            coord_x,
+            coord_y,
+            coord_z,
+            frequency,
+            is_active,
+            is_valid,
+            updated_at,
+            lla,
+            exp_id
+        ])
+        return result.rowcount if hasattr(result, "rowcount") else 0
+
+    if exp_name:
+        result = con.execute("""
+            UPDATE sensors_metadata
+            SET
+                Exp_Location = ?,
+                Label = ?,
+                Label_Options = ?,
+                Location = ?,
+                RFID = ?,
+                Coordinates_X = ?,
+                Coordinates_Y = ?,
+                Coordinates_Z = ?,
+                Frequency = ?,
+                Is_Active = ?,
+                Is_Valid = ?,
+                Updated_At = ?,
+                Snapshot_At = current_timestamp
+            WHERE LLA = ?
+              AND Exp_Name = ?
+        """, [
+            exp_location,
+            label,
+            label_options,
+            location,
+            rfid,
+            coord_x,
+            coord_y,
+            coord_z,
+            frequency,
+            is_active,
+            is_valid,
+            updated_at,
+            lla,
+            exp_name
+        ])
+        return result.rowcount if hasattr(result, "rowcount") else 0
+
+    return 0
+
 def get_active_experiment_name_by_lla(con, lla):
     if not lla:
         return None
@@ -487,80 +651,25 @@ def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
     if not rows:
         return {"status": "no rows"}
 
-    def get_active_experiment_name_by_lla(lla):
-        if not lla:
-            return None
-
-        row = con.execute("""
-            SELECT Exp_Name
-            FROM sensors_metadata
-            WHERE LLA = ?
-              AND Active_Exp = true
-              AND Exp_ID > 0
-              AND Exp_Name IS NOT NULL
-              AND Exp_Name <> ''
-            ORDER BY Exp_ID DESC
-            LIMIT 1
-        """, [lla]).fetchone()
-
-        return row[0] if row else None
-
-    grouped = {}
+    results = []
+    skipped_missing_lla = 0
     skipped_unresolved_rows = 0
 
-    for row in rows:
-        exp_name = row.get("Exp_Name")
-        active_exp = row.get("Active_Exp")
-        lla = row.get("LLA")
+    exp_id_map = {}
 
-        if not exp_name and active_exp is not True:
-            exp_name = get_active_experiment_name_by_lla(lla)
+    # First pass: resolve Exp_ID per active experiment name
+    for row in rows:
+        if row.get("Active_Exp") is not True:
+            continue
+
+        exp_name = row.get("Exp_Name")
+        firestore_exp_id = row.get("Exp_ID")
 
         if not exp_name:
             skipped_unresolved_rows += 1
             continue
 
-        grouped.setdefault(exp_name, []).append(row)
-
-    if not grouped:
-        return {
-            "status": "no_resolved_experiments",
-            "experiments_processed": 0,
-            "skipped_unresolved_rows": skipped_unresolved_rows,
-            "results": []
-        }
-
-    results = []
-
-    for exp_name, exp_rows in grouped.items():
-        has_inactive = any(r.get("Active_Exp") is not True for r in exp_rows)
-        active_rows = [r for r in exp_rows if r.get("Active_Exp") is True]
-
-        if has_inactive:
-            deactivated_count = deactivate_experiment(con, exp_name)
-
-            boot_rows_added = 0
-            existing_boot_rows = 0
-            skipped_missing_lla = 0
-
-            for item in exp_rows:
-                if not item.get("LLA"):
-                    skipped_missing_lla += 1
-                    continue
-
-                if ensure_boot_row(con, item):
-                    boot_rows_added += 1
-                else:
-                    existing_boot_rows += 1
-
-            results.append({
-                "experiment_name": exp_name,
-                "status": "inactive_payload_processed",
-                "deactivated_rows": deactivated_count,
-                "boot_rows_added": boot_rows_added,
-                "existing_boot_rows": existing_boot_rows,
-                "skipped_missing_lla": skipped_missing_lla
-            })
+        if exp_name in exp_id_map:
             continue
 
         current_active = get_active_experiment_by_name(con, exp_name)
@@ -568,46 +677,128 @@ def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
         if current_active:
             _, exp_id = current_active
         else:
-            exp_id = get_next_exp_id(con)
-
-        inserted, updated, skipped_missing_lla = upsert_active_experiment_rows(
-            con=con,
-            rows=active_rows,
-            exp_id=exp_id,
-            exp_name=exp_name
-        )
-
-        firestore_exp_id_sync = None
-        if exp_id_sync_callback and active_rows:
             try:
-                firestore_exp_id_sync = exp_id_sync_callback(
+                exp_id = int(firestore_exp_id) if firestore_exp_id not in (None, "", "null") else None
+            except (TypeError, ValueError):
+                exp_id = None
+
+            if exp_id is None:
+                exp_id = get_next_exp_id(con)
+
+        exp_id_map[exp_name] = exp_id
+
+    # Second pass: process each row independently
+    active_rows_for_sync = {}
+
+    for row in rows:
+        lla = row.get("LLA")
+        if not lla:
+            skipped_missing_lla += 1
+            continue
+
+        exp_name = row.get("Exp_Name")
+        active_exp = row.get("Active_Exp")
+        firestore_exp_id = row.get("Exp_ID")
+
+        if active_exp is True:
+            if not exp_name:
+                skipped_unresolved_rows += 1
+                results.append({
+                    "lla": lla,
+                    "status": "skipped_active_missing_exp_name"
+                })
+                continue
+
+            exp_id = exp_id_map.get(exp_name)
+            if exp_id is None:
+                skipped_unresolved_rows += 1
+                results.append({
+                    "lla": lla,
+                    "status": "skipped_active_missing_exp_id",
+                    "exp_name": exp_name
+                })
+                continue
+
+            was_updated = update_existing_experiment_row(con, row, exp_id, exp_name)
+
+            if was_updated:
+                row_status = "active_row_updated"
+            else:
+                insert_new_experiment_row(con, row, exp_id, exp_name)
+                row_status = "active_row_inserted"
+
+            active_rows_for_sync.setdefault(exp_name, {
+                "exp_id": exp_id,
+                "rows": []
+            })
+            active_rows_for_sync[exp_name]["rows"].append(row)
+
+            results.append({
+                "lla": lla,
+                "status": row_status,
+                "exp_name": exp_name,
+                "exp_id": exp_id
+            })
+
+        else:
+            try:
+                exp_id = int(firestore_exp_id) if firestore_exp_id not in (None, "", "null") else None
+            except (TypeError, ValueError):
+                exp_id = None
+
+            # For inactive rows we only do best effort deactivation of matching local active rows.
+            deactivated_count = deactivate_sensor_row(
+                con=con,
+                lla=lla,
+                exp_id=exp_id,
+                exp_name=exp_name
+            )
+            # Even if deactivation count is 0, we still proceed to update the fields and insert boot row if LLA is present.
+            inactive_fields_updated = update_inactive_sensor_row_fields(
+                con=con,
+                item=row,
+                exp_id=exp_id,
+                exp_name=exp_name
+                )
+
+            boot_added = ensure_boot_row(con, row)
+
+            results.append({
+                "lla": lla,
+                "status": "inactive_row_processed",
+                "exp_name": exp_name,
+                "exp_id": exp_id,
+                "deactivated_rows": deactivated_count,
+                "boot_row_added": boot_added
+            })
+
+    firestore_exp_id_sync = []
+
+    if exp_id_sync_callback:
+        for exp_name, payload in active_rows_for_sync.items():
+            try:
+                sync_result = exp_id_sync_callback(
                     exp_name=exp_name,
-                    exp_id=exp_id,
-                    rows=active_rows
+                    exp_id=payload["exp_id"],
+                    rows=payload["rows"]
                 )
             except Exception as e:
-                firestore_exp_id_sync = {
+                sync_result = {
                     "status": "error",
+                    "exp_name": exp_name,
                     "message": str(e)
                 }
 
-        results.append({
-            "experiment_name": exp_name,
-            "status": "active_experiment_processed",
-            "Exp_ID": exp_id,
-            "rows_inserted": inserted,
-            "rows_updated": updated,
-            "skipped_missing_lla": skipped_missing_lla,
-            "firestore_exp_id_sync": firestore_exp_id_sync
-        })
+            firestore_exp_id_sync.append(sync_result)
 
     return {
-        "status": "multi_experiment_payload_processed",
-        "experiments_processed": len(results),
+        "status": "row_level_metadata_processed",
+        "rows_processed": len(results),
+        "skipped_missing_lla": skipped_missing_lla,
         "skipped_unresolved_rows": skipped_unresolved_rows,
-        "results": results
+        "results": results,
+        "firestore_exp_id_sync": firestore_exp_id_sync
     }
-
 
 def init_sensors_data_table(con):
     """
