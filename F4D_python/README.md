@@ -194,8 +194,14 @@ sequenceDiagram
   - Manages DuckDB connection and table initialization.
   - Writes interval data into `sensors_data`.
   - Writes packet-level ordering rows into `packet_events`.
+  - Adds a minute-level `TimeBucket` (`YYYYMMDDHHMM`) to both interval tables for easier partition/filter queries.
   - Normalizes incoming timestamps into local naive DuckDB `TIMESTAMP` values.
+  - Normalizes sensor `Label` values into a JSON-string array representation (for example `["Z0"]`), and stores `Label_Options` as JSON text.
   - Applies Firestore metadata into `sensors_metadata` (payloads may update several experiments in one response; inactive rows deactivate by experiment name).
+  - Processes metadata row-by-row for inactive/replacement flow:
+    - deactivates matching active sensor rows without closing the whole experiment,
+    - updates inactive-row fields (`Location`, `Is_Active`, coordinates, etc.),
+    - and ensures a per-sensor boot-history row (`Exp_ID = 0`, `Exp_Name = BOOT`) exists.
   - For each active experiment group, reuses the existing DuckDB `Exp_ID` for that experiment name when present; otherwise allocates the next id via `MAX(Exp_ID)+1`. After upserting rows, optionally invokes a callback so Firestore can receive the authoritative `Exp_ID`.
 
 - `DB/firestore_client.py`
@@ -226,14 +232,18 @@ sequenceDiagram
   - Experiment and sensor metadata synced from the Firestore-backed API.
   - **`Exp_ID`:** Integer key used locally for joins and BigQuery uploads. DuckDB is the source of truth for new ids when an experiment first appears; after each successful apply, mismatched Firestore `exp_id` values on active rows are updated in place via ApiSync (see `DB/firestore_client.py`).
   - Multiple rows may be active at once (distinct `Exp_Name` values with `Active_Exp = true`); BQ sync iterates those names when `exp_name` is not specified.
+  - Inactive replacement rows are applied as field updates on the historical row (instead of deleting history), and boot history is preserved via a dedicated `Exp_ID = 0` row per `LLA`.
+  - `Label` is stored as a JSON-string array and `Label_Options` as JSON text.
 
 - `sensors_data`:
   - Time-series rows written every 3 minutes from flash buffer snapshots.
   - One row per `(sensor, variable, flush interval)` with `Package_Count_3min`.
+  - Includes `TimeBucket` (minute precision `YYYYMMDDHHMM`) for interval grouping and sync filters.
 
 - `packet_events`:
   - Packet-level interval event rows derived from flash-buffer arrival logs.
   - Includes per-sensor interval order and global order within the flush interval.
+  - Includes `TimeBucket` (minute precision `YYYYMMDDHHMM`) aligned with the flush interval timestamp.
 
 ## Time Handling
 
