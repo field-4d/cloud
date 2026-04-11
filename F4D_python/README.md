@@ -14,7 +14,6 @@ This project reads messages from a serial-connected device, parses structured pa
     - sends live `Last_Package` payload to ApiSync (queued sender thread),
     - and gets persisted to DuckDB on the next 3-minute flush.
 - Syncs metadata from the Firestore-backed API into DuckDB `sensors_metadata`, including multiple active experiments when the payload contains more than one `Exp_Name`.
-- **Exp_ID round-trip:** DuckDB assigns or reuses an integer `Exp_ID` per active experiment when applying the API payload. If a sensor row’s Firestore `Exp_ID` is missing or differs from that DuckDB value, the service pushes corrections back to Firestore with `POST .../FS/sensor/update-metadata` (batch), so cloud metadata stays aligned with the local registry.
 - Uploads DuckDB `sensors_data` and `packet_events` to BigQuery through the `f4d-bq-sync` HTTP service:
   - **Automatic:** after a successful timed flush, `services/flush_service.py` calls `DB.run_sync()` for all experiments marked active in `sensors_metadata`.
   - **Manual:** `python3 -m DB.f4d_bq_sync` or `run_sync(...)` in Python (single experiment or all active experiments).
@@ -194,20 +193,12 @@ sequenceDiagram
   - Manages DuckDB connection and table initialization.
   - Writes interval data into `sensors_data`.
   - Writes packet-level ordering rows into `packet_events`.
-  - Adds a minute-level `TimeBucket` (`YYYYMMDDHHMM`) to both interval tables for easier partition/filter queries.
   - Normalizes incoming timestamps into local naive DuckDB `TIMESTAMP` values.
-  - Normalizes sensor `Label` values into a JSON-string array representation (for example `["Z0"]`), and stores `Label_Options` as JSON text.
   - Applies Firestore metadata into `sensors_metadata` (payloads may update several experiments in one response; inactive rows deactivate by experiment name).
-  - Processes metadata row-by-row for inactive/replacement flow:
-    - deactivates matching active sensor rows without closing the whole experiment,
-    - updates inactive-row fields (`Location`, `Is_Active`, coordinates, etc.),
-    - and ensures a per-sensor boot-history row (`Exp_ID = 0`, `Exp_Name = BOOT`) exists.
-  - For each active experiment group, reuses the existing DuckDB `Exp_ID` for that experiment name when present; otherwise allocates the next id via `MAX(Exp_ID)+1`. After upserting rows, optionally invokes a callback so Firestore can receive the authoritative `Exp_ID`.
 
 - `DB/firestore_client.py`
-  - Pulls metadata from the ApiSync `GET /GCP-FS/metadata/sensors` endpoint (with optional `exp_name` filter).
-  - Applies the JSON payload into DuckDB via `apply_sensor_metadata_payload(..., exp_id_sync_callback=push_exp_id_batch_to_firestore)`.
-  - **`push_exp_id_batch_to_firestore`:** for sensors in the active batch that still need alignment, sends a batch `POST /FS/sensor/update-metadata` with `updates.exp_id` and `updates.exp_name` (ApiSync field names). Skips rows where Firestore already matches DuckDB.
+  - Pulls metadata from API endpoint.
+  - Syncs metadata payload into DuckDB.
 
 - `sync/ApiSync_client.py`
   - WebSocket client for:
@@ -230,20 +221,15 @@ sequenceDiagram
 
 - `sensors_metadata`:
   - Experiment and sensor metadata synced from the Firestore-backed API.
-  - **`Exp_ID`:** Integer key used locally for joins and BigQuery uploads. DuckDB is the source of truth for new ids when an experiment first appears; after each successful apply, mismatched Firestore `exp_id` values on active rows are updated in place via ApiSync (see `DB/firestore_client.py`).
   - Multiple rows may be active at once (distinct `Exp_Name` values with `Active_Exp = true`); BQ sync iterates those names when `exp_name` is not specified.
-  - Inactive replacement rows are applied as field updates on the historical row (instead of deleting history), and boot history is preserved via a dedicated `Exp_ID = 0` row per `LLA`.
-  - `Label` is stored as a JSON-string array and `Label_Options` as JSON text.
 
 - `sensors_data`:
   - Time-series rows written every 3 minutes from flash buffer snapshots.
   - One row per `(sensor, variable, flush interval)` with `Package_Count_3min`.
-  - Includes `TimeBucket` (minute precision `YYYYMMDDHHMM`) for interval grouping and sync filters.
 
 - `packet_events`:
   - Packet-level interval event rows derived from flash-buffer arrival logs.
   - Includes per-sensor interval order and global order within the flush interval.
-  - Includes `TimeBucket` (minute precision `YYYYMMDDHHMM`) aligned with the flush interval timestamp.
 
 ## Time Handling
 
@@ -251,6 +237,187 @@ sequenceDiagram
 - DuckDB storage normalizes timezone-aware timestamps into local machine time and stores them as naive `TIMESTAMP` values.
 - Flush interval timestamps are trimmed to second precision before being written to `sensors_data` and `packet_events`.
 - Packet event ordering is sorted by normalized packet arrival time, then by sensor `LLA`.
+
+## DuckDB Debug & Inspection Queries
+
+Example command to open the database safely while the service is running:
+
+```bash
+duckdb -readonly /home/pi/F4D/DB/local.duckdb
+```
+
+This prevents locking the database used by the `f4d-main.service`.
+
+### 1. Show all active experiments
+
+```sql
+SELECT
+  LLA,
+  Owner,
+  Mac_Address,
+  Exp_Name,
+  Exp_ID,
+  Location,
+  Active_Exp,
+  Exp_Started_At
+FROM sensors_metadata
+WHERE Active_Exp = true
+ORDER BY Exp_ID, LLA;
+```
+
+Purpose:
+Shows all sensors currently participating in active experiments.
+
+### 2. Experiment summary (one row per experiment)
+
+```sql
+SELECT
+  Exp_Name,
+  Exp_ID,
+  COUNT(*) AS sensors_in_experiment,
+  MIN(Exp_Started_At) AS started_at
+FROM sensors_metadata
+WHERE Active_Exp = true
+GROUP BY Exp_Name, Exp_ID
+ORDER BY Exp_ID;
+```
+
+Purpose:
+Quick overview of running experiments and how many sensors are attached.
+
+### 3. Inspect a specific experiment
+
+```sql
+SELECT
+  LLA,
+  Exp_Name,
+  Exp_ID,
+  Active_Exp,
+  Exp_Started_At,
+  Exp_Ended_At,
+  Snapshot_At
+FROM sensors_metadata
+WHERE Exp_ID = <EXP_ID>
+ORDER BY LLA;
+```
+
+Example:
+
+```sql
+WHERE Exp_ID = 8;
+```
+
+Purpose:
+Shows full sensor state for a specific experiment.
+
+### 4. **ALERT** Stop an experiment manually (testing only)
+
+```sql
+UPDATE sensors_metadata
+SET
+  Active_Exp = false,
+  Exp_Ended_At = CURRENT_TIMESTAMP,
+  Updated_At = CURRENT_TIMESTAMP
+WHERE Exp_Name = '<EXP_NAME>'
+  AND Active_Exp = true;
+```
+
+Purpose:
+Used during development to stop an experiment locally. **ALERT:** this changes local database state.
+
+### 5. Show full experiment history
+
+```sql
+SELECT
+  Exp_Name,
+  Exp_ID,
+  Active_Exp,
+  LLA,
+  Exp_Started_At,
+  Exp_Ended_At
+FROM sensors_metadata
+ORDER BY Exp_ID, LLA;
+```
+
+Purpose:
+Shows both BOOT rows and experiment rows to understand the lifecycle.
+
+### 6. Show inactive or replaced sensors
+
+```sql
+SELECT
+  LLA,
+  Owner,
+  Mac_Address,
+  Exp_Name,
+  Exp_ID,
+  Location,
+  Active_Exp,
+  Is_Active,
+  Exp_Ended_At,
+  Snapshot_At
+FROM sensors_metadata
+WHERE Active_Exp = false
+ORDER BY Exp_ID, LLA;
+```
+
+Purpose:
+Shows sensors that were removed, replaced, or ended so you can verify the full lifecycle.
+
+### 7. Find the most recently modified metadata rows
+
+```sql
+SELECT
+  LLA,
+  Exp_Name,
+  Exp_ID,
+  Active_Exp,
+  Location,
+  Is_Active,
+  Updated_At,
+  Snapshot_At
+FROM sensors_metadata
+ORDER BY Updated_At DESC NULLS LAST, Snapshot_At DESC
+LIMIT 20;
+```
+
+Purpose:
+Helps inspect the latest metadata changes after a sync or replacement event.
+
+### 8. Count sensors by experiment state
+
+```sql
+SELECT
+  Exp_Name,
+  Exp_ID,
+  Active_Exp,
+  COUNT(*) AS sensor_count
+FROM sensors_metadata
+GROUP BY Exp_Name, Exp_ID, Active_Exp
+ORDER BY Exp_ID, Active_Exp DESC, Exp_Name;
+```
+
+Purpose:
+Quick overview of how many sensor rows are active or inactive in each experiment.
+
+### 9. Show BOOT rows only
+
+```sql
+SELECT
+  LLA,
+  Owner,
+  Mac_Address,
+  Exp_Name,
+  Exp_ID,
+  Active_Exp,
+  Snapshot_At
+FROM sensors_metadata
+WHERE Exp_ID = 0
+ORDER BY LLA;
+```
+
+Purpose:
+Useful for checking the boot inventory and confirming that each sensor has a local base record.
 
 ## Requirements
 
@@ -352,7 +519,7 @@ Expected:
 
 ### 2) Metadata sync validation
 
-Run metadata sync directly (this also runs **Exp_ID write-back** to Firestore when DuckDB and the API disagree):
+Run metadata sync directly:
 
 ```bash
 python3 - <<'PY'
@@ -361,8 +528,6 @@ result = sync_sensor_metadata_to_duckdb()
 print(result)
 PY
 ```
-
-Inspect `result["db_result"]["results"][*]["firestore_exp_id_sync"]` in the printed structure for per-experiment push status (`rows_to_update`, `status`, and ApiSync response).
 
 Inspect DuckDB metadata rows:
 

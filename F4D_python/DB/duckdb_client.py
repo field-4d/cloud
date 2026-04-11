@@ -167,16 +167,18 @@ def get_next_exp_id(con):
     return int(row[0]) + 1
 
 
-def get_active_experiment(con):
-    row = con.execute("""
-        SELECT Exp_Name, Exp_ID
-        FROM sensors_metadata
-        WHERE Active_Exp = true
-          AND Exp_ID > 0
-        ORDER BY Exp_ID DESC
-        LIMIT 1
-    """).fetchone()
-    return row
+# def get_active_experiment(con):
+#     row = con.execute("""
+#         SELECT Exp_Name, Exp_ID
+#         FROM sensors_metadata
+#         WHERE Active_Exp = true
+#           AND Exp_ID > 0
+#         ORDER BY Exp_ID DESC
+#         LIMIT 1
+#     """).fetchone()
+#     return row
+
+
 
 
 def deactivate_experiment(con, exp_name):
@@ -196,37 +198,48 @@ def deactivate_experiment(con, exp_name):
         UPDATE sensors_metadata
         SET Active_Exp = false,
             Exp_Ended_At = ?,
+            Updated_At = ?,
             Snapshot_At = current_timestamp
         WHERE Exp_Name = ?
-          AND Active_Exp = true
-    """, [now_local(), exp_name])
+        AND Active_Exp = true
+    """, [now_local(), now_local(), exp_name])
 
     return rows_to_update
 
-
-def deactivate_experiment(con, exp_name):
-    if not exp_name:
+def deactivate_other_active_rows_for_lla(con, lla, exp_id, exp_name):
+    if not lla:
         return 0
 
     count_row = con.execute("""
         SELECT COUNT(*)
         FROM sensors_metadata
-        WHERE Exp_Name = ?
+        WHERE LLA = ?
           AND Active_Exp = true
-    """, [exp_name]).fetchone()
+          AND (
+                COALESCE(Exp_ID, -1) <> COALESCE(?, -1)
+                OR COALESCE(Exp_Name, '') <> COALESCE(?, '')
+          )
+    """, [lla, exp_id, exp_name]).fetchone()
 
     rows_to_update = int(count_row[0]) if count_row else 0
 
     con.execute("""
         UPDATE sensors_metadata
-        SET Active_Exp = false,
+        SET
+            Active_Exp = false,
             Exp_Ended_At = ?,
+            Updated_At = ?,
             Snapshot_At = current_timestamp
-        WHERE Exp_Name = ?
+        WHERE LLA = ?
           AND Active_Exp = true
-    """, [now_local(), exp_name])
+          AND (
+                COALESCE(Exp_ID, -1) <> COALESCE(?, -1)
+                OR COALESCE(Exp_Name, '') <> COALESCE(?, '')
+          )
+    """, [now_local(), now_local(), lla, exp_id, exp_name])
 
     return rows_to_update
+
     
 def ensure_boot_row(con, item):
     lla = item.get("LLA")
@@ -638,7 +651,6 @@ def get_active_experiment_name_by_lla(con, lla):
 
     return row[0] if row else None
 
-
 def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
     if not response_payload.get("ok"):
         raise ValueError(f"Firestore request failed: {response_payload}")
@@ -655,13 +667,24 @@ def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
     skipped_missing_lla = 0
     skipped_unresolved_rows = 0
 
-    exp_id_map = {}
+    active_rows = []
+    inactive_rows = []
 
-    # First pass: resolve Exp_ID per active experiment name
     for row in rows:
-        if row.get("Active_Exp") is not True:
+        lla = row.get("LLA")
+        if not lla:
+            skipped_missing_lla += 1
             continue
 
+        if row.get("Active_Exp") is True:
+            active_rows.append(row)
+        else:
+            inactive_rows.append(row)
+
+    exp_id_map = {}
+
+    # Resolve Exp_ID per active experiment name
+    for row in active_rows:
         exp_name = row.get("Exp_Name")
         firestore_exp_id = row.get("Exp_ID")
 
@@ -687,90 +710,117 @@ def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
 
         exp_id_map[exp_name] = exp_id
 
-    # Second pass: process each row independently
     active_rows_for_sync = {}
+    llas_with_new_active_row  = set()
 
-    for row in rows:
+    # First process ALL active rows
+    for row in active_rows:
         lla = row.get("LLA")
-        if not lla:
-            skipped_missing_lla += 1
-            continue
-
         exp_name = row.get("Exp_Name")
-        active_exp = row.get("Active_Exp")
-        firestore_exp_id = row.get("Exp_ID")
 
-        if active_exp is True:
-            if not exp_name:
-                skipped_unresolved_rows += 1
-                results.append({
-                    "lla": lla,
-                    "status": "skipped_active_missing_exp_name"
-                })
-                continue
-
-            exp_id = exp_id_map.get(exp_name)
-            if exp_id is None:
-                skipped_unresolved_rows += 1
-                results.append({
-                    "lla": lla,
-                    "status": "skipped_active_missing_exp_id",
-                    "exp_name": exp_name
-                })
-                continue
-
-            was_updated = update_existing_experiment_row(con, row, exp_id, exp_name)
-
-            if was_updated:
-                row_status = "active_row_updated"
-            else:
-                insert_new_experiment_row(con, row, exp_id, exp_name)
-                row_status = "active_row_inserted"
-
-            active_rows_for_sync.setdefault(exp_name, {
-                "exp_id": exp_id,
-                "rows": []
-            })
-            active_rows_for_sync[exp_name]["rows"].append(row)
-
+        if not exp_name:
             results.append({
                 "lla": lla,
-                "status": row_status,
-                "exp_name": exp_name,
-                "exp_id": exp_id
+                "status": "skipped_active_missing_exp_name"
             })
+            continue
 
+        exp_id = exp_id_map.get(exp_name)
+        if exp_id is None:
+            results.append({
+                "lla": lla,
+                "status": "skipped_active_missing_exp_id",
+                "exp_name": exp_name
+            })
+            continue
+
+        closed_conflicting_rows = deactivate_other_active_rows_for_lla(
+            con=con,
+            lla=lla,
+            exp_id=exp_id,
+            exp_name=exp_name
+        )
+
+        was_updated = update_existing_experiment_row(con, row, exp_id, exp_name)
+
+        if was_updated:
+            row_status = "active_row_updated"
         else:
-            try:
-                exp_id = int(firestore_exp_id) if firestore_exp_id not in (None, "", "null") else None
-            except (TypeError, ValueError):
-                exp_id = None
+            insert_new_experiment_row(con, row, exp_id, exp_name)
+            row_status = "active_row_inserted"
 
-            # For inactive rows we only do best effort deactivation of matching local active rows.
-            deactivated_count = deactivate_sensor_row(
-                con=con,
-                lla=lla,
-                exp_id=exp_id,
-                exp_name=exp_name
-            )
-            # Even if deactivation count is 0, we still proceed to update the fields and insert boot row if LLA is present.
+        llas_with_new_active_row .add(lla)
+
+        active_rows_for_sync.setdefault(exp_name, {
+            "exp_id": exp_id,
+            "rows": []
+        })
+        active_rows_for_sync[exp_name]["rows"].append(row)
+
+        results.append({
+            "lla": lla,
+            "status": row_status,
+            "exp_name": exp_name,
+            "exp_id": exp_id,
+            "closed_conflicting_rows": closed_conflicting_rows
+        })
+
+    # Then process inactive rows
+    for row in inactive_rows:
+        lla = row.get("LLA")
+        exp_name = row.get("Exp_Name")
+        firestore_exp_id = row.get("Exp_ID")
+
+        try:
+            exp_id = int(firestore_exp_id) if firestore_exp_id not in (None, "", "null") else None
+        except (TypeError, ValueError):
+            exp_id = None
+
+        # If this LLA already got a new active row in the same payload,
+        # do not let the inactive row interfere with the new experiment state.
+        if lla in llas_with_new_active_row :
             inactive_fields_updated = update_inactive_sensor_row_fields(
                 con=con,
                 item=row,
                 exp_id=exp_id,
                 exp_name=exp_name
-                )
+            )
 
             boot_added = ensure_boot_row(con, row)
 
             results.append({
                 "lla": lla,
-                "status": "inactive_row_processed",
+                "status": "inactive_row_skipped_deactivation_due_to_new_active_row",
                 "exp_name": exp_name,
                 "exp_id": exp_id,
-                "deactivated_rows": deactivated_count,
                 "boot_row_added": boot_added
             })
+            continue
+
+        deactivated_count = deactivate_sensor_row(
+            con=con,
+            lla=lla,
+            exp_id=exp_id,
+            exp_name=exp_name
+        )
+
+        inactive_fields_updated = update_inactive_sensor_row_fields(
+            con=con,
+            item=row,
+            exp_id=exp_id,
+            exp_name=exp_name
+        )
+
+        boot_added = ensure_boot_row(con, row)
+
+        results.append({
+            "lla": lla,
+            "status": "inactive_row_processed",
+            "exp_name": exp_name,
+            "exp_id": exp_id,
+            "deactivated_rows": deactivated_count,
+            "boot_row_added": boot_added
+        })
 
     firestore_exp_id_sync = []
 
@@ -799,6 +849,7 @@ def apply_sensor_metadata_payload(response_payload, exp_id_sync_callback=None):
         "results": results,
         "firestore_exp_id_sync": firestore_exp_id_sync
     }
+
 
 def init_sensors_data_table(con):
     """
@@ -927,6 +978,7 @@ def get_active_metadata_by_lla(con, lla: str):
         WHERE LLA = ?
           AND Active_Exp = true
           AND Exp_ID > 0
+        ORDER BY Snapshot_At DESC, Updated_At DESC, Exp_ID DESC
         LIMIT 1
     """, [lla]).fetchone()
 
