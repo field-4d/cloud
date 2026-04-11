@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Header from "../components/Header/Header";
 import SensorDetailsModal from "../components/Modals/SensorDetailsModal";
 import CenteredDialog from "../components/Modals/CenteredDialog";
@@ -11,7 +11,16 @@ import {
   useDeviceDashboard,
   type DashboardSensor,
 } from "../hooks/useDeviceDashboard";
+import ReplaceSensorModal from "../components/Modals/ReplaceSensorModal";
+import {
+  buildReplaceSensorBatchPayload,
+  isSensorActiveInExperiment,
+  validateReplacePreconditions,
+} from "../utils/replaceSensor";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
+const REPLACE_SUCCESS_MESSAGE =
+  "Replacement request sent successfully. Changes will appear in the frontend only after the next metadata sync. This may take up to 10 minutes.";
 const REQUIRED_UPLOAD_COLUMNS = [
   "Exp_Name",
   "LLA",
@@ -58,52 +67,16 @@ type ExperimentActionErrorDialog = {
 type ExperimentActionMode = "hidden" | "start" | "end";
 type ExperimentHeaderStatus = "running" | "prepared" | "idle";
 
+type PingToastState = {
+  lla: string;
+  title: string;
+};
+
 const LS_LAST_OWNER = "f4d_last_owner";
 const LS_LAST_MAC = "f4d_last_mac";
 const LS_PREFERRED_OWNER = "f4d_preferred_owner";
 const LS_PREFERRED_MAC = "f4d_preferred_mac";
 const LS_SKIP_DEVICE_PROMPT = "f4d_skip_device_prompt";
-
-function normalizeExperimentName(value: unknown): string {
-  return String(value ?? "").trim();
-}
-
-function isTruthyActiveExp(raw: unknown): boolean {
-  return raw === true || String(raw).toLowerCase() === "true";
-}
-
-function sensorExperimentName(sensor: DashboardSensor): string {
-  const n = normalizeExperimentName(sensor.Exp_Name ?? sensor.exp_name);
-  return n || UNASSIGNED_EXPERIMENT;
-}
-
-function isActiveInExperiment(sensor: DashboardSensor, experimentName: string): boolean {
-  if (!isTruthyActiveExp(sensor.Active_Exp ?? sensor.active_exp)) return false;
-  return sensorExperimentName(sensor) === experimentName;
-}
-
-function getSensorLocationRaw(sensor: DashboardSensor): string {
-  return String(sensor.Location ?? sensor.location ?? "").trim();
-}
-
-function getExpIdFromSensor(sensor: Record<string, unknown>): string | number | undefined {
-  const v = sensor.Exp_ID ?? sensor.exp_id;
-  if (v === null || v === undefined || v === "") return undefined;
-  return v as string | number;
-}
-
-function getEligibleReplacementSensors(
-  allSensors: DashboardSensor[],
-  oldLla: string,
-  currentExperiment: string
-): DashboardSensor[] {
-  return allSensors.filter((s) => {
-    const lla = (s.LLA ?? s.lla ?? "").trim();
-    if (!lla || lla === oldLla) return false;
-    if (isActiveInExperiment(s, currentExperiment)) return false;
-    return true;
-  });
-}
 
 function sanitizeFilenameSuffix(value: string): string {
   const cleaned = value
@@ -113,6 +86,22 @@ function sanitizeFilenameSuffix(value: string): string {
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
   return cleaned || "unnamed_experiment";
+}
+
+/** Mirrors experimentScopedSensors in useDeviceDashboard. */
+function normalizeExperimentName(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function isSensorVisibleForExperimentFilter(
+  sensor: DashboardSensor | undefined,
+  selectedExperiment: string
+): boolean {
+  if (!sensor) return false;
+  if (selectedExperiment === "all") return true;
+  const exp = normalizeExperimentName(sensor.Exp_Name ?? sensor.exp_name);
+  if (selectedExperiment === UNASSIGNED_EXPERIMENT) return !exp;
+  return exp === selectedExperiment;
 }
 
 function DashboardPage() {
@@ -129,14 +118,6 @@ function DashboardPage() {
   const [showStartExperimentConfirm, setShowStartExperimentConfirm] = useState(false);
   const [showEndExperimentConfirm, setShowEndExperimentConfirm] = useState(false);
   const [experimentActionError, setExperimentActionError] = useState<ExperimentActionErrorDialog | null>(null);
-  const [replaceFlow, setReplaceFlow] = useState<{
-    sensor: DashboardSensor;
-    experimentName: string;
-  } | null>(null);
-  const [replaceReplacementLla, setReplaceReplacementLla] = useState("");
-  const [replaceWaitForPing, setReplaceWaitForPing] = useState(false);
-  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
-  const replaceEligiblePrevRef = useRef<Set<string>>(new Set());
   const [csvValidationIssues, setCsvValidationIssues] = useState<CsvValidationIssue[]>([]);
   const [csvValidationTotalCount, setCsvValidationTotalCount] = useState(0);
   const navigate = useNavigate();
@@ -148,7 +129,8 @@ function DashboardPage() {
 
   useEffect(() => {
     if (!uploadToast) return;
-    const timer = window.setTimeout(() => setUploadToast(null), 4000);
+    const ms = uploadToast.message.startsWith("Replacement request sent") ? 12000 : 4000;
+    const timer = window.setTimeout(() => setUploadToast(null), ms);
     return () => window.clearTimeout(timer);
   }, [uploadToast]);
 
@@ -166,6 +148,57 @@ function DashboardPage() {
     const hasPreferred = Boolean(preferredOwner && preferredMac);
     if (!hasPreferred && !skipPrompt) setShowPreferredPrompt(true);
   }, [selectedOwner, selectedMac]);
+
+  const sensorsRef = useRef<DashboardSensor[]>([]);
+  const cardRefsRef = useRef<Map<string, HTMLElement>>(new Map());
+  const [pingHighlightLla, setPingHighlightLla] = useState<string | null>(null);
+  const [pingToast, setPingToast] = useState<PingToastState | null>(null);
+  const pingHighlightTimerRef = useRef<number | null>(null);
+  const pingToastTimerRef = useRef<number | null>(null);
+  const pendingPingScrollLlaRef = useRef<string | null>(null);
+  const replacePingBridgeRef = useRef<(lla: string) => void>(() => {});
+
+  const [replaceTarget, setReplaceTarget] = useState<DashboardSensor | null>(null);
+  const [replaceReplacementLla, setReplaceReplacementLla] = useState("");
+  const [replaceSubmitting, setReplaceSubmitting] = useState(false);
+
+  const handleSensorPing = useCallback((lla: string) => {
+    const sensor = sensorsRef.current.find((s) => (s.LLA ?? s.lla) === lla);
+    const title = String(sensor?.Location ?? sensor?.location ?? lla);
+
+    if (pingHighlightTimerRef.current !== null) {
+      window.clearTimeout(pingHighlightTimerRef.current);
+      pingHighlightTimerRef.current = null;
+    }
+    if (pingToastTimerRef.current !== null) {
+      window.clearTimeout(pingToastTimerRef.current);
+      pingToastTimerRef.current = null;
+    }
+
+    setPingHighlightLla(null);
+    requestAnimationFrame(() => {
+      setPingHighlightLla(lla);
+      pingHighlightTimerRef.current = window.setTimeout(() => {
+        setPingHighlightLla(null);
+        pingHighlightTimerRef.current = null;
+      }, 4500);
+    });
+
+    setPingToast({ lla, title });
+    pingToastTimerRef.current = window.setTimeout(() => {
+      setPingToast(null);
+      pingToastTimerRef.current = null;
+    }, 5000);
+
+    replacePingBridgeRef.current(lla);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pingHighlightTimerRef.current !== null) window.clearTimeout(pingHighlightTimerRef.current);
+      if (pingToastTimerRef.current !== null) window.clearTimeout(pingToastTimerRef.current);
+    };
+  }, []);
 
   const {
     experimentOptions,
@@ -203,59 +236,61 @@ function DashboardPage() {
     owner: selectedOwner,
     mac: selectedMac,
     nowTs,
+    onSensorPing: handleSensorPing,
   });
 
-  const replaceEligibleSensors = useMemo(() => {
-    if (!replaceFlow) return [];
-    const oldLla = (replaceFlow.sensor.LLA ?? replaceFlow.sensor.lla ?? "").trim();
-    if (!oldLla) return [];
-    return getEligibleReplacementSensors(sensors, oldLla, replaceFlow.experimentName);
-  }, [replaceFlow, sensors]);
-
-  const replaceOpenTransitionRef = useRef(false);
   useEffect(() => {
-    const open = Boolean(replaceFlow);
-    if (open && !replaceOpenTransitionRef.current && replaceFlow) {
-      const oldLla = (replaceFlow.sensor.LLA ?? replaceFlow.sensor.lla ?? "").trim();
-      const initialEligible = getEligibleReplacementSensors(sensors, oldLla, replaceFlow.experimentName);
-      replaceEligiblePrevRef.current = new Set(
-        initialEligible.map((s) => (s.LLA ?? s.lla ?? "").trim()).filter(Boolean)
-      );
+    sensorsRef.current = sensors;
+  }, [sensors]);
+
+  const setSensorCardRef = useCallback((lla: string) => (el: HTMLElement | null) => {
+    if (el) cardRefsRef.current.set(lla, el);
+    else cardRefsRef.current.delete(lla);
+  }, []);
+
+  const scrollPingToastIntoView = useCallback(() => {
+    if (!pingToast) return;
+    const sensor = sensorsRef.current.find((s) => (s.LLA ?? s.lla) === pingToast.lla);
+
+    const needsSwitchToAll =
+      selectedExperiment !== "all" &&
+      selectedExperiment !== UNASSIGNED_EXPERIMENT &&
+      !isSensorVisibleForExperimentFilter(sensor, selectedExperiment);
+
+    if (needsSwitchToAll) {
+      pendingPingScrollLlaRef.current = pingToast.lla;
+      handleExperimentPillClick("all");
+      return;
     }
-    replaceOpenTransitionRef.current = open;
-  }, [replaceFlow, sensors]);
+
+    cardRefsRef.current.get(pingToast.lla)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [pingToast, selectedExperiment, handleExperimentPillClick]);
 
   useEffect(() => {
-    if (!replaceFlow || !replaceWaitForPing) return;
-    const oldLla = (replaceFlow.sensor.LLA ?? replaceFlow.sensor.lla ?? "").trim();
-    const initialEligible = getEligibleReplacementSensors(sensors, oldLla, replaceFlow.experimentName);
-    replaceEligiblePrevRef.current = new Set(
-      initialEligible.map((s) => (s.LLA ?? s.lla ?? "").trim()).filter(Boolean)
-    );
-  }, [replaceWaitForPing, replaceFlow, sensors]);
+    if (selectedExperiment !== "all") return;
+    const lla = pendingPingScrollLlaRef.current;
+    if (!lla) return;
+    pendingPingScrollLlaRef.current = null;
 
-  useEffect(() => {
-    if (!replaceFlow || !replaceWaitForPing) return;
-    const oldLla = (replaceFlow.sensor.LLA ?? replaceFlow.sensor.lla ?? "").trim();
-    const eligible = getEligibleReplacementSensors(sensors, oldLla, replaceFlow.experimentName);
-    const now = new Set(eligible.map((s) => (s.LLA ?? s.lla ?? "").trim()).filter(Boolean));
-    for (const lla of now) {
-      if (!replaceEligiblePrevRef.current.has(lla)) {
-        setReplaceReplacementLla(lla);
-        replaceEligiblePrevRef.current = now;
-        return;
+    const tryScroll = () => {
+      const el = cardRefsRef.current.get(lla);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
       }
-    }
-    replaceEligiblePrevRef.current = now;
-  }, [sensors, replaceFlow, replaceWaitForPing]);
+      return false;
+    };
 
-  useEffect(() => {
-    if (!replaceFlow || !replaceWaitForPing || !selectedOwner || !selectedMac) return;
-    const id = window.setInterval(() => {
-      void refreshDeviceData(selectedOwner, selectedMac);
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [replaceFlow, replaceWaitForPing, selectedOwner, selectedMac, refreshDeviceData]);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!tryScroll()) {
+          window.setTimeout(() => {
+            tryScroll();
+          }, 100);
+        }
+      });
+    });
+  }, [selectedExperiment, groupedSortedSensors, sortedSensors]);
 
   const hasValidContext = Boolean(selectedOwner && selectedMac);
 
@@ -381,146 +416,46 @@ function DashboardPage() {
     }
   }
 
-  function closeReplaceFlow() {
-    setReplaceFlow(null);
+  function handleCloseReplaceModal() {
+    if (replaceSubmitting) return;
+    setReplaceTarget(null);
     setReplaceReplacementLla("");
-    setReplaceWaitForPing(false);
-    setReplaceConfirmOpen(false);
   }
 
-  function validateReplaceSelection(): boolean {
-    if (!replaceFlow || !selectedOwner || !selectedMac) {
+  async function handleConfirmReplaceSensor() {
+    if (!replaceTarget || replaceSubmitting) return;
+    const v = validateReplacePreconditions(
+      replaceTarget,
+      replaceReplacementLla,
+      selectedOwner,
+      selectedMac,
+      sensors
+    );
+    if (v.ok === false) {
+      setExperimentActionError({ title: "Cannot replace sensor", message: v.reason });
+      return;
+    }
+    const newSensor = sensors.find((s) => (s.LLA ?? s.lla ?? "").trim() === replaceReplacementLla.trim());
+    if (!newSensor) {
       setExperimentActionError({
         title: "Cannot replace sensor",
-        message: "Missing owner or MAC in URL.",
+        message: "Replacement sensor was not found.",
       });
-      return false;
+      return;
     }
-    const oldSensor = replaceFlow.sensor;
-    const experimentName = replaceFlow.experimentName;
-    const oldLla = (oldSensor.LLA ?? oldSensor.lla ?? "").trim();
-    const newLla = replaceReplacementLla.trim();
-    if (!newLla) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Select a replacement sensor or wait for an eligible sensor to appear.",
-      });
-      return false;
+    setReplaceSubmitting(true);
+    try {
+      const payload = buildReplaceSensorBatchPayload(replaceTarget, newSensor, selectedOwner, selectedMac);
+      const ok = await postBatchMetadataUpdate(payload);
+      if (ok) {
+        setReplaceTarget(null);
+        setReplaceReplacementLla("");
+        setUploadToast({ kind: "success", message: REPLACE_SUCCESS_MESSAGE });
+        await refreshDeviceData(selectedOwner, selectedMac);
+      }
+    } finally {
+      setReplaceSubmitting(false);
     }
-    if (oldLla === newLla) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Replacement LLA must differ from the current sensor.",
-      });
-      return false;
-    }
-    const replacement = sensors.find((s) => (s.LLA ?? s.lla ?? "").trim() === newLla);
-    if (!replacement) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Replacement sensor not found in metadata. Try refreshing.",
-      });
-      return false;
-    }
-    if (isActiveInExperiment(replacement, experimentName)) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Replacement sensor is already active in this experiment.",
-      });
-      return false;
-    }
-    const baseLoc = getSensorLocationRaw(oldSensor);
-    if (!baseLoc) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Current sensor has no valid location.",
-      });
-      return false;
-    }
-    if (baseLoc.toLowerCase().endsWith("-replaced")) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Current sensor location already looks replaced (ends with \"-replaced\").",
-      });
-      return false;
-    }
-    const expId = getExpIdFromSensor(oldSensor as Record<string, unknown>);
-    if (expId === undefined) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Missing experiment id (Exp_ID) on the current sensor.",
-      });
-      return false;
-    }
-    if (sensorExperimentName(oldSensor) !== experimentName) {
-      setExperimentActionError({
-        title: "Cannot replace sensor",
-        message: "Current sensor experiment name does not match the selected experiment context.",
-      });
-      return false;
-    }
-    return true;
-  }
-
-  function handleReplacePickConfirm() {
-    if (!validateReplaceSelection()) return;
-    setReplaceConfirmOpen(true);
-  }
-
-  async function handleReplaceFinalConfirm() {
-    if (!replaceFlow || !selectedOwner || !selectedMac) return;
-    if (!validateReplaceSelection()) return;
-
-    const oldSensor = replaceFlow.sensor;
-    const experimentName = replaceFlow.experimentName;
-    const oldLla = (oldSensor.LLA ?? oldSensor.lla ?? "").trim();
-    const newLla = replaceReplacementLla.trim();
-    const baseLoc = getSensorLocationRaw(oldSensor);
-    const expId = getExpIdFromSensor(oldSensor as Record<string, unknown>)!;
-
-    const expNameForWrite = experimentName === UNASSIGNED_EXPERIMENT ? "" : experimentName;
-    const expIdForWrite =
-      typeof expId === "string" && expId !== "" && !Number.isNaN(Number(expId)) ? Number(expId) : expId;
-
-    const batchPayload: MetadataBatchPayload = {
-      sensors: [
-        {
-          lla: oldLla,
-          hostname: selectedOwner,
-          mac_address: selectedMac,
-          updates: {
-            active_exp: false,
-            is_active: false,
-            location: `${baseLoc}-replaced`,
-          },
-        },
-        {
-          lla: newLla,
-          hostname: selectedOwner,
-          mac_address: selectedMac,
-          updates: {
-            exp_id: expIdForWrite,
-            exp_name: expNameForWrite,
-            active_exp: true,
-            is_active: true,
-            location: baseLoc,
-          },
-        },
-      ],
-    };
-
-    const ok = await postBatchMetadataUpdate(batchPayload);
-    if (!ok) return;
-
-    const nextExp = experimentName;
-    setReplaceConfirmOpen(false);
-    closeReplaceFlow();
-    await refreshAfterExperimentMutation(nextExp);
-    setUploadToast({
-      kind: "success",
-      message:
-        "Replacement request sent successfully. Changes will appear in the frontend only after the next metadata sync. This may take up to 10 minutes.",
-    });
   }
 
   function handleStartExperimentClick() {
@@ -1174,7 +1109,9 @@ function DashboardPage() {
                         return (
                           <article
                             key={getSensorKey(sensor, index)}
-                            className="rounded-md border border-slate-200 p-3 cursor-pointer hover:bg-slate-50"
+                            ref={setSensorCardRef(lla)}
+                            data-sensor-lla={lla}
+                            className={`rounded-md border border-slate-200 bg-white p-3 cursor-pointer${pingHighlightLla === lla ? " sensor-card-pinging" : " hover:bg-slate-50"}`}
                             onClick={() => openSensorDetails(lla)}
                           >
                             <p className="font-semibold text-slate-900">{location}</p>
@@ -1211,7 +1148,9 @@ function DashboardPage() {
                 return (
                   <article
                     key={getSensorKey(sensor, index)}
-                    className="rounded-md border border-slate-200 p-3 cursor-pointer hover:bg-slate-50"
+                    ref={setSensorCardRef(lla)}
+                    data-sensor-lla={lla}
+                    className={`rounded-md border border-slate-200 bg-white p-3 cursor-pointer${pingHighlightLla === lla ? " sensor-card-pinging" : " hover:bg-slate-50"}`}
                     onClick={() => openSensorDetails(lla)}
                   >
                     <p className="font-semibold text-slate-900">{location}</p>
@@ -1234,6 +1173,43 @@ function DashboardPage() {
           )}
         </section>
       </main>
+      {pingToast ? (
+        <div
+          className="pointer-events-auto fixed bottom-[30px] left-1/2 z-[2000] flex w-[min(100vw-24px,320px)] -translate-x-1/2 flex-row items-center justify-between gap-3 rounded-[30px] bg-[#333f48] px-5 py-3 text-sm font-bold text-[#82c3ab] shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <svg className="h-6 w-6 shrink-0 fill-[#8ec1ae]" viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+            </svg>
+            <div className="min-w-0 leading-snug">
+              <div className="truncate text-[0.95rem] text-white">{pingToast.title}</div>
+              <div className="font-mono text-[0.75rem] text-[#a5b15a]">{pingToast.lla}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="shrink-0 rounded-md bg-[#8ec1ae] px-3 py-1.5 text-[0.75rem] font-extrabold text-[#243330] transition hover:opacity-90"
+            onClick={scrollPingToastIntoView}
+          >
+            Find →
+          </button>
+        </div>
+      ) : null}
+      <ReplaceSensorModal
+        open={Boolean(replaceTarget)}
+        onClose={handleCloseReplaceModal}
+        oldSensor={replaceTarget}
+        allSensors={sensors}
+        selectedOwner={selectedOwner}
+        selectedMac={selectedMac}
+        replacementLla={replaceReplacementLla}
+        onReplacementLlaChange={setReplaceReplacementLla}
+        pingBridgeRef={replacePingBridgeRef}
+        onConfirmSend={handleConfirmReplaceSensor}
+        submitting={replaceSubmitting}
+      />
       <SensorDetailsModal
         open={detailsOpen}
         onClose={closeSensorDetails}
@@ -1241,6 +1217,15 @@ function DashboardPage() {
         error={detailsError}
         details={detailsData}
         lastPingAt={selectedSensor?.lastPingAt}
+        showReplaceAction={
+          hasValidContext && Boolean(selectedSensor && isSensorActiveInExperiment(selectedSensor))
+        }
+        onReplaceSensor={() => {
+          if (!selectedSensor) return;
+          setReplaceTarget(selectedSensor);
+          setReplaceReplacementLla("");
+          closeSensorDetails();
+        }}
       />
       <CenteredDialog
         open={showPreferredPrompt}

@@ -10,7 +10,7 @@ import {
   type SensorMetadata,
   type SensorsMetadataResponse,
 } from "../api/metadata";
-import { createPingSocket } from "../websocket/pingSocket";
+import { createReconnectingPingSocket } from "../websocket/pingSocket";
 
 export type DashboardSensor = SensorMetadata & {
   lastPingAt?: string;
@@ -18,6 +18,9 @@ export type DashboardSensor = SensorMetadata & {
   location?: string;
   Label?: string | string[];
   label?: string | string[];
+  Exp_ID?: number | string;
+  exp_id?: number | string;
+  Mac_Address?: string;
 };
 
 type PingMessage = {
@@ -34,6 +37,8 @@ type UseDeviceDashboardArgs = {
   owner: string;
   mac: string;
   nowTs: number;
+  /** Called when a WebSocket ping matches a known sensor LLA (after lastPingAt is updated). */
+  onSensorPing?: (lla: string) => void;
 };
 
 const ONLINE_SECONDS = 180;
@@ -44,7 +49,7 @@ function normalizeExperimentName(value: unknown): string {
   return String(value ?? "").trim();
 }
 
-export function useDeviceDashboard({ owner, mac, nowTs }: UseDeviceDashboardArgs) {
+export function useDeviceDashboard({ owner, mac, nowTs, onSensorPing }: UseDeviceDashboardArgs) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [experiments, setExperiments] = useState<ExperimentItem[]>([]);
   const [sensors, setSensors] = useState<DashboardSensor[]>([]);
@@ -65,6 +70,8 @@ export function useDeviceDashboard({ owner, mac, nowTs }: UseDeviceDashboardArgs
   const unmatchedLoggedRef = useRef<Set<string>>(new Set());
   const sensorIndexByLlaRef = useRef<Map<string, number>>(new Map());
   const refreshTimerRef = useRef<number | null>(null);
+  const onSensorPingRef = useRef(onSensorPing);
+  onSensorPingRef.current = onSensorPing;
 
   const experimentOptions = useMemo(() => {
     const set = new Set<string>();
@@ -224,7 +231,7 @@ export function useDeviceDashboard({ owner, mac, nowTs }: UseDeviceDashboardArgs
   }, [sensors]);
 
   useEffect(() => {
-    const socket = createPingSocket({
+    const disconnect = createReconnectingPingSocket({
       onMessage: (raw) => {
         const msg = raw as PingMessage;
         const lla = msg?.payload?.LLA ?? msg?.payload?.lla;
@@ -249,10 +256,12 @@ export function useDeviceDashboard({ owner, mac, nowTs }: UseDeviceDashboardArgs
           next[sensorIndex] = { ...current, lastPingAt: pingAt };
           return next;
         });
+
+        onSensorPingRef.current?.(lla);
       },
     });
 
-    return () => socket.close();
+    return disconnect;
   }, []);
 
   useEffect(() => {

@@ -1,9 +1,8 @@
 import { useEffect } from "react";
-import { createPingSocket } from "../websocket/pingSocket";
+import { createReconnectingPingSocket } from "../websocket/pingSocket";
 
 export function useRealtimePing() {
   useEffect(() => {
-    const socket = createPingSocket();
-    return () => socket.close();
+    return createReconnectingPingSocket();
   }, []);
 }

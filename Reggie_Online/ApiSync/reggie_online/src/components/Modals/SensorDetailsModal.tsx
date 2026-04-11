@@ -8,9 +8,21 @@ type SensorDetailsModalProps = {
   error: string;
   details: ActiveMetadataItem | null;
   lastPingAt?: string;
+  /** When true, show Replace Sensor after details load (active experiment sensor). */
+  showReplaceAction?: boolean;
+  onReplaceSensor?: () => void;
 };
 
-function SensorDetailsModal({ open, onClose, loading, error, details, lastPingAt }: SensorDetailsModalProps) {
+function SensorDetailsModal({
+  open,
+  onClose,
+  loading,
+  error,
+  details,
+  lastPingAt,
+  showReplaceAction = false,
+  onReplaceSensor,
+}: SensorDetailsModalProps) {
   if (!open) return null;
 
   const lla = details?.LLA ?? details?.lla ?? "-";
@@ -29,53 +41,81 @@ function SensorDetailsModal({ open, onClose, loading, error, details, lastPingAt
       <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold">Sensor Details</h2>
         {loading ? (
-          <p className="mt-3 text-sm text-slate-600">Loading sensor details...</p>
+          <>
+            <p className="mt-3 text-sm text-slate-600">Loading sensor details...</p>
+            <div className="mt-4">
+              <button className="rounded-md bg-slate-800 px-3 py-2 text-sm text-white" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
         ) : error ? (
-          <p className="mt-3 text-sm text-red-700">{error}</p>
+          <>
+            <p className="mt-3 text-sm text-red-700">{error}</p>
+            <div className="mt-4">
+              <button className="rounded-md bg-slate-800 px-3 py-2 text-sm text-white" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
         ) : (
-          <div className="mt-3 space-y-1 text-sm text-slate-700">
-            <p>
-              <strong>LLA:</strong> {lla}
-            </p>
-            <p>
-              <strong>Owner:</strong> {owner}
-            </p>
-            <p>
-              <strong>Experiment name:</strong> {expName}
-            </p>
-            <p>
-              <strong>Experiment ID:</strong> {String(expId)}
-            </p>
-            <p>
-              <strong>Location:</strong> {location}
-            </p>
-            <p>
-              <strong>Coordinates:</strong>{" "}
-              {coords ? `x=${coords.x ?? "-"}, y=${coords.y ?? "-"}, z=${coords.z ?? "-"}` : "-"}
-            </p>
-            <p>
-              <strong>Label:</strong> {Array.isArray(label) ? label.join(", ") : (label ?? "-")}
-            </p>
-            <p>
-              <strong>Label options:</strong>{" "}
-              {Array.isArray(labelOptions) && labelOptions.length > 0 ? labelOptions.join(", ") : "-"}
-            </p>
-            <p>
-              <strong>Active_Exp:</strong> {activeExp}
-            </p>
-            <p>
-              <strong>Last Seen:</strong> {lastSeen ? formatIsoToLocal(lastSeen) : "-"}
-            </p>
-            <p>
-              <strong>Last Ping:</strong> {lastPingAt ? formatIsoToLocal(lastPingAt) : "No ping yet"}
-            </p>
-          </div>
+          <>
+            <div className="mt-3 space-y-1 text-sm text-slate-700">
+              <p>
+                <strong>LLA:</strong> {lla}
+              </p>
+              <p>
+                <strong>Owner:</strong> {owner}
+              </p>
+              <p>
+                <strong>Experiment name:</strong> {expName}
+              </p>
+              <p>
+                <strong>Experiment ID:</strong> {String(expId)}
+              </p>
+              <p>
+                <strong>Location:</strong> {location}
+              </p>
+              <p>
+                <strong>Coordinates:</strong>{" "}
+                {coords ? `x=${coords.x ?? "-"}, y=${coords.y ?? "-"}, z=${coords.z ?? "-"}` : "-"}
+              </p>
+              <p>
+                <strong>Label:</strong> {Array.isArray(label) ? label.join(", ") : (label ?? "-")}
+              </p>
+              <p>
+                <strong>Label options:</strong>{" "}
+                {Array.isArray(labelOptions) && labelOptions.length > 0 ? labelOptions.join(", ") : "-"}
+              </p>
+              <p>
+                <strong>Active_Exp:</strong> {activeExp}
+              </p>
+              <p>
+                <strong>Last Seen:</strong> {lastSeen ? formatIsoToLocal(lastSeen) : "-"}
+              </p>
+              <p>
+                <strong>Last Ping:</strong> {lastPingAt ? formatIsoToLocal(lastPingAt) : "No ping yet"}
+              </p>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {showReplaceAction && onReplaceSensor ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-emerald-700 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReplaceSensor();
+                  }}
+                >
+                  Replace Sensor
+                </button>
+              ) : null}
+              <button className="rounded-md bg-slate-800 px-3 py-2 text-sm text-white" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
         )}
-        <div className="mt-4">
-          <button className="rounded-md bg-slate-800 px-3 py-2 text-sm text-white" onClick={onClose}>
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
