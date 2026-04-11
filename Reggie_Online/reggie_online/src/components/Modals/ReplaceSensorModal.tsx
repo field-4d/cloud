@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from "react";
 import type { DashboardSensor } from "../../hooks/useDeviceDashboard";
 import {
   getEligibleReplacementSensors,
   getExpNameForReplace,
+  getReplacementPingRejectionReason,
   getTrimmedLocation,
-  isEligibleReplacementSensor,
   validateReplacePreconditions,
 } from "../../utils/replaceSensor";
 
@@ -48,6 +48,7 @@ function ReplaceSensorModal({
   submitting,
 }: ReplaceSensorModalProps) {
   const [approvalStep, setApprovalStep] = useState<1 | 2>(1);
+  const [pingSelectionWarning, setPingSelectionWarning] = useState<string | null>(null);
 
   const eligible = useMemo(
     () => (oldSensor ? getEligibleReplacementSensors(allSensors, oldSensor) : []),
@@ -63,8 +64,21 @@ function ReplaceSensorModal({
   useEffect(() => {
     if (open && oldSensor) {
       setApprovalStep(1);
+      setPingSelectionWarning(null);
     }
   }, [open, oldSensor]);
+
+  useEffect(() => {
+    if (!open) setPingSelectionWarning(null);
+  }, [open]);
+
+  const handleReplacementLlaChange = useCallback(
+    (value: string) => {
+      setPingSelectionWarning(null);
+      onReplacementLlaChange(value);
+    },
+    [onReplacementLlaChange]
+  );
 
   useEffect(() => {
     if (!open || !oldSensor) {
@@ -74,16 +88,19 @@ function ReplaceSensorModal({
 
     pingBridgeRef.current = (lla: string) => {
       const trimmed = lla.trim();
-      const candidate = allSensors.find((s) => (s.LLA ?? s.lla ?? "").trim() === trimmed);
-      if (!candidate || !oldSensor) return;
-      if (!isEligibleReplacementSensor(oldSensor, candidate, allSensors)) return;
-      onReplacementLlaChange(trimmed);
+      if (!trimmed) return;
+      const reason = getReplacementPingRejectionReason(oldSensor, trimmed, allSensors);
+      if (reason) {
+        setPingSelectionWarning(reason);
+        return;
+      }
+      handleReplacementLlaChange(trimmed);
     };
 
     return () => {
       pingBridgeRef.current = () => {};
     };
-  }, [open, oldSensor, allSensors, onReplacementLlaChange, pingBridgeRef]);
+  }, [open, oldSensor, allSensors, handleReplacementLlaChange, pingBridgeRef]);
 
   const ownerDisplay =
     oldSensor?.Owner ?? oldSensor?.owner ?? (selectedOwner.trim() || "—");
@@ -153,8 +170,16 @@ function ReplaceSensorModal({
                   <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Replacement</p>
                   <p className="text-xs text-slate-600">
                     Choose an inactive sensor below. The next eligible ping from a replacement device will also update
-                    this selection automatically.
+                    this selection automatically. Pinging a replaced slot or an active sensor will show a warning below.
                   </p>
+                  {pingSelectionWarning ? (
+                    <p
+                      className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-900"
+                      role="alert"
+                    >
+                      {pingSelectionWarning}
+                    </p>
+                  ) : null}
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-700" htmlFor="replace-sensor-select">
                       Inactive sensor (LLA)
@@ -163,7 +188,7 @@ function ReplaceSensorModal({
                       id="replace-sensor-select"
                       className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-800"
                       value={replacementLla}
-                      onChange={(e) => onReplacementLlaChange(e.target.value)}
+                      onChange={(e) => handleReplacementLlaChange(e.target.value)}
                       disabled={submitting || eligible.length === 0}
                     >
                       <option value="">
