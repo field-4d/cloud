@@ -9,7 +9,7 @@ from google.cloud.exceptions import NotFound
 import logging
 import time
 
-from .firestore_repository import get_sensor_metadata, get_all_sensors_metadata, get_last_package_metadata, get_experiment_names, register_sensor, update_sensor_last_seen, update_sensor_metadata, batch_update_sensor_metadata
+from .firestore_repository import get_sensor_metadata, get_all_sensors_metadata, get_last_package_metadata, get_experiment_names, register_sensor, update_sensor_last_seen, delete_sensor, update_sensor_metadata, batch_update_sensor_metadata
 from .permissions_service import (
     PermissionsNotFoundError,
     PermissionsResponseFormatError,
@@ -477,6 +477,72 @@ async def update_sensor_metadata_endpoint(request: SensorMetadataUpdateRequest):
         total_duration = time.time() - operation_start
         logger.error(
             f"[UPDATE_SENSOR_METADATA_ENDPOINT] Unexpected error | "
+            f"Type: {error_type} | "
+            f"Error: {error_str} | "
+            f"Duration: {total_duration:.3f}s",
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.post("/FS/sensor/delete", tags=["sensors"])
+async def delete_sensor_endpoint(request: SensorUpdateRequest):
+    """
+    Hard-delete an existing sensor document from Firestore.
+
+    Behavior:
+    - If document MISSING: Return error (sensor not found)
+    - If document EXISTS: Validate owner/mac match and delete
+
+    Args:
+        request: SensorUpdateRequest with hostname, mac_address, and lla
+    """
+    logger.info(f"[ENDPOINT] POST /FS/sensor/delete | Hostname: {request.hostname} | MAC: {request.mac_address} | LLA: {request.lla}")
+    operation_start = time.time()
+    logger.info(
+        f"[DELETE_SENSOR_ENDPOINT] Request received | "
+        f"Hostname: {request.hostname} | "
+        f"MAC: {request.mac_address} | "
+        f"LLA: {request.lla}"
+    )
+
+    try:
+        result = await delete_sensor(
+            hostname=request.hostname,
+            mac_address=request.mac_address,
+            lla=request.lla
+        )
+
+        total_duration = time.time() - operation_start
+        logger.info(
+            f"[DELETE_SENSOR_ENDPOINT] Operation completed | "
+            f"Status: {result['status']} | "
+            f"Duration: {total_duration:.3f}s"
+        )
+
+        if not result.get("success", False):
+            status = result.get("status")
+            if status == "not_found":
+                raise HTTPException(status_code=404, detail=result.get("message", "Sensor not found"))
+            if status == "mismatch":
+                raise HTTPException(status_code=400, detail=result.get("message", "Owner/MAC mismatch"))
+            raise HTTPException(status_code=500, detail=result.get("message", "Delete failed"))
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_type = type(e).__name__
+        error_str = str(e) if str(e) else "No error message available"
+
+        error_msg = (
+            f"Error processing request: {error_str} "
+            f"(Type: {error_type})"
+        )
+        total_duration = time.time() - operation_start
+        logger.error(
+            f"[DELETE_SENSOR_ENDPOINT] Unexpected error | "
             f"Type: {error_type} | "
             f"Error: {error_str} | "
             f"Duration: {total_duration:.3f}s",

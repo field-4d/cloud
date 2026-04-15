@@ -58,6 +58,18 @@ export type ActiveMetadataResponse = {
   data?: ActiveMetadataItem[];
 };
 
+export type DeleteSensorRequest = {
+  hostname: string;
+  mac_address: string;
+  lla: string;
+};
+
+export type DeleteSensorResponse = {
+  success: boolean;
+  status: string;
+  message: string;
+};
+
 export function getSensorsMetadata(owner: string, macAddress: string) {
   const params = new URLSearchParams({
     owner,
@@ -81,4 +93,36 @@ export function getActiveMetadata(owner: string, macAddress: string, lla: string
     lla,
   });
   return apiGet<ActiveMetadataResponse>(`/GCP-FS/metadata/active?${params.toString()}`);
+}
+
+export async function postSensorDelete(payload: DeleteSensorRequest): Promise<DeleteSensorResponse> {
+  const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)?.trim();
+  if (!apiBase) {
+    throw new Error("Missing API base URL (VITE_API_BASE).");
+  }
+
+  const response = await fetch(`${apiBase}/FS/sensor/delete`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = body?.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : `Delete request failed (${response.status} ${response.statusText || "Unknown"})`;
+    throw new Error(message);
+  }
+  if (!body?.success) {
+    throw new Error(
+      typeof body?.message === "string" ? body.message : "Delete request returned unsuccessful response."
+    );
+  }
+
+  return body as DeleteSensorResponse;
 }

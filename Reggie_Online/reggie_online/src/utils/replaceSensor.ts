@@ -39,7 +39,28 @@ export function getExpNameForReplace(sensor: DashboardSensor): string {
   return normalizeExperimentName(sensor.Exp_Name ?? sensor.exp_name);
 }
 
-/** Eligible replacements: full device list, not active in experiment (`active_exp` false), not old LLA. */
+/** True if this row looks like a retired “replaced” slot (not a valid replacement pick). */
+export function sensorMarkedAsReplacedSlot(sensor: DashboardSensor): boolean {
+  const loc = getTrimmedLocation(sensor).toLowerCase();
+  if (loc.includes("-replaced")) return true;
+
+  const raw =
+    (sensor as Record<string, unknown>).Activity ??
+    (sensor as Record<string, unknown>).activity ??
+    (sensor as Record<string, unknown>).Status ??
+    (sensor as Record<string, unknown>).status;
+  if (typeof raw === "string" && raw.toLowerCase().includes("replaced")) return true;
+
+  const rawLabel = sensor.Label ?? sensor.label;
+  const labelText = Array.isArray(rawLabel)
+    ? rawLabel.map((v) => String(v)).join(" ")
+    : String(rawLabel ?? "");
+  if (labelText.toLowerCase().includes("replaced")) return true;
+
+  return false;
+}
+
+/** Eligible replacements: inactive, not the old LLA, not a replaced slot. */
 export function getEligibleReplacementSensors(
   allSensors: DashboardSensor[],
   oldSensor: DashboardSensor
@@ -49,6 +70,7 @@ export function getEligibleReplacementSensors(
   return allSensors.filter((candidate) => {
     const lla = (candidate.LLA ?? candidate.lla ?? "").trim();
     if (!lla || lla === oldLla) return false;
+    if (sensorMarkedAsReplacedSlot(candidate)) return false;
     return !isActiveExpRaw(candidate);
   });
 }
@@ -62,6 +84,39 @@ export function isEligibleReplacementSensor(
   const list = getEligibleReplacementSensors(allSensors, oldSensor);
   const candLla = (candidate.LLA ?? candidate.lla ?? "").trim();
   return list.some((s) => (s.LLA ?? s.lla ?? "").trim() === candLla);
+}
+
+/**
+ * When the user pings a sensor while choosing a replacement: if that ping is not a valid
+ * replacement option, returns a message to show in red. Returns null if the ping should apply.
+ */
+export function getReplacementPingRejectionReason(
+  oldSensor: DashboardSensor,
+  pingLla: string,
+  allSensors: DashboardSensor[]
+): string | null {
+  const trimmed = pingLla.trim();
+  if (!trimmed) return null;
+
+  const candidate = allSensors.find((s) => (s.LLA ?? s.lla ?? "").trim() === trimmed);
+  if (!candidate) {
+    return "Ping is from an LLA that is not on this gateway’s sensor list. Only known sensors can be selected.";
+  }
+  if (isEligibleReplacementSensor(oldSensor, candidate, allSensors)) {
+    return null;
+  }
+
+  const oldLla = (oldSensor.LLA ?? oldSensor.lla ?? "").trim();
+  if (trimmed === oldLla) {
+    return "That ping is the sensor you are replacing. Choose a different inactive sensor (not this LLA).";
+  }
+  if (sensorMarkedAsReplacedSlot(candidate)) {
+    return "That sensor is a replaced slot (location ends with “-replaced”, or status/label says replaced). Those rows are not valid replacements—pick an inactive sensor that is not marked replaced.";
+  }
+  if (isActiveExpRaw(candidate)) {
+    return "That sensor is still active in an experiment. Only inactive sensors can be used as the replacement.";
+  }
+  return "That sensor is not an eligible replacement. Use the dropdown or ping an inactive sensor from the list.";
 }
 
 export type ReplaceValidationResult =
@@ -114,10 +169,17 @@ export function validateReplacePreconditions(
   if (!replacement) {
     return { ok: false, reason: "Replacement sensor was not found in the device list." };
   }
+  if (sensorMarkedAsReplacedSlot(replacement)) {
+    return {
+      ok: false,
+      reason:
+        "That sensor is a replaced slot (location/status/label indicates replaced). Pick an inactive sensor that is not a replaced slot.",
+    };
+  }
   if (!isEligibleReplacementSensor(oldSensor, replacement, allSensors)) {
     return {
       ok: false,
-      reason: "Replacement sensor is not eligible (must be inactive and not the same LLA).",
+      reason: "Replacement sensor is not eligible (must be inactive, not the same LLA, and not a replaced slot).",
     };
   }
 

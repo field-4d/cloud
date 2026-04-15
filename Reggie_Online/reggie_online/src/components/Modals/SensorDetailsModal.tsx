@@ -11,6 +11,9 @@ type SensorDetailsModalProps = {
   /** When true, show Replace Sensor after details load (active experiment sensor). */
   showReplaceAction?: boolean;
   onReplaceSensor?: () => void;
+  showDeleteAction?: boolean;
+  onDeleteSensor?: () => void;
+  deleteSubmitting?: boolean;
 };
 
 function SensorDetailsModal({
@@ -22,6 +25,9 @@ function SensorDetailsModal({
   lastPingAt,
   showReplaceAction = false,
   onReplaceSensor,
+  showDeleteAction = false,
+  onDeleteSensor,
+  deleteSubmitting = false,
 }: SensorDetailsModalProps) {
   if (!open) return null;
 
@@ -108,6 +114,19 @@ function SensorDetailsModal({
                   }}
                 >
                   Replace Sensor
+                </button>
+              ) : null}
+              {showDeleteAction && onDeleteSensor ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-red-700 bg-red-50 px-3 py-2 text-sm font-medium text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSensor();
+                  }}
+                  disabled={deleteSubmitting}
+                >
+                  {deleteSubmitting ? "Deleting..." : "Delete Sensor"}
                 </button>
               ) : null}
               <button className="rounded-md bg-slate-800 px-3 py-2 text-sm text-white" onClick={onClose}>

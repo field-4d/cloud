@@ -128,8 +128,8 @@ flowchart LR
     WS[WebSocket VITE_WS_PING]
   end
   subgraph apisync [ApiSync backend]
-    REST[REST /GCP-FS /FS]
-    WSSrv[WS /ws/ping]
+    REST["REST (GCP-FS, FS)"]
+    WSSrv["WS ping path"]
   end
   subgraph data [Data layer]
     FS[(Firestore metadata)]
@@ -176,7 +176,7 @@ sequenceDiagram
   Home->>Perm: resolvePermissions email
   Perm-->>Home: owners + mac_addresses
   User->>Home: Open dashboard
-  Home->>Nav: navigate /dashboard?owner&mac
+  Home->>Nav: "navigate /dashboard?owner&mac"
   Nav->>Dash: mount with search params
   Dash->>Dash: useDeviceDashboard load experiments + sensors
 ```
@@ -207,9 +207,9 @@ sequenceDiagram
   participant Dash as DashboardPage
   participant Details as SensorDetailsModal
   participant Replace as ReplaceSensorModal
-  participant API as POST /FS/sensor/update-metadata
+  participant API as "POST /FS/sensor/update-metadata"
   User->>Dash: Click sensor card
-  Dash->>Details: open details
+  Dash->>Details: "open details"
   User->>Details: Replace Sensor
   Details->>Replace: open batch replace UI
   User->>Replace: Confirm then Approve and send

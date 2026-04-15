@@ -25,8 +25,16 @@ export type DashboardSensor = SensorMetadata & {
 
 type PingMessage = {
   payload?: {
+    owner?: string;
+    hostname?: string;
+    mac_address?: string;
+    type?: string;
     LLA?: string;
     lla?: string;
+    validation?: {
+      is_valid?: boolean;
+      message?: string;
+    };
   };
 };
 
@@ -236,25 +244,68 @@ export function useDeviceDashboard({ owner, mac, nowTs, onSensorPing }: UseDevic
         const msg = raw as PingMessage;
         const lla = msg?.payload?.LLA ?? msg?.payload?.lla;
         if (!lla) return;
+        const payloadOwner = (msg?.payload?.owner ?? msg?.payload?.hostname ?? "").trim();
+        const payloadMac = (msg?.payload?.mac_address ?? "").trim();
+        const payloadType = (msg?.payload?.type ?? "").trim().toLowerCase();
+        const validationMessage = (msg?.payload?.validation?.message ?? "").trim();
+        const isValid = Boolean(msg?.payload?.validation?.is_valid);
 
         const pingAt = new Date().toISOString();
         const sensorIndex = sensorIndexByLlaRef.current.get(lla);
-        if (sensorIndex === undefined) {
-          if (import.meta.env.DEV && !unmatchedLoggedRef.current.has(lla)) {
-            unmatchedLoggedRef.current.add(lla);
-            console.debug("Unmatched Ping LLA ignored:", lla);
-          }
-          return;
-        }
 
         setSensors((prev) => {
-          if (sensorIndex < 0 || sensorIndex >= prev.length) return prev;
-          const current = prev[sensorIndex];
-          const currentLla = current?.LLA ?? current?.lla;
-          if (currentLla !== lla) return prev;
-          const next = [...prev];
-          next[sensorIndex] = { ...current, lastPingAt: pingAt };
-          return next;
+          if (sensorIndex !== undefined) {
+            if (sensorIndex < 0 || sensorIndex >= prev.length) return prev;
+            const current = prev[sensorIndex];
+            const currentLla = current?.LLA ?? current?.lla;
+            if (currentLla !== lla) return prev;
+            const next = [...prev];
+            next[sensorIndex] = { ...current, lastPingAt: pingAt };
+            return next;
+          }
+
+          const isCurrentContext =
+            payloadOwner.toLowerCase() === owner.trim().toLowerCase() &&
+            payloadMac.toLowerCase() === mac.trim().toLowerCase();
+          const isSensorAddedPing =
+            payloadType === "ping" && isValid && validationMessage.toLowerCase() === "sensor added";
+
+          if (!isCurrentContext || !isSensorAddedPing) {
+            if (import.meta.env.DEV && !unmatchedLoggedRef.current.has(lla)) {
+              unmatchedLoggedRef.current.add(lla);
+              console.debug("Unmatched Ping LLA ignored:", lla, {
+                payloadOwner,
+                payloadMac,
+                payloadType,
+                validationMessage,
+              });
+            }
+            return prev;
+          }
+
+          if (prev.some((sensor) => (sensor.LLA ?? sensor.lla) === lla)) {
+            return prev;
+          }
+
+          const optimistic: DashboardSensor = {
+            LLA: lla,
+            lla,
+            Owner: payloadOwner,
+            owner: payloadOwner,
+            Mac_Address: payloadMac,
+            mac_address: payloadMac,
+            Exp_Name: "",
+            exp_name: "",
+            Active_Exp: false,
+            active_exp: false,
+            Location: "New sensor",
+            location: "New sensor",
+            lastPingAt: pingAt,
+            Last_Seen: pingAt,
+            last_seen: pingAt,
+          };
+
+          return [...prev, optimistic];
         });
 
         onSensorPingRef.current?.(lla);

@@ -17,6 +17,7 @@ import {
   isSensorActiveInExperiment,
   validateReplacePreconditions,
 } from "../utils/replaceSensor";
+import { postSensorDelete } from "../api/metadata";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 const REPLACE_SUCCESS_MESSAGE =
@@ -161,6 +162,8 @@ function DashboardPage() {
   const [replaceTarget, setReplaceTarget] = useState<DashboardSensor | null>(null);
   const [replaceReplacementLla, setReplaceReplacementLla] = useState("");
   const [replaceSubmitting, setReplaceSubmitting] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [showDeleteSensorConfirm, setShowDeleteSensorConfirm] = useState(false);
 
   const handleSensorPing = useCallback((lla: string) => {
     const sensor = sensorsRef.current.find((s) => (s.LLA ?? s.lla) === lla);
@@ -455,6 +458,53 @@ function DashboardPage() {
       }
     } finally {
       setReplaceSubmitting(false);
+    }
+  }
+
+  function handleDeleteSensorClick() {
+    if (deleteSubmitting || !selectedSensor || !selectedOwner || !selectedMac) return;
+    const targetLla = (selectedSensor.LLA ?? selectedSensor.lla ?? "").trim();
+    if (!targetLla) {
+      setExperimentActionError({
+        title: "Cannot delete sensor",
+        message: "Selected sensor is missing an LLA.",
+      });
+      return;
+    }
+    setShowDeleteSensorConfirm(true);
+  }
+
+  async function handleConfirmDeleteSensor() {
+    if (deleteSubmitting || !selectedSensor || !selectedOwner || !selectedMac) return;
+    const targetLla = (selectedSensor.LLA ?? selectedSensor.lla ?? "").trim();
+    if (!targetLla) {
+      setShowDeleteSensorConfirm(false);
+      setExperimentActionError({
+        title: "Cannot delete sensor",
+        message: "Selected sensor is missing an LLA.",
+      });
+      return;
+    }
+
+    setDeleteSubmitting(true);
+    try {
+      await postSensorDelete({
+        hostname: selectedOwner,
+        mac_address: selectedMac,
+        lla: targetLla,
+      });
+      setShowDeleteSensorConfirm(false);
+      closeSensorDetails();
+      await refreshDeviceData(selectedOwner, selectedMac);
+      setUploadToast({ kind: "success", message: `Deleted sensor ${targetLla}.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Delete failed due to an unexpected error.";
+      setExperimentActionError({
+        title: "Delete sensor failed",
+        message,
+      });
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
@@ -1217,6 +1267,9 @@ function DashboardPage() {
         error={detailsError}
         details={detailsData}
         lastPingAt={selectedSensor?.lastPingAt}
+        showDeleteAction={hasValidContext && Boolean(selectedSensor)}
+        onDeleteSensor={handleDeleteSensorClick}
+        deleteSubmitting={deleteSubmitting}
         showReplaceAction={
           hasValidContext && Boolean(selectedSensor && isSensorActiveInExperiment(selectedSensor))
         }
@@ -1368,6 +1421,41 @@ function DashboardPage() {
         <p>
           End experiment "{selectedExperiment}" for {selectedExperimentSensors.length} sensors?
         </p>
+      </CenteredDialog>
+      <CenteredDialog
+        open={showDeleteSensorConfirm}
+        title="Delete Sensor"
+        tone="warning"
+        onClose={() => {
+          if (!deleteSubmitting) setShowDeleteSensorConfirm(false);
+        }}
+        actions={
+          <>
+            <button
+              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              onClick={() => setShowDeleteSensorConfirm(false)}
+              disabled={deleteSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded border border-red-700 bg-red-700 px-3 py-1.5 text-xs text-white hover:bg-red-800 disabled:opacity-60"
+              onClick={handleConfirmDeleteSensor}
+              disabled={deleteSubmitting}
+            >
+              {deleteSubmitting ? "Deleting..." : "Delete Sensor"}
+            </button>
+          </>
+        }
+      >
+        <p>
+          Delete sensor{" "}
+          <span className="font-mono">
+            {(selectedSensor?.LLA ?? selectedSensor?.lla ?? "").toString()}
+          </span>{" "}
+          from Firestore?
+        </p>
+        <p>This action permanently removes the sensor document.</p>
       </CenteredDialog>
       <CenteredDialog
         open={Boolean(experimentActionError)}

@@ -869,6 +869,104 @@ async def update_sensor_last_seen(
         }
 
 
+async def delete_sensor(
+    hostname: str,
+    mac_address: str,
+    lla: str
+) -> Dict[str, Any]:
+    """
+    Hard-delete an existing sensor document from Firestore.
+
+    Behavior:
+    - If document MISSING: Return not_found error
+    - If document EXISTS: Validate owner/mac match and delete on success
+    """
+    operation_start = time.time()
+    logger.info(
+        f"[DELETE_SENSOR] Starting operation | "
+        f"Hostname: {hostname} | "
+        f"MAC: {mac_address} | "
+        f"LLA: {lla}"
+    )
+
+    try:
+        db = await get_client()
+        doc_ref = db.collection(SENSORS_COLLECTION).document(lla)
+        doc = await doc_ref.get()
+
+        if not doc.exists:
+            total_duration = time.time() - operation_start
+            logger.warning(
+                f"[DELETE_SENSOR] Document not found | "
+                f"LLA: {lla} | "
+                f"Duration: {total_duration:.3f}s"
+            )
+            return {
+                "success": False,
+                "status": "not_found",
+                "message": f"Sensor with LLA '{lla}' not found."
+            }
+
+        doc_data = doc.to_dict()
+        doc_owner = doc_data.get("owner", "")
+        doc_mac = doc_data.get("mac", "")
+
+        if doc_owner != hostname:
+            total_duration = time.time() - operation_start
+            logger.warning(
+                f"[DELETE_SENSOR] Owner mismatch | "
+                f"Expected: {hostname}, Found: {doc_owner} | "
+                f"Duration: {total_duration:.3f}s"
+            )
+            return {
+                "success": False,
+                "status": "mismatch",
+                "message": f"Owner mismatch: expected '{hostname}', found '{doc_owner}'"
+            }
+
+        if doc_mac != mac_address:
+            total_duration = time.time() - operation_start
+            logger.warning(
+                f"[DELETE_SENSOR] MAC mismatch | "
+                f"Expected: {mac_address}, Found: {doc_mac} | "
+                f"Duration: {total_duration:.3f}s"
+            )
+            return {
+                "success": False,
+                "status": "mismatch",
+                "message": f"MAC address mismatch: expected '{mac_address}', found '{doc_mac}'"
+            }
+
+        await doc_ref.delete()
+
+        total_duration = time.time() - operation_start
+        logger.info(
+            f"[DELETE_SENSOR] Document deleted | "
+            f"LLA: {lla} | "
+            f"Duration: {total_duration:.3f}s"
+        )
+        return {
+            "success": True,
+            "status": "deleted",
+            "message": f"Deleted sensor document for {lla}"
+        }
+
+    except Exception as e:
+        error_msg = f"Firestore error: {str(e)}"
+        total_duration = time.time() - operation_start
+        logger.error(
+            f"[DELETE_SENSOR] Error | "
+            f"Error: {error_msg} | "
+            f"Duration: {total_duration:.3f}s",
+            exc_info=True
+        )
+        return {
+            "success": False,
+            "status": "error",
+            "message": error_msg
+        }
+
+
 async def update_sensor_metadata(
     hostname: str,
     mac_address: str,
