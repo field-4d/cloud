@@ -167,11 +167,6 @@ def get_next_exp_id(con):
     return int(row[0]) + 1
 
 
-
-
-
-
-
 def deactivate_experiment_by_id_and_name(con, exp_id, exp_name=None):
     if exp_id is None:
         return 0
