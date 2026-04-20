@@ -13,7 +13,7 @@ import { addDays } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { API_ENDPOINTS } from '../config';
-import { logger } from '../config/logger';
+import { apiLog, logger } from '../config/logger';
 
 interface Permission {
   email: string;
@@ -24,8 +24,8 @@ interface Permission {
   valid_from: string;
   valid_until: string;
   created_at: string;
-  table_id: string;
-  table_name?: string;
+  device_name?: string | null;
+  description?: string | null;
 }
 
 type DeviceId = 1 | 2 | 3;
@@ -53,10 +53,60 @@ const Y_AXIS_COLORS = ['#8ac6bb', '#b2b27a', '#e6a157'];
 
 interface ExperimentSummary {
   experimentName: string;
-  firstTimestamp: { value: string };
-  lastTimestamp: { value: string };
-  sensorTypes: string[];
+  experimentId?: number | null;
+  firstTimestamp: string | { value: string };
+  lastTimestamp: string | { value: string };
+  sensorTypes?: string[];
+  sensors?: string[];
+  parameters?: string[];
+  labelOptions?: string[];
+  locationOptions?: string[];
+  sensorLabelMap?: Record<string, string[]>;
+  labelCounts?: Record<string, number>;
+  sensorLocationMap?: Record<string, string>;
 }
+
+const parseSummaryTimestamp = (
+  value: string | { value: string } | null | undefined
+): Date | null => {
+  const timestamp = typeof value === 'string' ? value : value?.value;
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// Keep date picker aligned to UTC calendar days from backend timestamps.
+const parseUtcCalendarDayFromSummary = (
+  value: string | { value: string } | null | undefined
+): { year: number; month: number; day: number } | null => {
+  const timestamp = typeof value === 'string' ? value : value?.value;
+  if (!timestamp) return null;
+  const m = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (!m) return null;
+  return {
+    year: Number(m[1]),
+    month: Number(m[2]) - 1,
+    day: Number(m[3]),
+  };
+};
+
+const utcCalendarDayStartFromSummary = (
+  value: string | { value: string } | null | undefined
+): Date | null => {
+  const p = parseUtcCalendarDayFromSummary(value);
+  if (!p) return null;
+  return new Date(p.year, p.month, p.day, 0, 0, 0, 0);
+};
+
+const utcCalendarDayEndFromSummary = (
+  value: string | { value: string } | null | undefined
+): Date | null => {
+  const p = parseUtcCalendarDayFromSummary(value);
+  if (!p) return null;
+  return new Date(p.year, p.month, p.day, 23, 59, 59, 999);
+};
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
 
 /**
  * Dashboard
@@ -124,6 +174,28 @@ const Dashboard: React.FC = () => {
       if (!data.success) {
         throw new Error('Unable to access your account permissions. Please contact your system administrator to ensure your account has been properly configured.');
       }
+
+      const permissionsForFront: Permission[] = Array.isArray(data.permissions) ? data.permissions : [];
+      const uniqueOwnersForFront = Array.from(
+        new Set(permissionsForFront.map((permission: Permission) => permission.owner))
+      ).sort();
+      const uniqueSystemsForFront = Array.from(
+        new Map<string, Permission>(
+          permissionsForFront.map((permission) => [permission.mac_address, permission])
+        ).values()
+      ).map((permission) => ({
+        mac_address: permission.mac_address,
+        owner: permission.owner,
+        label: getSystemDropdownLabel(permission),
+        experiment: permission.experiment,
+      }));
+
+      apiLog('[API] permissions response', data);
+      apiLog('[API] permissions sorted for front', {
+        uniqueOwners: uniqueOwnersForFront,
+        uniqueSystems: uniqueSystemsForFront,
+      });
+
       setPermissions(data.permissions);
       if (data.permissions.length > 0) {
         setSelectedPermission(data.permissions[0]);
@@ -169,17 +241,17 @@ const Dashboard: React.FC = () => {
 
   /**
    * fetchExperimentSummary
-   * Fetches experiment summary for a given table and mac address.
+   * Fetches experiment summary for a given owner and mac address.
    * Updates experimentSummaries state.
-   * @param tableId - string (BigQuery table ID)
+   * @param owner - string
    * @param macAddress - string (system MAC address)
    */
-  const fetchExperimentSummary = async (tableId: string, macAddress: string) => {
+  const fetchExperimentSummary = async (owner: string, macAddress: string) => {
     setLoadingSummary(true);
     setSummaryError(null);
     try {
       // Gather all permitted experiments for this mac_address
-      const permitted = permissions.filter(p => p.mac_address === macAddress);
+      const permitted = permissions.filter(p => p.mac_address === macAddress && p.owner === owner);
       let experiments: string[] = permitted.map(p => p.experiment);
       // If admin (has '*'), only send ['*']
       if (experiments.includes('*')) experiments = ['*'];
@@ -190,7 +262,8 @@ const Dashboard: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          table_id: tableId,
+          owner,
+          mac_address: macAddress,
           experiments
         }),
       });
@@ -200,6 +273,23 @@ const Dashboard: React.FC = () => {
       }
 
       const data = await response.json();
+      const activeExperimentsForFront = data
+        .filter((exp: ExperimentSummary) => isExperimentActive(exp))
+        .slice()
+        .sort(sortExperimentsDescending)
+        .map((exp: ExperimentSummary) => exp.experimentName);
+      const inactiveExperimentsForFront = data
+        .filter((exp: ExperimentSummary) => !isExperimentActive(exp))
+        .slice()
+        .sort(sortExperimentsDescending)
+        .map((exp: ExperimentSummary) => exp.experimentName);
+
+      apiLog('[API] experiment-summary response', data);
+      apiLog('[API] experiment-summary sorted for front', {
+        activeExperiments: activeExperimentsForFront,
+        inactiveExperiments: inactiveExperimentsForFront,
+      });
+
       logger.info('Experiment summaries:', data);
       setExperimentSummaries(data);
     } catch (err) {
@@ -218,17 +308,12 @@ const Dashboard: React.FC = () => {
   const handlePermissionSelect = async (permission: Permission) => {
     setSelectedPermission(permission);
     generateMockData();
-    if (permission.table_id) {
-      setPreviewLoading(false);
-      setPreviewError(null);
-      try {
-        await fetchExperimentSummary(permission.table_id, permission.mac_address);
-      } catch (err: any) {
-        setPreviewError(err.message || 'Failed to fetch preview');
-      }
-    } else {
-      setPreviewError(null);
-      setPreviewLoading(false);
+    setPreviewLoading(false);
+    setPreviewError(null);
+    try {
+      await fetchExperimentSummary(permission.owner, permission.mac_address);
+    } catch (err: any) {
+      setPreviewError(err.message || 'Failed to fetch preview');
     }
   };
 
@@ -322,35 +407,67 @@ const Dashboard: React.FC = () => {
   };
 
   /**
+   * getSystemDropdownLabel
+   * Label for the system/device dropdown from /api/permissions.
+   * Fallback: device_name → description → mac_address → owner
+   */
+  const getSystemDropdownLabel = (p: Permission): string => {
+    const deviceName = p.device_name?.trim();
+    if (deviceName) return removeMacFromDisplayName(deviceName);
+    const description = p.description?.trim();
+    if (description) return description;
+    const mac = p.mac_address?.trim();
+    if (mac) return mac;
+    return p.owner;
+  };
+
+  /**
    * isExperimentActive
-   * Checks if an experiment's lastTimestamp date matches today's date (ignoring time).
+   * Checks if an experiment has reported data in the last hour.
    * @param exp - ExperimentSummary object
-   * @returns boolean - true if the experiment's last date is today
+   * @returns boolean - true if lastTimestamp is within one hour from now
    */
   const isExperimentActive = (exp: ExperimentSummary): boolean => {
-    const lastDate = new Date(exp.lastTimestamp.value);
-    const today = new Date();
-    return (
-      lastDate.getFullYear() === today.getFullYear() &&
-      lastDate.getMonth() === today.getMonth() &&
-      lastDate.getDate() === today.getDate()
-    );
+    const lastDate = parseSummaryTimestamp(exp.lastTimestamp);
+    if (!lastDate) return false;
+    return Date.now() - lastDate.getTime() <= ONE_HOUR_MS;
+  };
+
+  const getExperimentOptionLabel = (exp: ExperimentSummary): string => {
+    const idPrefix = typeof exp.experimentId === 'number' ? `#${exp.experimentId} - ` : '';
+    return `${idPrefix}${exp.experimentName}`;
   };
 
   /**
    * sortExperimentsDescending
-   * Sorts experiments in descending order by experiment number (latest first).
+   * Sorts experiments by backend id first, then recency, then name fallback.
    * @param a - ExperimentSummary
    * @param b - ExperimentSummary
    * @returns number - comparison result for sorting
    */
   const sortExperimentsDescending = (a: ExperimentSummary, b: ExperimentSummary): number => {
-    // Extract numbers from experimentName, fallback to string compare
+    // Primary sort: explicit backend experiment id (latest first).
+    const idA = typeof a.experimentId === 'number' ? a.experimentId : null;
+    const idB = typeof b.experimentId === 'number' ? b.experimentId : null;
+    if (idA !== null && idB !== null && idA !== idB) {
+      return idB - idA;
+    }
+
+    // Secondary sort: newest lastTimestamp first (handles equal/missing ids).
+    const tsA = parseSummaryTimestamp(a.lastTimestamp)?.getTime() ?? Number.NEGATIVE_INFINITY;
+    const tsB = parseSummaryTimestamp(b.lastTimestamp)?.getTime() ?? Number.NEGATIVE_INFINITY;
+    if (tsA !== tsB) {
+      return tsB - tsA;
+    }
+
+    // Tertiary fallback: parse number from experimentName for legacy naming patterns.
     const numA = parseInt(a.experimentName.match(/\d+/)?.[0] || '0', 10);
     const numB = parseInt(b.experimentName.match(/\d+/)?.[0] || '0', 10);
-    if (!isNaN(numA) && !isNaN(numB)) {
+    if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) {
       return numB - numA;
     }
+
+    // Final deterministic fallback.
     return a.experimentName.localeCompare(b.experimentName);
   };
 
@@ -468,8 +585,41 @@ const Dashboard: React.FC = () => {
         exp => exp.experimentName === selectedExperiment
       );
       if (experimentData) {
-        const startDate = new Date(experimentData.firstTimestamp.value);
-        const endDate = new Date(experimentData.lastTimestamp.value);
+        let startDate = utcCalendarDayStartFromSummary(experimentData.firstTimestamp);
+        let endDate = utcCalendarDayEndFromSummary(experimentData.lastTimestamp);
+
+        if (!startDate || !endDate) {
+          // Fallback for older payload shapes.
+          const firstParsed = parseSummaryTimestamp(experimentData.firstTimestamp);
+          const lastParsed = parseSummaryTimestamp(experimentData.lastTimestamp);
+          if (firstParsed && lastParsed) {
+            startDate = new Date(
+              firstParsed.getUTCFullYear(),
+              firstParsed.getUTCMonth(),
+              firstParsed.getUTCDate(),
+              0, 0, 0, 0
+            );
+            endDate = new Date(
+              lastParsed.getUTCFullYear(),
+              lastParsed.getUTCMonth(),
+              lastParsed.getUTCDate(),
+              23, 59, 59, 999
+            );
+          }
+        }
+
+        if (!startDate || !endDate) {
+          setDateRange([null, null]);
+          setMinDate(null);
+          setMaxDate(null);
+          return;
+        }
+
+        if (startDate > endDate) {
+          [startDate, endDate] = [endDate, startDate];
+        }
+
+        // Calendar selection should operate on whole UTC calendar days in the widget.
         setMinDate(startDate);
         setMaxDate(endDate);
         setDateState([
@@ -592,7 +742,7 @@ const Dashboard: React.FC = () => {
                 <option value="">Select a system</option>
                 {uniqueSystems.map((p) => (
                   <option key={p.mac_address} value={p.mac_address}>
-                    {removeMacFromDisplayName(p.table_name || `${p.owner} (${p.mac_address})`)} 
+                    {getSystemDropdownLabel(p)}
                   </option>
                 ))}
               </select>
@@ -653,7 +803,7 @@ const Dashboard: React.FC = () => {
                           <optgroup label="Active Experiments">
                             {activeExperiments.map(exp => (
                               <option key={exp.experimentName} value={exp.experimentName}>
-                                {exp.experimentName}
+                                {getExperimentOptionLabel(exp)}
                               </option>
                             ))}
                           </optgroup>
@@ -666,7 +816,7 @@ const Dashboard: React.FC = () => {
                             <optgroup label="Inactive Experiments">
                               {inactiveExperiments.map(exp => (
                                 <option key={exp.experimentName} value={exp.experimentName}>
-                                  {exp.experimentName}
+                                  {getExperimentOptionLabel(exp)}
                                 </option>
                               ))}
                             </optgroup>
@@ -674,7 +824,7 @@ const Dashboard: React.FC = () => {
                             <>
                               {inactiveExperiments.map(exp => (
                                 <option key={exp.experimentName} value={exp.experimentName}>
-                                  {exp.experimentName}
+                                  {getExperimentOptionLabel(exp)}
                                 </option>
                               ))}
                             </>
@@ -724,7 +874,8 @@ const Dashboard: React.FC = () => {
               dateState={dateState}
               minDate={minDate}
               maxDate={maxDate}
-              table_id={selectedPermission.table_id}
+              owner={selectedPermission.owner}
+              mac_address={selectedPermission.mac_address}
             />
           </div>
         )}

@@ -1,11 +1,42 @@
 import React from 'react';
 import Select from 'react-select';
 import { components, OptionProps } from 'react-select';
+import {
+  expandCompositesByTokenOverlap,
+  parseLabelTokens,
+  tokenSetsIntersect,
+} from '../utils/labelTokenUtils';
+import {
+  atomCountsFromSensorMap,
+  collectAtomicLabelsFromComposites,
+} from '../utils/labelAtomOptions';
 
 interface LabelFilterProps {
   sensorLabelOptions: string[];
+  /** Per-sensor labels (experiment-summary + merged fetch data). */
   sensorLabelMap: Record<string, string[]>;
+  /** Experiment sensor list (e.g. from experiment-summary); used when sensorLabelMap is not yet available. */
+  allSensors: string[];
   onFilterChange: (filteredSensors: string[], includeLabels: string[], excludeLabels: string[]) => void;
+}
+
+/** Include/exclude option values are atomic tokens; counts from sensorLabelMap. */
+function displayAtomForOption(atom: string, atomCounts: Record<string, number>): string {
+  const n = atomCounts[atom];
+  if (typeof n !== 'number' || Number.isNaN(n)) return atom;
+  const unit = n === 1 ? 'sensor' : 'sensors';
+  return `${atom} (${n} ${unit})`;
+}
+
+/** True if any excluded atom shares a token with any sensor composite label. */
+function sensorMatchesExcludeAtoms(sensorLabels: string[], excludeAtoms: string[]): boolean {
+  for (const ex of excludeAtoms) {
+    const exTok = parseLabelTokens(ex);
+    for (const sl of sensorLabels) {
+      if (tokenSetsIntersect(parseLabelTokens(sl), exTok)) return true;
+    }
+  }
+  return false;
 }
 
 interface LabelOption {
@@ -13,7 +44,6 @@ interface LabelOption {
   label: string;
 }
 
-// Custom Option component with checkbox
 const Option = (props: OptionProps<LabelOption, true>) => {
   return (
     <div className="cursor-pointer">
@@ -36,48 +66,69 @@ const Option = (props: OptionProps<LabelOption, true>) => {
 const LabelFilter: React.FC<LabelFilterProps> = ({
   sensorLabelOptions,
   sensorLabelMap,
+  allSensors = [],
   onFilterChange
 }) => {
   const [selectedIncludeLabels, setSelectedIncludeLabels] = React.useState<string[]>([]);
   const [selectedExcludeLabels, setSelectedExcludeLabels] = React.useState<string[]>([]);
   const [isAndMode, setIsAndMode] = React.useState(false);
 
-  // Icon size variable for AND/OR images
   const iconSize = "w-12 h-12";
 
-  // Convert label options to react-select format
-  const labelOptions: LabelOption[] = sensorLabelOptions.map(label => ({
-    value: label,
-    label: label
-  }));
+  const atomicValues = React.useMemo(
+    () => collectAtomicLabelsFromComposites(sensorLabelOptions),
+    [sensorLabelOptions]
+  );
 
-  // Function to filter sensors based on selected labels and logic mode
+  const atomCounts = React.useMemo(
+    () => atomCountsFromSensorMap(sensorLabelMap, sensorLabelOptions),
+    [sensorLabelMap, sensorLabelOptions]
+  );
+
+  const labelOptions: LabelOption[] = React.useMemo(() => {
+    return atomicValues.map((atom) => ({
+      value: atom,
+      label: displayAtomForOption(atom, atomCounts),
+    }));
+  }, [atomicValues, atomCounts]);
+
   const filterSensors = React.useCallback((
     includeLabels: string[],
     excludeLabels: string[],
     andMode: boolean
   ) => {
+    const hasPerSensorLabels = Object.keys(sensorLabelMap).length > 0;
+
     if (includeLabels.length === 0 && excludeLabels.length === 0) {
-      onFilterChange(Object.keys(sensorLabelMap), includeLabels, excludeLabels);
+      onFilterChange([...allSensors], includeLabels, excludeLabels);
       return;
     }
 
+    if (!hasPerSensorLabels) {
+      onFilterChange([...allSensors], includeLabels, excludeLabels);
+      return;
+    }
+
+    const expandedInclude = expandCompositesByTokenOverlap(
+      includeLabels,
+      sensorLabelOptions
+    );
+
     const filteredSensors = Object.entries(sensorLabelMap)
       .filter(([_, sensorLabels]) => {
-        // Handle include labels
         if (includeLabels.length > 0) {
           const hasIncludeLabels = andMode
-            ? includeLabels.every(label => sensorLabels.includes(label))
-            : includeLabels.some(label => sensorLabels.includes(label));
+            ? includeLabels.every((sel) =>
+                sensorLabels.some((sl) =>
+                  tokenSetsIntersect(parseLabelTokens(sel), parseLabelTokens(sl))
+                )
+              )
+            : sensorLabels.some((sl) => expandedInclude.includes(sl));
           if (!hasIncludeLabels) return false;
         }
 
-        // Handle exclude labels
         if (excludeLabels.length > 0) {
-          const hasExcludeLabels = excludeLabels.some(label => 
-            sensorLabels.includes(label)
-          );
-          if (hasExcludeLabels) return false;
+          if (sensorMatchesExcludeAtoms(sensorLabels, excludeLabels)) return false;
         }
 
         return true;
@@ -85,23 +136,20 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
       .map(([sensor]) => sensor);
 
     onFilterChange(filteredSensors, includeLabels, excludeLabels);
-  }, [sensorLabelMap, onFilterChange]);
+  }, [sensorLabelMap, allSensors, onFilterChange, sensorLabelOptions]);
 
-  // Handle include labels change
-  const handleIncludeLabelsChange = (selected: any) => {
-    const newIncludeLabels = selected.map((option: LabelOption) => option.value);
+  const handleIncludeLabelsChange = (selected: readonly LabelOption[] | null) => {
+    const newIncludeLabels = (selected ?? []).map((option) => option.value);
     setSelectedIncludeLabels(newIncludeLabels);
     filterSensors(newIncludeLabels, selectedExcludeLabels, isAndMode);
   };
 
-  // Handle exclude labels change
-  const handleExcludeLabelsChange = (selected: any) => {
-    const newExcludeLabels = selected.map((option: LabelOption) => option.value);
+  const handleExcludeLabelsChange = (selected: readonly LabelOption[] | null) => {
+    const newExcludeLabels = (selected ?? []).map((option) => option.value);
     setSelectedExcludeLabels(newExcludeLabels);
     filterSensors(selectedIncludeLabels, newExcludeLabels, isAndMode);
   };
 
-  // Handle logic mode change
   const handleLogicModeChange = (newMode: boolean) => {
     setIsAndMode(newMode);
     filterSensors(selectedIncludeLabels, selectedExcludeLabels, newMode);
@@ -139,7 +187,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         </label>
         <Select
           isMulti
-          options={labelOptions.sort((a, b) => a.label.localeCompare(b.label))}
+          options={labelOptions}
           value={labelOptions.filter(option => selectedIncludeLabels.includes(option.value))}
           onChange={handleIncludeLabelsChange}
           components={{ Option }}
@@ -167,7 +215,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         </label>
         <Select
           isMulti
-          options={labelOptions.sort((a, b) => a.label.localeCompare(b.label))}
+          options={labelOptions}
           value={labelOptions.filter(option => selectedExcludeLabels.includes(option.value))}
           onChange={handleExcludeLabelsChange}
           components={{ Option }}
@@ -192,4 +240,4 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
   );
 };
 
-export default LabelFilter; 
+export default LabelFilter;

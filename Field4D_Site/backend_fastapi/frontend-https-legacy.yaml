@@ -1,0 +1,22 @@
+defaultService: https://www.googleapis.com/compute/v1/projects/iucc-f4d/global/backendBuckets/frontend-bucket
+fingerprint: zxjPRWV9_kA=
+name: frontend-https
+hostRules:
+- hosts:
+  - '*'
+  pathMatcher: allpaths
+pathMatchers:
+- name: allpaths
+  defaultService: https://www.googleapis.com/compute/v1/projects/iucc-f4d/global/backendBuckets/frontend-bucket
+  routeRules:
+  - priority: 0
+    matchRules:
+    - fullPathMatch: /legecy
+    urlRedirect:
+      pathRedirect: /legecy/
+      redirectResponseCode: MOVED_PERMANENTLY_DEFAULT
+      stripQuery: false
+  - priority: 1
+    matchRules:
+    - prefixMatch: /legecy/
+    service: https://www.googleapis.com/compute/v1/projects/iucc-f4d/global/backendBuckets/frontend-legacy-bucket

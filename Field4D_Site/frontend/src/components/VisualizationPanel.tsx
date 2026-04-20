@@ -47,6 +47,7 @@ interface VisualizationPanelProps {
   selectedSensors: string[];
   experimentName?: string;
   getSensorColor?: (sensor: string) => string;
+  getSensorDisplayName?: (sensor: string) => string;
   /**
    * Whether outlier filtering is enabled (controlled by parent)
    */
@@ -168,7 +169,73 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   const [hasAppliedHourFilter, setHasAppliedHourFilter] = useState(false); // Track if Apply has been clicked at least once
   const [isApplyingHourFilter, setIsApplyingHourFilter] = useState(false); // Loading state for applying filter
   const hourRangeRef = useRef<[number, number]>([0, 23]); // Ref to avoid re-renders during slider movement
-  
+  /** Draft strings for hour number inputs; null = show committed `hourRange` (avoids coercing on each keystroke). */
+  const [hourDraftStart, setHourDraftStart] = useState<string | null>(null);
+  const [hourDraftEnd, setHourDraftEnd] = useState<string | null>(null);
+
+  const clearHourDrafts = () => {
+    setHourDraftStart(null);
+    setHourDraftEnd(null);
+  };
+
+  const commitHourStartFromDraft = () => {
+    if (hourDraftStart === null) return;
+    const trimmed = hourDraftStart.trim();
+    if (trimmed === '') {
+      setHourDraftStart(null);
+      return;
+    }
+    let n = parseInt(trimmed, 10);
+    if (Number.isNaN(n)) {
+      setHourDraftStart(null);
+      return;
+    }
+    n = Math.max(0, Math.min(23, n));
+    n = Math.min(n, hourRangeRef.current[1]);
+    hourRangeRef.current = [n, hourRangeRef.current[1]];
+    setHourRange([...hourRangeRef.current]);
+    setHourDraftStart(null);
+  };
+
+  const commitHourEndFromDraft = () => {
+    if (hourDraftEnd === null) return;
+    const trimmed = hourDraftEnd.trim();
+    if (trimmed === '') {
+      setHourDraftEnd(null);
+      return;
+    }
+    let n = parseInt(trimmed, 10);
+    if (Number.isNaN(n)) {
+      setHourDraftEnd(null);
+      return;
+    }
+    n = Math.max(0, Math.min(23, n));
+    n = Math.max(n, hourRangeRef.current[0]);
+    hourRangeRef.current = [hourRangeRef.current[0], n];
+    setHourRange([...hourRangeRef.current]);
+    setHourDraftEnd(null);
+  };
+
+  /** Apply / slider: merge both drafts then single commit (order-independent, fixes crossing). */
+  const flushHourDraftsToRef = () => {
+    let s = hourRangeRef.current[0];
+    let e = hourRangeRef.current[1];
+    if (hourDraftStart !== null && hourDraftStart.trim() !== '') {
+      const p = parseInt(hourDraftStart.trim(), 10);
+      if (!Number.isNaN(p)) s = p;
+    }
+    if (hourDraftEnd !== null && hourDraftEnd.trim() !== '') {
+      const p = parseInt(hourDraftEnd.trim(), 10);
+      if (!Number.isNaN(p)) e = p;
+    }
+    s = Math.max(0, Math.min(23, s));
+    e = Math.max(0, Math.min(23, e));
+    if (s > e) [s, e] = [e, s];
+    hourRangeRef.current = [s, e];
+    setHourRange([s, e]);
+    clearHourDrafts();
+  };
+
   // Hierarchical grouping state (only for BoxPlot)
   const [boxPlotGroupingMode, setBoxPlotGroupingMode] = useState<'date-label' | 'label' | 'sensor'>('date-label');
 
@@ -213,9 +280,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     }
   }, [selectedViz]);
 
-  // Reset hour filter applied state when switching visualizations or disabling filter
+  // Reset hour filter when leaving box/histogram or disabling the toggle (shared state for both)
   useEffect(() => {
-    if (selectedViz !== 'box' || !hourRangeEnabled) {
+    if (!['box', 'histogram'].includes(selectedViz) || !hourRangeEnabled) {
       setHasAppliedHourFilter(false);
       setAppliedHourRange(null);
       setIsApplyingHourFilter(false);
@@ -389,9 +456,12 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       data = filterArtifacts([...data]); // Create copy to avoid mutation
     }
     
-    // Apply hour range filtering for BoxPlot (only if filter has been applied)
-    if (selectedViz === 'box' && hourRangeEnabled && appliedHourRange !== null) {
-      // Only filter if range is not 0-23 (all hours)
+    // Apply hour range filtering for BoxPlot and Histogram (same rules; only after Apply sets appliedHourRange)
+    if (
+      (selectedViz === 'box' || selectedViz === 'histogram') &&
+      hourRangeEnabled &&
+      appliedHourRange !== null
+    ) {
       if (appliedHourRange[0] !== 0 || appliedHourRange[1] !== 23) {
         data = filterByHourRange(data, appliedHourRange);
       }
@@ -786,8 +856,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
         )
       )}
 
-      {/* Hour Range Filter - Only for BoxPlot */}
-      {activeTab === 'visualization' && selectedViz === 'box' && (
+      {/* Hour Range Filter - BoxPlot and Histogram (shared state, same Apply flow) */}
+      {activeTab === 'visualization' && ['box', 'histogram'].includes(selectedViz) && (
         <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <label className="flex items-center space-x-2">
@@ -835,6 +905,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                       // Only update state for display, use requestAnimationFrame to batch updates
                       requestAnimationFrame(() => {
                         setHourRange([...hourRangeRef.current]);
+                        clearHourDrafts();
                       });
                     }}
                     className="absolute w-full range-start"
@@ -863,6 +934,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                       // Only update state for display, use requestAnimationFrame to batch updates
                       requestAnimationFrame(() => {
                         setHourRange([...hourRangeRef.current]);
+                        clearHourDrafts();
                       });
                     }}
                     className="absolute w-full range-end"
@@ -978,28 +1050,36 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
-                    type="number"
-                    min="0"
-                    max={hourRange[1]}
-                    value={hourRange[0]}
-                    onChange={(e) => {
-                      const val = Math.max(0, Math.min(hourRangeRef.current[1], parseInt(e.target.value) || 0));
-                      hourRangeRef.current = [val, hourRangeRef.current[1]];
-                      setHourRange([...hourRangeRef.current]);
+                    type="text"
+                    inputMode="numeric"
+                    aria-label="Hour range start"
+                    value={hourDraftStart !== null ? hourDraftStart : String(hourRange[0])}
+                    onChange={(e) => setHourDraftStart(e.target.value)}
+                    onBlur={commitHourStartFromDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitHourStartFromDraft();
+                        (e.target as HTMLInputElement).blur();
+                      }
                     }}
                     className="w-16 px-2 py-1 border border-gray-300 rounded text-base focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
                     style={{ fontSize: '16px' }}
                   />
                   <span className="text-sm text-gray-500">to</span>
                   <input
-                    type="number"
-                    min={hourRange[0]}
-                    max="23"
-                    value={hourRange[1]}
-                    onChange={(e) => {
-                      const val = Math.max(hourRangeRef.current[0], Math.min(23, parseInt(e.target.value) || 23));
-                      hourRangeRef.current = [hourRangeRef.current[0], val];
-                      setHourRange([...hourRangeRef.current]);
+                    type="text"
+                    inputMode="numeric"
+                    aria-label="Hour range end"
+                    value={hourDraftEnd !== null ? hourDraftEnd : String(hourRange[1])}
+                    onChange={(e) => setHourDraftEnd(e.target.value)}
+                    onBlur={commitHourEndFromDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitHourEndFromDraft();
+                        (e.target as HTMLInputElement).blur();
+                      }
                     }}
                     className="w-16 px-2 py-1 border border-gray-300 rounded text-base focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
                     style={{ fontSize: '16px' }}
@@ -1007,6 +1087,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                   <button
                     type="button"
                     onClick={() => {
+                      flushHourDraftsToRef();
                       setIsApplyingHourFilter(true);
                       setAppliedHourRange([...hourRangeRef.current]);
                       setHourRange([...hourRangeRef.current]);
@@ -1047,7 +1128,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       {/* Group by and Error Type Controls */}
       {activeTab === 'visualization' && (
         <div>
-          {selectedViz === 'scatter' && (
+          {(selectedViz === 'scatter' || selectedViz === 'histogram') && (
             <div className="flex items-center justify-center mb-4 space-x-4">
               <div className="inline-flex rounded-md shadow-sm bg-gray-100" role="group">
                 <button
@@ -1067,7 +1148,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
               </div>
               
               {/* Error Type Selection - Only show for scatter plot */}
-              {props.groupBy === 'label' && (
+              {selectedViz === 'scatter' && props.groupBy === 'label' && (
                 <div className="flex items-center space-x-2">
                   <div className="relative group">
                     <select
@@ -1151,6 +1232,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 selectedSensors={props.selectedSensors}
                 experimentName={props.experimentName}
                 getSensorColor={props.getSensorColor}
+                getSensorDisplayName={props.getSensorDisplayName}
                 getParameterUnit={getParameterUnit}
                 sensorLabelMap={props.sensorLabelMap}
                 groupBy={props.groupBy}
@@ -1176,6 +1258,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                   selectedSensors={props.selectedSensors}
                   experimentName={props.experimentName}
                   getSensorColor={props.getSensorColor}
+                  getSensorDisplayName={props.getSensorDisplayName}
                   getParameterUnit={getParameterUnit}
                   onParameterLimitExceeded={() => {
                     setSelectedParameters(selectedParameters.slice(0, 2));
@@ -1204,16 +1287,27 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
           )}
           {activeTab === 'visualization' && selectedViz === 'histogram' && (
             <div className="flex justify-center">
-              <Histogram
-                data={processedData}
-                selectedParameters={selectedParameters}
-                selectedSensors={props.selectedSensors}
-                experimentName={props.experimentName}
-                getSensorColor={props.getSensorColor}
-                getParameterUnit={getParameterUnit}
-                sensorLabelMap={props.sensorLabelMap}
-                includedLabels={props.includedLabels}
-              />
+              {isApplyingHourFilter ? (
+                <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent mb-4"></div>
+                    <p className="text-lg font-medium text-gray-700 mb-2">Applying Filter</p>
+                    <p className="text-sm text-gray-500">Processing data and rendering visualization...</p>
+                  </div>
+                </div>
+              ) : (
+                <Histogram
+                  data={processedData}
+                  selectedParameters={selectedParameters}
+                  selectedSensors={props.selectedSensors}
+                  experimentName={props.experimentName}
+                  getSensorColor={props.getSensorColor}
+                  getParameterUnit={getParameterUnit}
+                  sensorLabelMap={props.sensorLabelMap}
+                  includedLabels={props.includedLabels}
+                  groupBy={props.groupBy}
+                />
+              )}
             </div>
           )}
         </>

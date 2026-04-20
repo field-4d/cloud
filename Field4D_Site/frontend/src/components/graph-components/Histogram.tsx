@@ -9,6 +9,7 @@ import { Layout } from 'plotly.js-dist-min';
 import OutlierToggle from '../Advanced-function/OutlierToggle';
 import Select from 'react-select';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
+import { getEffectiveLabel, type RowWithSensorLabel } from '../../utils/labelGrouping';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -52,7 +53,8 @@ interface HistogramProps {
   sensorLabelMap?: Record<string, string[]>;
   includedLabels?: string[];
   legendSize?: number; // New prop for controlling legend size
-
+  /** When 'label', distributions split by long-format row label (same as scatter/box). */
+  groupBy?: 'sensor' | 'label';
 }
 
 // Add this function after the COLORS constant
@@ -181,6 +183,7 @@ const Histogram: React.FC<HistogramProps> = ({
   sensorLabelMap = {},
   includedLabels = [],
   legendSize = 18 , // deafult legend size
+  groupBy = 'sensor',
 }) => {
   // Outlier filtering toggle state (local to Histogram)
   const [outlierFiltering, setOutlierFiltering] = React.useState<boolean>(() => {
@@ -191,8 +194,6 @@ const Histogram: React.FC<HistogramProps> = ({
     localStorage.setItem('histogramOutlierFiltering', String(outlierFiltering));
   }, [outlierFiltering]);
 
-  // Group mode: 'all' (entire data) or 'label'
-  const [groupMode, setGroupMode] = React.useState<'all' | 'label'>('all');
   // Bin count state
   const [binCount, setBinCount] = React.useState<number>(50);
 
@@ -274,8 +275,9 @@ const Histogram: React.FC<HistogramProps> = ({
 
   // Prepare traces and subplot layout
   let traces: any[] = [];
-  let showLegend = groupMode === 'label';
-  if (groupMode === 'all') {
+  const useLabelMode = groupBy === 'label';
+  let showLegend = useLabelMode;
+  if (!useLabelMode) {
     traces = parametersToRender.map((param, idx) => {
       const paramData = processedData.data.filter(d => d.parameter === param && selectedSensors.includes(d.sensor));
       const xVals = paramData.map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
@@ -294,17 +296,25 @@ const Histogram: React.FC<HistogramProps> = ({
         showlegend: false,
       };
     });
-  } else if (groupMode === 'label') {
+  } else if (useLabelMode) {
     traces = parametersToRender.flatMap((param, pIdx) => {
-      const labels = includedLabels.length > 0 ? includedLabels : Array.from(new Set(Object.values(sensorLabelMap).flat()));
-      const allVals = processedData.data.filter(d => d.parameter === param && selectedSensors.includes(d.sensor)).map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
+      const labels =
+        includedLabels.length > 0
+          ? includedLabels
+          : Array.from(new Set(Object.values(sensorLabelMap).flat()));
+      const baseRows = processedData.data.filter(
+        (d) => d.parameter === param && selectedSensors.includes(String(d.sensor))
+      );
+      const allVals = baseRows.map((d) => d.value).filter((v) => v !== null && v !== undefined && !isNaN(v));
+      if (allVals.length === 0) return [];
       const min = Math.min(...allVals);
       const max = Math.max(...allVals);
-      const size = (max - min) / binCount;
+      const size = Math.max((max - min) / binCount, 1e-9);
       return labels.map((label, lIdx) => {
-        const sensorsForLabel = Object.entries(sensorLabelMap).filter(([sensor, labels]) => labels.includes(label)).map(([sensor]) => sensor);
-        const labelData = processedData.data.filter(d => d.parameter === param && sensorsForLabel.includes(d.sensor));
-        const xVals = labelData.map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
+        const labelData = baseRows.filter(
+          (d) => getEffectiveLabel(d as RowWithSensorLabel, sensorLabelMap) === label
+        );
+        const xVals = labelData.map((d) => d.value).filter((v) => v !== null && v !== undefined && !isNaN(v));
         return {
           x: xVals,
           type: 'histogram',
@@ -346,7 +356,7 @@ const Histogram: React.FC<HistogramProps> = ({
       l: 100,  // Increased left margin for y-axis labels
       r: 40,  // Right margin
     },
-    barmode: groupMode === 'label' ? 'overlay' : undefined,
+    barmode: useLabelMode ? 'overlay' : undefined,
     legend: {
       font: {
         size: legendSize
@@ -384,7 +394,7 @@ const Histogram: React.FC<HistogramProps> = ({
   const infoTextSize = 18;
 
   // Remove the early return for the label guard, and instead set a flag
-  const showLabelInfo = groupMode === 'label' && (!includedLabels || includedLabels.length === 0);
+  const showLabelInfo = useLabelMode && (!includedLabels || includedLabels.length === 0);
 
   return (
     <div className="w-full">
@@ -438,25 +448,6 @@ const Histogram: React.FC<HistogramProps> = ({
       {processedData.samplingInfo && (
         <SamplingNotification info={processedData.samplingInfo} infoTextSize={infoTextSize} />
       )}
-      {/* Group mode toggle */}
-      <div className="mb-4 flex items-center justify-center">
-        <div className="inline-flex rounded-md shadow-sm bg-gray-100" role="group">
-          <button
-            type="button"
-            className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] focus:text-[#8ac6bb] ${groupMode === 'all' ? 'bg-[#8ac6bb] text-white' : 'bg-white text-gray-700'}`}
-            onClick={() => setGroupMode('all')}
-          >
-            Entire Data
-          </button>
-          <button
-            type="button"
-            className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] focus:text-[#8ac6bb] ${groupMode === 'label' ? 'bg-[#8ac6bb] text-white' : 'bg-white text-gray-700'}`}
-            onClick={() => setGroupMode('label')}
-          >
-            Group by Label
-          </button>
-        </div>
-      </div>
       {/* Chart or info message */}
       {showLabelInfo ? (
         <LabelWarningPlaceholder fontColor={labelWarningFontColor} fontSize={labelWarningFontSize} />

@@ -356,14 +356,24 @@ export default function Auth() {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative"
-    >
-      <div className="absolute inset-0 bg-black bg-opacity-40 z-0" />
-      <div className="z-10 relative p-8 rounded-lg shadow-lg bg-white bg-opacity-80 w-full max-w-md">
-        <div className="flex flex-col items-center">
-          <img src="/logo.png" alt="Field4F Logo" className="w-24 h-24 mb-4" />
-          <h2 className="mt-2 text-center text-3xl font-extrabold text-[#8ac6bb]">
+    <div className="fixed inset-0 z-0 flex min-h-0 flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-4 py-8 sm:px-6 sm:py-10">
+      <div
+        className="pointer-events-none absolute inset-0 bg-black/40"
+        aria-hidden
+      />
+      <div
+        className="relative z-10 w-full max-w-[480px] rounded-2xl border border-white/30 bg-white/85 px-6 py-8 shadow-xl backdrop-blur-sm sm:px-8 sm:py-10"
+      >
+        <div className="flex flex-col items-center text-center">
+          <img
+            src="/logo.png"
+            alt="Field4F Logo"
+            width={498}
+            height={315}
+            decoding="async"
+            className="mb-5 h-auto max-h-28 w-auto max-w-[min(100%,240px)] shrink-0 object-contain object-center"
+          />
+          <h2 className="text-balance text-2xl font-extrabold tracking-tight text-[#8ac6bb] sm:text-3xl">
             {isLogin ? 'Sign in to Field4D' : 'Create your Field4F account'}
           </h2>
         </div>
@@ -426,17 +436,17 @@ export default function Auth() {
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
                 </div>
-                                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    disabled={isLogin && isLocked}
-                    className={`input-field pl-10 ${isLogin && isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                    placeholder="Email address"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  disabled={isLogin && isLocked}
+                  className={`input-field pl-10 ${isLogin && isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  placeholder="Email address"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
               </div>
               {errors.email && <p className="error-message">{errors.email}</p>}
             </div>
@@ -449,17 +459,17 @@ export default function Auth() {
                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                   </svg>
                 </div>
-                                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    disabled={isLogin && isLocked}
-                    className={`input-field pl-10 ${isLogin && isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  disabled={isLogin && isLocked}
+                  className={`input-field pl-10 ${isLogin && isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
                 <button
                   type="button"
                   disabled={isLogin && isLocked}

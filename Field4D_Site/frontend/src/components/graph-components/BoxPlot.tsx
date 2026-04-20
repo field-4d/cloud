@@ -8,6 +8,7 @@ import Plot from 'react-plotly.js';
 import { toast } from 'react-toastify';
 import { BoxPlotData } from 'plotly.js-dist-min';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
+import { getEffectiveLabel, type RowWithSensorLabel } from '../../utils/labelGrouping';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -41,6 +42,7 @@ interface BoxPlotProps {
   hourRange?: { start: number; end: number } | undefined; // Hour range filter (already applied in parent)
   experimentName?: string;
   getSensorColor?: (sensor: string) => string;
+  getSensorDisplayName?: (sensor: string) => string;
   combine?: boolean;
   getParameterUnit?: (parameter: string) => string;
   onParameterLimitExceeded?: () => void;
@@ -89,6 +91,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   hourRange,
   experimentName = '',
   getSensorColor = () => '#8ac6bb',
+  getSensorDisplayName = (sensor: string) => sensor,
   combine = false,
   getParameterUnit = () => '',
   onParameterLimitExceeded,
@@ -135,18 +138,15 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   let expandedData: SensorData[] = data;
   const useLabelGrouping = groupBy === 'label' || mainGroupBy === 'date' || subGroupBy === 'label';
   
-  if (useLabelGrouping && sensorLabelMap && includedLabels.length > 0) {
+  if (useLabelGrouping) {
     expandedData = [];
-    data.forEach(d => {
-      const labels = (sensorLabelMap[d.sensor] || []).filter(l => includedLabels.includes(l));
-      if (labels.length === 0) return;
-      labels.forEach(label => {
-        expandedData.push({ ...d, label });
-      });
+    data.forEach((d) => {
+      const eff = getEffectiveLabel(d as RowWithSensorLabel, sensorLabelMap);
+      if (eff === null) return;
+      if (includedLabels.length === 0 || includedLabels.includes(eff)) {
+        expandedData.push({ ...d, label: eff });
+      }
     });
-  } else if (useLabelGrouping) {
-    // fallback: assign Unknown label if none
-    expandedData = data.map(d => ({ ...d, label: d.label || 'Unknown' }));
   }
 
   // Determine grouping strategy
@@ -166,13 +166,13 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     } else if (mainGroupBy === 'label') {
       mainGroupKey = (d: SensorData) => d.label || 'Unknown';
     } else if (mainGroupBy === 'sensor') {
-      mainGroupKey = (d: SensorData) => d.sensor;
+      mainGroupKey = (d: SensorData) => getSensorDisplayName(d.sensor);
     }
     
     if (subGroupBy === 'label') {
       subGroupKey = (d: SensorData) => d.label || 'Unknown';
     } else if (subGroupBy === 'sensor') {
-      subGroupKey = (d: SensorData) => d.sensor;
+      subGroupKey = (d: SensorData) => getSensorDisplayName(d.sensor);
     }
     
     // Combined key for hierarchical grouping
@@ -182,7 +182,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
       return `${main} - ${sub}`;
     };
   } else if (groupBy === 'sensor') {
-    groupKey = (d: SensorData) => d.sensor;
+    groupKey = (d: SensorData) => getSensorDisplayName(d.sensor);
   } else {
     groupKey = (d: SensorData) => d.label || 'Unknown';
   }

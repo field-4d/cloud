@@ -3,19 +3,20 @@ import { logger } from './config/logger';
 
 
 const getBaseUrl = () => {
-  // Debug logging
-  logger.info('Environment variables:', {
-    DEV: import.meta.env.DEV,
-    VITE_USE_LOCAL_BACKEND: import.meta.env.VITE_USE_LOCAL_BACKEND
-  });
-
-  // Check if we're in development mode and if local backend is enabled
+  // Local backend override for dev only.
   if (import.meta.env.DEV && import.meta.env.VITE_USE_LOCAL_BACKEND === 'true') {
-    // console.log('Running on local backend: http://localhost:3001');
-    return 'http://localhost:3001'; // Local backend URL
+    return 'http://localhost:3001';
   }
-  // console.log('Running on cloud backend');
-  return 'https://field4fd-backend-1000435921680.us-central1.run.app'; // Cloud backend URL
+
+  // Production/staging: rely on VITE_API_BASE_URL.
+  const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envBaseUrl && typeof envBaseUrl === 'string' && envBaseUrl.trim().length > 0) {
+    return envBaseUrl;
+  }
+
+  // Last-resort fallback (should only happen if env var is missing).
+  logger.warn('VITE_API_BASE_URL is not set; falling back to http://localhost:3001');
+  return 'http://localhost:3001';
 };
 
 export const API_BASE_URL = getBaseUrl();

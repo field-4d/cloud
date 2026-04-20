@@ -7,6 +7,12 @@ import React, { useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import { toast } from 'react-toastify';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
+import {
+  collectLabelsFromRows,
+  getEffectiveLabel,
+  rowMatchesParameter,
+  type RowWithSensorLabel,
+} from '../../utils/labelGrouping';
 
 interface SensorData {
   timestamp: string;
@@ -25,6 +31,7 @@ interface ScatterPlotProps {
   selectedSensors: string[];
   experimentName?: string;
   getSensorColor?: (sensor: string) => string;
+  getSensorDisplayName?: (sensor: string) => string;
   plotWidth?: number;
   plotHeight?: number;
   axisConfig?: {
@@ -101,6 +108,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   selectedSensors,
   experimentName = '',
   getSensorColor,
+  getSensorDisplayName = (sensor: string) => sensor,
   plotWidth = 1800,
   plotHeight = 750,
   axisConfig = {},
@@ -165,23 +173,28 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   let plotData: any[] = [];
 
   if (groupBy === 'label' && sensorLabelMap) {
-    // Use only includedLabels if provided, else all unique labels
-    const allLabels = Array.from(new Set(Object.values(sensorLabelMap).flat()));
-    const labelsToPlot = includedLabels && includedLabels.length > 0 ? allLabels.filter(l => includedLabels.includes(l)) : allLabels;
+    // Labels to plot: user selection, validated against labels present in long-format rows (and map fallback)
+    const discovered = collectLabelsFromRows(data as RowWithSensorLabel[], selectedSensors, sensorLabelMap);
+    const fromMap = Array.from(new Set(Object.values(sensorLabelMap).flat()));
+    const union = Array.from(new Set([...discovered, ...fromMap]));
+    const labelsToPlot =
+      includedLabels && includedLabels.length > 0
+        ? includedLabels.filter((l) => union.includes(l))
+        : union;
     const labelColor = getLabelColors(labelsToPlot);
 
     for (let paramIdx = 0; paramIdx < limitedParameters.length; paramIdx++) {
       const param = limitedParameters[paramIdx];
-      // For each label group
-      labelsToPlot.forEach(label => {
-        // Find all sensors with this label
-        const sensorsInGroup = Object.entries(sensorLabelMap)
-          .filter(([sensor, labels]) => labels.includes(label) && selectedSensors.includes(sensor))
-          .map(([sensor]) => sensor);
-        if (sensorsInGroup.length === 0) return;
-        // For each timestamp, average the values of all sensors in the group
-        // 1. Gather all data points for this parameter and these sensors
-        const paramData = data.filter(d => d.parameter === param.replace('SensorData_', '') && sensorsInGroup.includes(String(d.sensor)));
+      // For each label: long-format rows where effective label matches (mean across sensors per timestamp)
+      labelsToPlot.forEach((label) => {
+        const paramData = data.filter(
+          (d) =>
+            rowMatchesParameter(d as RowWithSensorLabel, param) &&
+            selectedSensors.includes(String(d.sensor)) &&
+            getEffectiveLabel(d as RowWithSensorLabel, sensorLabelMap) === label
+        );
+        if (paramData.length === 0) return;
+        const sensorsInGroup = Array.from(new Set(paramData.map((d) => String(d.sensor))));
         // 2. Group by timestamp
         const byTimestamp: Record<string, number[]> = {};
         paramData.forEach(d => {
@@ -274,8 +287,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
     // Default: group by sensor
     plotData = limitedParameters.flatMap((param, paramIdx) => {
           // Filter data for this parameter
-          const paramData = data.filter(d => d.parameter === param.replace('SensorData_', ''));
-      // Grosensorup by  and sort alphabetically
+          const paramData = data.filter((d) => rowMatchesParameter(d as RowWithSensorLabel, param));
       return selectedSensors
             .map(sensor => {
           const sensorData = paramData.filter(d => String(d.sensor) === sensor);
@@ -285,7 +297,9 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             y: sensorData.map(d => d.value == null ? null : Number(d.value)),
                 type: 'scatter',
                 mode: 'lines',
-            name: selectedParameters.length > 1 ? `${sensor}-${param.replace('SensorData_', '')}` : sensor,
+            name: selectedParameters.length > 1
+              ? `${getSensorDisplayName(sensor)}-${param.replace('SensorData_', '')}`
+              : getSensorDisplayName(sensor),
                 yaxis: paramIdx === 0 ? 'y' : 'y2',
                 line: {
                   color: color,

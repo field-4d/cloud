@@ -38,3 +38,9 @@ export const logger = {
     }
   }
 }; 
+
+export const apiLog = (label: string, payload: unknown) => {
+  if (import.meta.env.DEV) {
+    console.log(label, payload);
+  }
+};

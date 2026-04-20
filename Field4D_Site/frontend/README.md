@@ -1,269 +1,391 @@
-# Field4FD Global WebApp 🌐
+# Field4D Frontend
 
-> For overall project setup and backend info, see the root [README.md](../README.md).
+**Author:** Nir Averbuch  
+**Last updated:** 2026-03-29
 
-[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/)
+Single-page application (**React 18**, **TypeScript**, **Vite**) for Field4D: login, pick a permitted system and experiment, select sensors/parameters/dates, fetch long-format data from the **FastAPI** backend, and visualize it with **Plotly**. The browser **never** talks to BigQuery directly.
 
-A powerful web application for real-time visualization and analysis of sensor data from Google Cloud Platform's BigQuery. Built with modern web technologies and designed for scalability and performance.
+**Canonical API schemas:** [../backend_fastapi/README.md](../backend_fastapi/README.md)  
+**Project overview:** [../README.md](../README.md)
 
-## 🚀 Features
+---
 
-### Recent UI/Feature Updates
-- **Sensor Selection Counter:** The "Select Sensors" dropdown now displays a live counter badge (X/Y) next to the label, showing how many sensors are selected out of the total available. The counter updates instantly as you select/deselect sensors and is styled for visibility.
-- **Improved CSV Export:** The CSV export (Download CSV) now always includes all selected sensors and parameters as columns, even if some are missing from the data. Columns are sorted alphabetically (except for the Timestamp column), and missing data is filled with empty values to ensure consistent structure across exports.
-- **Configurable and Centered Plot Area:** The scatter plot area can now be sized programmatically and is centered horizontally for improved aesthetics.
-- **Consistent Correlation Matrix:** The correlation matrix and all related scatter plots always use all parameters from the "Select Parameters" control, ensuring consistent analysis.
+## Features
 
-### Data Visualization
-- 📊 Interactive time-series graphs using Plotly.js
-- 🔍 Multi-sensor and multi-parameter selection (with live selection counter)
-- 📅 Flexible date range selection
-- 📈 Real-time data updates
-- 🎨 Customizable visualization options
+- **Auth** — Login via `POST /api/auth`; JWT stored for the session (see `authUtils.ts`)
+- **Permissions** — `GET /api/permissions` drives which owner / MAC / experiments appear in the dashboard
+- **Experiment summary** — `POST /api/experiment-summary` loads sensors, parameters, **sensor label map**, locations, and label counts
+- **Data fetch** — `POST /api/fetch-data` loads time-series rows; requests are **chunked** (20 sensors per request) in `DataSelector.tsx`
+- **Label-aware UI** — Include/exclude labels (`LabelFilter.tsx`), atomic token helpers (`labelTokenUtils.ts`, `labelAtomOptions.ts`), effective label for charts (`labelGrouping.ts`)
+- **Visualizations** — Scatter, histogram, box plot, correlation matrix/scatter, ANOVA scatter, CSV export (`VisualizationPanel.tsx` + `graph-components/`)
+- **Advanced tools** — Outlier toggle, artifact filter, analytics health check (proxied through backend for CORS)
 
-### Data Management
-- 📥 CSV export functionality (all selected sensors/parameters included, columns sorted, missing data filled)
-- 🔄 Real-time data fetching
-- 📋 Data filtering and sorting
-- 💾 Historical data access
+---
 
-### User Experience
-- 🔐 Secure authentication system
-- 🎯 Intuitive user interface
-- 📱 Responsive design
-- 🌙 Dark/Light mode support
-- ⚡ Fast loading times
-
-### Advanced Analytics
-- 🟢 **Outlier Filtering Toggle**: Enable or disable IQR-based outlier filtering for all visualizations (Scatter, Box, Histogram). Toggle is available next to the Parameters selection and above the Histogram plot. When enabled, outliers are hidden from graphs and CSV export. Toggle state is persisted for user convenience. (See `src/components/Advanced-function/OutlierToggle.tsx`)
-- 📁 **Advanced-function Folder**: New folder for advanced analytic tools, starting with OutlierToggle. Designed for future extensibility (e.g., z-score filtering, more toggles).
-- 🔬 **Analytics Service Integration**: New health monitoring system for external analytics service
-  - **Health Check Button**: Interactive component in Advanced Analytics tab to test endpoint connectivity
-  - **Real-time Status**: Shows service health, version, and response time
-  - **Batch Validation Info**: Displays recommended batch sizes for different data volumes
-  - **CORS-safe Implementation**: Uses backend proxy to avoid cross-origin issues
-  - **Environment Configuration**: Flexible setup using `GCP_ANALYTICS_URL` environment variable
-- 📊 **Enhanced Data Processing**: Improved label-based data filtering
-  - **Label Filtering**: DataSelector component filters data by selected labels from "Include Labels"
-  - **Array-based Labels**: Improved data structure with array-based label storage
-  - **Performance Optimization**: Early filtering reduces data volume and improves performance
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **State Management**: React Context API
-- **Styling**: Tailwind CSS
-- **Data Visualization**: Plotly.js
-- **UI Components**: React-Select, React-Date-Range
-- **Build Tool**: Vite
-
-### Backend
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: Google Cloud BigQuery
-- **Authentication**: JWT
-- **API**: RESTful
-
-## 🔍 Logging Control (Frontend)
-
-The frontend uses a centralized logger utility to control all console output. This makes it easy to enable or disable logging for development or production environments.
-
-### How it works
-- All logging in the codebase should use the `logger` utility from `src/config/logger.ts`.
-- You can enable or disable all logs by setting the `ENABLE_LOGGING` flag in `src/config/logger.ts`.
-- You can also control which log levels (error, warn, info, debug) are enabled.
-
-### Example usage
-```typescript
-import { logger } from '../config/logger';
-
-logger.info('This is an info message');
-logger.error('This is an error');
-logger.warn('This is a warning');
-logger.debug('This is a debug message');
-```
-
-### Configuration
-Edit `src/config/logger.ts`:
-```typescript
-export const LOGGER_CONFIG = {
-  ENABLE_LOGGING: false, // Set to true to enable all logs, false to disable
-  LOG_LEVELS: {
-    ERROR: true,
-    WARN: true,
-    INFO: true,
-    DEBUG: false
-  }
-};
-```
-- Set `ENABLE_LOGGING: false` to silence all logs in production.
-- Set individual log levels to `true` or `false` as needed.
-
-### Note
-If you see logs in the browser console after disabling logging, make sure all direct `console.log` calls have been replaced with the `logger` utility. Third-party library logs cannot be controlled by this flag.
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have:
-- Node.js (v14 or higher)
-- npm or yarn
-- Google Cloud Platform account
-- BigQuery access credentials
-- Git
-
-## 🚀 Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/averbuchnir/Field4FD_global_webApp.git
-   cd Field4FD_global_webApp
-   ```
-
-2. **Install dependencies**
-   ```bash
-   # Install frontend dependencies
-   npm install
-
-   # Install backend dependencies
-   cd backend
-   npm install
-   ```
-
-3. **Environment Setup**
-   Create the following files with your credentials:
-
-   `backend/auth/.env`:
-   ```env
-   GCP_PROJECT_ID=your-project-id
-   GCP_PRIVATE_KEY_ID=your-private-key-id
-   GCP_PRIVATE_KEY=your-private-key
-   GCP_CLIENT_EMAIL=your-client-email
-   GCP_CLIENT_ID=your-client-id
-   GCP_CLIENT_X509_CERT_URL=your-cert-url
-   GCP_USER_TABLE=your-user-table-path
-   ```
-
-   `backend/auth/config.json`:
-   ```json
-   {
-     "bigQuery": {
-       "projectId": "your-project-id",
-       "dataset": "your-dataset",
-       "table": "your-table"
-     }
-   }
-   ```
-
-4. **Start Development Servers**
-   ```bash
-   # Start backend server
-   cd backend
-   npm run dev
-
-   # Start frontend server (in new terminal)
-   cd ..
-   npm run dev
-   ```
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
-Field4FD_global_webApp/
-├── src/
-│   ├── components/          # React components
-│   │   ├── Auth.tsx        # Authentication component
-│   │   ├── Dashboard.tsx   # Main dashboard
-│   │   └── DataSelector.tsx# Data selection interface
-│   ├── types/              # TypeScript type definitions
-│   ├── api/                # API integration
-│   └── App.tsx             # Root component
-├── backend/
-│   ├── auth/               # Authentication logic
-│   ├── routes/             # API routes
-│   └── server.js           # Express server
-├── public/                 # Static assets
-└── package.json            # Project configuration
+frontend/
+├── index.html                 # Vite HTML shell
+├── package.json               # Scripts: dev, build, preview, lint
+├── vite.config.ts             # React plugin; optional /api proxy (see note below)
+├── tailwind.config.js         # (if present) Tailwind customization
+├── postcss.config.js
+├── public/                    # Static files served as-is (favicon, logo, …)
+└── src/
+    ├── main.tsx               # React root
+    ├── App.tsx                # Routes / layout
+    ├── App.css
+    ├── index.css              # Global styles + Tailwind entry
+    ├── vite-env.d.ts          # Vite client types; extend for VITE_* vars
+    ├── config.ts              # API_BASE_URL, API_ENDPOINTS, analytics URL
+    ├── config/
+    │   └── logger.ts          # Centralized logging (ENABLE_LOGGING, levels)
+    ├── utils/
+    │   ├── authUtils.ts       # Login, JWT cookie helpers
+    │   ├── labelGrouping.ts   # getEffectiveLabel, collectLabelsFromRows
+    │   ├── labelTokenUtils.ts  # Atomic label tokens, include/exclude matching
+    │   ├── labelAtomOptions.ts # Options derived from sensorLabelMap
+    │   └── labelDisplay.ts     # Display helpers for sensor + location labels
+    ├── components/
+    │   ├── Auth.tsx
+    │   ├── Dashboard.tsx       # Systems, experiments, experiment-summary POST
+    │   ├── DataSelector.tsx    # Sensors, parameters, dates, fetch-data POST (chunked)
+    │   ├── LabelFilter.tsx
+    │   ├── VisualizationPanel.tsx
+    │   ├── analytics/
+    │   │   ├── HealthCheckButton.tsx
+    │   │   ├── healthCheck.ts
+    │   │   └── index.ts
+    │   ├── Advanced-function/
+    │   │   ├── OutlierToggle.tsx
+    │   │   └── ArtifactFilterToggle.tsx
+    │   └── graph-components/
+    │       ├── ScatterPlot.tsx
+    │       ├── Histogram.tsx
+    │       ├── BoxPlot.tsx
+    │       ├── CorrelationMatrix.tsx
+    │       ├── CorrelationScatter.tsx
+    │       ├── ANOVAResultsScatterPlot.tsx
+    │       ├── LabelWarningPlaceholder.tsx
+    │       └── LoadingSpinner.tsx
 ```
 
-## 🔄 Development Workflow
+---
 
-1. **Branch Structure**
-   - `Dev` (default): Development branch
-   - `main`: Stable releases
-   - `Production`: Production-ready code
+## Prerequisites
 
-2. **Creating Features**
-   ```bash
-   git checkout Dev
-   git checkout -b feature/your-feature-name
-   # Make changes
-   git add .
-   git commit -m "feat: add your feature"
-   git push origin feature/your-feature-name
-   ```
+- **Node.js** 18+ (or 20+ LTS recommended)
+- **npm** (or pnpm/yarn if you adapt commands)
+- **Running FastAPI backend** for full flows (default local: `http://localhost:3001`) — see [backend_fastapi/README.md](../backend_fastapi/README.md)
 
-3. **Code Review**
-   - Create Pull Request from feature branch to `Dev`
-   - Get code review approval
-   - Merge to `Dev`
+---
 
-## 🧪 Testing
+## Installation
 
 ```bash
-# Run frontend tests
-npm test
-
-# Run backend tests
-cd backend
-npm test
+cd frontend
+npm install
 ```
 
-## 📦 Deployment
+---
 
-1. **Production Build**
-   ```bash
-   npm run build
-   cd backend
-   npm run build
-   ```
+## Environment Variables (Vite)
 
-2. **Deploy to Production**
-   ```bash
-   git checkout Production
-   git merge main
-   # Deploy using your preferred method
-   ```
+Only variables prefixed with **`VITE_`** are exposed to client code.
 
-## 🤝 Contributing
+Create **`frontend/.env`**, **`.env.local`**, or **`.env.development.local`** (gitignored) as needed.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+| Variable | When to use | Effect |
+|----------|-------------|--------|
+| `VITE_USE_LOCAL_BACKEND` | Local development | If set to `true` **and** `import.meta.env.DEV` is true, `API_BASE_URL` in `config.ts` becomes **`http://localhost:3001`**. |
+| `VITE_API_BASE_URL` | Production / staging / custom API | Used when **not** taking the local-dev shortcut above (e.g. deployed API origin). Must include scheme: `https://your-api.run.app`. |
 
-**Please send your contributions or proposals to:**
-Idan Ifrach <idan.ifrach@mail.huji.ac.il>, Menachem Moshelion <menachem.moshelion@mail.huji.ac.il>
+**Resolution order in `src/config.ts`:**
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+1. Dev + `VITE_USE_LOCAL_BACKEND=true` → `http://localhost:3001`
+2. Else if `VITE_API_BASE_URL` is non-empty → use it
+3. Else → fallback `http://localhost:3001` and a **warning** in the console
 
-## 📝 License
+**Example `.env.development.local` for local FastAPI:**
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```env
+VITE_USE_LOCAL_BACKEND=true
+```
 
-## 📞 Contact
+**Example production build:**
 
-Nir Averbuch - [GitHub](https://github.com/averbuchnir)
+```env
+VITE_API_BASE_URL=https://your-field4d-backend.example.com
+```
 
-Project Link: [https://github.com/averbuchnir/Field4FD_global_webApp](https://github.com/averbuchnir/Field4FD_global_webApp)
+### Note on `vite.config.ts` proxy
 
-## 🙏 Acknowledgments
+The dev server may define a `proxy` for `/api` to a hosted backend. The app’s **`fetch` calls use absolute URLs** built from `API_BASE_URL` (`config.ts`), so they **do not** automatically use that proxy unless you change `config.ts` to use relative paths. For local development, prefer **`VITE_USE_LOCAL_BACKEND=true`** pointing at `localhost:3001`.
 
-- [React](https://reactjs.org/) - The web framework used
-- [Google Cloud Platform](https://cloud.google.com/) - Cloud infrastructure
-- [Plotly.js](https://plotly.com/javascript/) - Data visualization
-- [Tailwind CSS](https://tailwindcss.com/) - Styling framework 
+---
+
+## Running the Application
+
+All commands assume `cd frontend` first.
+
+### Development (`npm run dev`)
+
+```bash
+npm run dev
+```
+
+- Starts **Vite** dev server (default **http://localhost:5173**).
+- Hot module replacement (HMR) for fast iteration.
+- Ensure the FastAPI backend is running if you need API calls (e.g. port **3001** with `VITE_USE_LOCAL_BACKEND=true`).
+
+### Production build (`npm run build`)
+
+```bash
+npm run build
+```
+
+- Output: **`dist/`** (static HTML, JS, CSS, hashed assets).
+- Deploy `dist/` to any static host (nginx, Cloud Storage + CDN, etc.).
+- Set **`VITE_API_BASE_URL`** at build time to the real API origin (Vite bakes env into the bundle).
+
+### Preview production build locally (`npm run preview`)
+
+```bash
+npm run preview
+```
+
+- Serves **`dist/`** locally (default **http://localhost:4173** — Vite default).
+- Use this to verify production bundles and API connectivity before deployment.
+
+### Lint
+
+```bash
+npm run lint
+```
+
+Runs ESLint on `.ts` / `.tsx` files.
+
+---
+
+## How the Frontend Calls the API
+
+### Pattern
+
+- Uses the browser **`fetch`** API.
+- **POST** requests send **`Content-Type: application/json`** and **`JSON.stringify(body)`**.
+- **GET** requests use query strings where required (e.g. permissions).
+
+Central URL constants live in **`src/config.ts`**:
+
+```ts
+export const API_BASE_URL = /* … */;
+export const API_ENDPOINTS = {
+  AUTH: `${API_BASE_URL}/api/auth`,
+  PERMISSIONS: `${API_BASE_URL}/api/permissions`,
+  EXPERIMENT_SUMMARY: `${API_BASE_URL}/api/experiment-summary`,
+  FETCH_DATA: `${API_BASE_URL}/api/fetch-data`,
+};
+```
+
+### Example: POST with JSON (same pattern as `DataSelector.tsx`)
+
+```ts
+const response = await fetch(API_ENDPOINTS.FETCH_DATA, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    owner,
+    mac_address,
+    experiment: selectedExperiment,
+    selectedSensors: sensorChunk,
+    selectedParameters: selectedParameters,
+    dateRange: utcRange, // { start, end } ISO timestamps
+  }),
+});
+
+if (!response.ok) throw new Error(`HTTP ${response.status}`);
+const data = await response.json();
+```
+
+---
+
+## Request / Response Payloads (frontend contract)
+
+Types below match the FastAPI models. Field names are **camelCase** in JSON where the backend defines them (e.g. `experimentName`, `sensorLabelMap`).
+
+### `POST /api/auth`
+
+**Request:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "plain text"
+}
+```
+
+**Response (success):**
+
+```json
+{
+  "success": true,
+  "message": "Authentication successful",
+  "userData": { "email": "user@example.com" },
+  "jwtToken": "<jwt string>"
+}
+```
+
+Handled in **`authUtils.ts`** / **`Auth.tsx`**.
+
+---
+
+### `GET /api/permissions?email=...`
+
+**Query:** `email` URL-encoded.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "permissions": [
+    {
+      "email": "user@example.com",
+      "owner": "owner_id",
+      "mac_address": "mac",
+      "experiment": "exp_1",
+      "role": "user",
+      "valid_from": "...",
+      "valid_until": null,
+      "created_at": "...",
+      "device_name": "...",
+      "description": null
+    }
+  ]
+}
+```
+
+Used in **`Dashboard.tsx`** to build system and experiment choices.
+
+---
+
+### `POST /api/experiment-summary`
+
+**Request:**
+
+```json
+{
+  "owner": "owner_id",
+  "mac_address": "mac_address_string",
+  "experiments": ["exp_1", "exp_2"]
+}
+```
+
+Use **`["*"]`** to request all experiments for that device (server-side).
+
+**Response:** `ExperimentSummaryRow[]` — array of:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `experimentName` | string | Experiment id/name |
+| `experimentId` | number \| null | Numeric experiment id (`Exp_ID`) used for ordering/display |
+| `firstTimestamp` / `lastTimestamp` | string (ISO) \| null | Data time bounds (UTC from backend) |
+| `sensorCount` | number | Distinct LLA |
+| `rowCount` | number | Total rows |
+| `sensors` | string[] | LLA list |
+| `labelOptions` | string[] | Distinct **latest** labels (per sensor assignment) |
+| `locationOptions` | string[] | Distinct locations |
+| `parameters` | string[] | Variable names |
+| `sensorLabelMap` | `Record<string, string[]>` | LLA → `[composite label]` |
+| `labelCounts` | `Record<string, number>` | Label → sensor count |
+| `sensorLocationMap` | `Record<string, string>` | LLA → latest location |
+
+Fetched when the user selects an experiment in **`Dashboard.tsx`** and passed down to **`DataSelector`** / **`VisualizationPanel`**.
+
+UI behavior in `Dashboard.tsx`:
+- Dropdown label uses `#<experimentId> - <experimentName>` when id exists.
+- Sorting priority is `experimentId` (desc), then `lastTimestamp` (desc), then legacy name fallback.
+- Active/inactive grouping uses recency: **active = lastTimestamp within last 1 hour**.
+- Date picker min/max is based on UTC calendar days derived from `firstTimestamp` and `lastTimestamp`.
+
+---
+
+### `POST /api/fetch-data`
+
+**Request:**
+
+```json
+{
+  "owner": "owner_id",
+  "mac_address": "mac_address_string",
+  "experiment": "exp_1",
+  "selectedSensors": ["LLA_1", "LLA_2"],
+  "selectedParameters": ["temperature", "humidity"],
+  "dateRange": {
+    "start": "2025-03-01T00:00:00.000Z",
+    "end": "2025-03-31T23:59:59.999Z"
+  }
+}
+```
+
+- **`selectedLabels`:** optional; **ignored by the backend**. Do not rely on it for filtering.
+- **Chunking:** `DataSelector.tsx` splits `selectedSensors` into chunks of **20** per request to limit payload size.
+- **Date semantics:** `DataSelector.tsx` sends UTC day bounds (`00:00:00.000Z` → `23:59:59.999Z`) for selected calendar dates.
+
+**Response:** array of rows:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `timestamp` | string (ISO) | Row time |
+| `sensor` | string | LLA |
+| `parameter` | string | Variable name |
+| `value` | number \| null | Measurement |
+| `label` | string \| null | **Current** assignment (latest non-empty Label for that LLA in BQ) |
+| `location` | string \| null | Location column |
+| `experiment` | string | Experiment name |
+| `owner` | string | Owner |
+| `mac_address` | string | MAC |
+
+Long-format rows are stored in React state and consumed by **`VisualizationPanel`** and graph components.
+
+---
+
+### Analytics (optional)
+
+- **`API_ENDPOINTS_ANALYTICS`** in `config.ts` — direct Cloud Run URL for analytics services (where used).
+- **`GET {API_BASE_URL}/api/analytics-health`** — proxied health check; used by **`HealthCheckButton`** to avoid CORS issues.
+
+---
+
+## Application Flow (for developers)
+
+1. **`Auth.tsx`** — User logs in → JWT stored (cookie / memory per `authUtils.ts`).
+2. **`Dashboard.tsx`** — Loads permissions → user picks **owner/MAC** (system) and **experiment** → calls **`POST /api/experiment-summary`** → passes `sensorLabelMap`, `sensorLocationMap`, parameters, sensors into children.
+3. **`DataSelector.tsx`** — User selects sensors, parameters, date range → **`POST /api/fetch-data`** (chunked) → sets long-format **`sensorData`**.
+4. **`VisualizationPanel.tsx`** — Renders plots and CSV export from **`sensorData`**, using **`getEffectiveLabel`** / maps for label grouping.
+
+---
+
+## Sensor Labels (frontend rules)
+
+- **`sensorLabelMap`** from experiment summary is the primary **assignment** map (latest label per LLA).
+- **`getEffectiveLabel` (`labelGrouping.ts`)** — Prefers a single entry in `sensorLabelMap[sensor]`, then falls back to **`row.label`** from fetch (same assignment from API).
+- **Label filter** — Adjusts **which sensors remain selected** (atomic include/exclude); the API does **not** filter historical rows by old `Label` text.
+
+---
+
+## Troubleshooting
+
+| Issue | Things to check |
+|-------|-----------------|
+| **CORS errors** | Backend `CORS_ALLOW_ORIGINS` includes `http://localhost:5173` (or your dev URL). |
+| **Network tab shows wrong host** | `VITE_USE_LOCAL_BACKEND` / `VITE_API_BASE_URL` and rebuild after env changes. |
+| **401 on login** | Auth service URL and credentials; password hashing is server-side. |
+| **Empty plots** | Date range, selected sensors/parameters, and successful `fetch-data` (check status 200 and array length). |
+
+---
+
+## Contributing & License
+
+See the root [README.md](../README.md) for contacts and license. Prefer small, focused PRs; when changing API shapes, update **`backend_fastapi/README.md`** and this file together.

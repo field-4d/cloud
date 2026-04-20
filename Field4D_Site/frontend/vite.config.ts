@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://field4fd-backend-1000435921680.us-central1.run.app',
+        target: 'https://f4d-fastapi-backend-1000435921680.us-central1.run.app',
         changeOrigin: true,
         secure: true,
       }
