@@ -209,7 +209,7 @@ sequenceDiagram
   participant Replace as ReplaceSensorModal
   participant API as "POST /FS/sensor/update-metadata"
   User->>Dash: Click sensor card
-  Dash->>Details: "open details"
+  Dash->>Details: Open details modal
   User->>Details: Replace Sensor
   Details->>Replace: open batch replace UI
   User->>Replace: Confirm then Approve and send
