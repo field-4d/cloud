@@ -3,6 +3,8 @@
  * fall back to row.label from fetch-data (same assignment from BQ).
  */
 
+import { parseLabelTokens } from './labelTokenUtils';
+
 export interface RowWithSensorLabel {
   sensor: string;
   label?: string | null;
@@ -58,4 +60,55 @@ export function collectLabelsFromRows(
     if (el !== null) set.add(el);
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+/** Trimmed non-empty include labels, preserving first-seen order. */
+export function normalizeIncludedLabels(labels: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of labels) {
+    const value = String(raw ?? '').trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    out.push(value);
+  }
+  return out;
+}
+
+/** Collect atomic tokens representing all labels associated with this row/sensor. */
+export function collectRowLabelTokens(
+  d: RowWithSensorLabel,
+  sensorLabelMap: Record<string, string[]>
+): Set<string> {
+  const tokens = new Set<string>();
+  const sid = String(d.sensor);
+  const fromMap = sensorLabelMap[sid] ?? [];
+  for (const label of fromMap) {
+    for (const token of parseLabelTokens(label)) {
+      const trimmed = String(token).trim();
+      if (trimmed) tokens.add(trimmed);
+    }
+  }
+  for (const token of parseLabelTokens(String(d.label ?? ''))) {
+    const trimmed = String(token).trim();
+    if (trimmed) tokens.add(trimmed);
+  }
+  return tokens;
+}
+
+/**
+ * Selected-only label memberships for grouping:
+ * effective_labels_for_grouping = row_labels ∩ include_labels
+ */
+export function getSelectedLabelMemberships(
+  d: RowWithSensorLabel,
+  sensorLabelMap: Record<string, string[]>,
+  includeLabels: string[]
+): string[] {
+  const normalized = normalizeIncludedLabels(includeLabels);
+  if (normalized.length === 0) return [];
+  const rowTokens = collectRowLabelTokens(d, sensorLabelMap);
+  return normalized.filter((label) =>
+    parseLabelTokens(label).some((token) => rowTokens.has(String(token).trim()))
+  );
 }

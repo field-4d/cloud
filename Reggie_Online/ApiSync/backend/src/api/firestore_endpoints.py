@@ -9,7 +9,7 @@ from google.cloud.exceptions import NotFound
 import logging
 import time
 
-from .firestore_repository import get_sensor_metadata, get_all_sensors_metadata, get_last_package_metadata, get_experiment_names, register_sensor, update_sensor_last_seen, delete_sensor, update_sensor_metadata, batch_update_sensor_metadata
+from .firestore_repository import get_sensor_metadata, get_sensor_metadata_by_lla, get_all_sensors_metadata, get_last_package_metadata, get_experiment_names, register_sensor, update_sensor_last_seen, delete_sensor, update_sensor_metadata, batch_update_sensor_metadata
 from .permissions_service import (
     PermissionsNotFoundError,
     PermissionsResponseFormatError,
@@ -175,6 +175,68 @@ async def query_active_metadata(
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.get("/phone-app/NFC/fetch-data", tags=["phone-app"])
+async def query_phone_app_metadata(lla: str):
+    """
+    Query Firestore metadata by LLA for phone-app NFC clients.
+
+    Args:
+        lla: LLA value (required) - Firestore document ID
+
+    Returns:
+        dict: Query results with metadata in JSON format:
+            - success (bool): True if successful
+            - project (str): GCP project ID
+            - dataset (str): owner (for compatibility)
+            - table (str): {mac_address}_metadata (for compatibility)
+            - full_table (str): Full table identifier (for compatibility)
+            - count (int): Number of records (always 1 for single LLA)
+            - data (list): List of metadata records
+    """
+    logger.info(f"[ENDPOINT] GET /phone-app/NFC/fetch-data | LLA: {lla}")
+    operation_start = time.time()
+    logger.info(f"[QUERY_PHONE_APP_METADATA] Starting query | LLA: {lla}")
+
+    try:
+        result = await get_sensor_metadata_by_lla(lla)
+        # Phone app response should not expose full_table.
+        result.pop("full_table", None)
+
+        total_duration = time.time() - operation_start
+        logger.info(
+            f"[QUERY_PHONE_APP_METADATA] Query completed | "
+            f"Count: {result['count']} | "
+            f"Duration: {total_duration:.3f}s"
+        )
+        return result
+
+    except NotFound:
+        total_duration = time.time() - operation_start
+        logger.warning(
+            f"[QUERY_PHONE_APP_METADATA] Document not found | "
+            f"LLA: {lla} | "
+            f"Duration: {total_duration:.3f}s"
+        )
+        raise HTTPException(status_code=404, detail=f"Metadata not found for LLA: {lla}")
+
+    except Exception as e:
+        error_type = type(e).__name__
+        error_repr = repr(e)
+        error_str = str(e) if str(e) else "No error message available"
+        total_duration = time.time() - operation_start
+        logger.error(
+            f"[QUERY_PHONE_APP_METADATA] Unexpected error | "
+            f"Type: {error_type} | "
+            f"Error: {error_repr} | "
+            f"Duration: {total_duration:.3f}s",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error querying metadata: {error_str} (Type: {error_type})"
+        )
 
 
 @router.post("/FS/sensor/register", tags=["sensors"])

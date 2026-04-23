@@ -6,10 +6,13 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
 import { Layout } from 'plotly.js-dist-min';
-import OutlierToggle from '../Advanced-function/OutlierToggle';
 import Select from 'react-select';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
-import { getEffectiveLabel, type RowWithSensorLabel } from '../../utils/labelGrouping';
+import {
+  getSelectedLabelMemberships,
+  normalizeIncludedLabels,
+  type RowWithSensorLabel,
+} from '../../utils/labelGrouping';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -155,7 +158,6 @@ const SamplingNotification: React.FC<{ info: SamplingInfo; infoTextSize?: number
 /**
  * Histogram
  * Displays a histogram for each parameter in the data as a subplot.
- * Includes an outlier filtering toggle (IQR-based, local state).
  * @param data - array of sensor data objects
  * @param selectedParameters - parameters to plot
  * @param selectedSensors - sensors to plot
@@ -185,46 +187,9 @@ const Histogram: React.FC<HistogramProps> = ({
   legendSize = 18 , // deafult legend size
   groupBy = 'sensor',
 }) => {
-  // Outlier filtering toggle state (local to Histogram)
-  const [outlierFiltering, setOutlierFiltering] = React.useState<boolean>(() => {
-    const stored = localStorage.getItem('histogramOutlierFiltering');
-    return stored === null ? false : stored === 'true';
-  });
-  React.useEffect(() => {
-    localStorage.setItem('histogramOutlierFiltering', String(outlierFiltering));
-  }, [outlierFiltering]);
-
   // Bin count state
   const [binCount, setBinCount] = React.useState<number>(50);
-
-  // IQR-based outlier filtering logic (per parameter)
-  function filterOutliersIQR(data) {
-    // Group by parameter
-    const grouped = {};
-    data.forEach(d => {
-      const param = d.parameter;
-      if (!grouped[param]) grouped[param] = [];
-      grouped[param].push(d);
-    });
-    Object.keys(grouped).forEach(param => {
-      const values = grouped[param].map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
-      if (values.length < 4) return;
-      values.sort((a, b) => a - b);
-      const q1 = values[Math.floor(values.length * 0.25)];
-      const q3 = values[Math.floor(values.length * 0.75)];
-      const iqr = q3 - q1;
-      const lower = q1 - 1.5 * iqr;
-      const upper = q3 + 1.5 * iqr;
-      grouped[param].forEach(d => {
-        if (d.value < lower || d.value > upper) {
-          d.value = null;
-        }
-      });
-    });
-    return data;
-  }
-
-  // Modify the processedData useMemo to handle sampling info
+  
   const processedData = React.useMemo(() => {
     let dataToProcess = data;
     let samplingInfo: SamplingInfo | null = null;
@@ -234,11 +199,9 @@ const Histogram: React.FC<HistogramProps> = ({
       dataToProcess = result.sampledData;
       samplingInfo = result.samplingInfo;
     }
-    
-    if (!outlierFiltering) return { data: dataToProcess, samplingInfo };
-    const dataCopy = dataToProcess.map(d => ({ ...d }));
-    return { data: filterOutliersIQR(dataCopy), samplingInfo };
-  }, [data, outlierFiltering]);
+
+    return { data: dataToProcess, samplingInfo };
+  }, [data]);
 
   // Get all unique parameters
   const parameters = Array.from(new Set(data.map(d => d.parameter)));
@@ -276,14 +239,27 @@ const Histogram: React.FC<HistogramProps> = ({
   // Prepare traces and subplot layout
   let traces: any[] = [];
   const useLabelMode = groupBy === 'label';
+  const selectedLabelGroups = normalizeIncludedLabels(includedLabels);
   let showLegend = useLabelMode;
   if (!useLabelMode) {
     traces = parametersToRender.map((param, idx) => {
       const paramData = processedData.data.filter(d => d.parameter === param && selectedSensors.includes(d.sensor));
       const xVals = paramData.map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
+      if (xVals.length === 0) {
+        return {
+          x: [],
+          type: 'histogram',
+          name: `${param} (${getParameterUnit(param)})`,
+          marker: { color: COLORS[idx % COLORS.length] },
+          xaxis: `x${idx + 1}`,
+          yaxis: `y${idx + 1}`,
+          opacity: 0.8,
+          showlegend: false,
+        };
+      }
       const min = Math.min(...xVals);
       const max = Math.max(...xVals);
-      const size = (max - min) / binCount;
+      const size = Math.max((max - min) / binCount, 1e-9);
       return {
         x: xVals,
         type: 'histogram',
@@ -299,9 +275,7 @@ const Histogram: React.FC<HistogramProps> = ({
   } else if (useLabelMode) {
     traces = parametersToRender.flatMap((param, pIdx) => {
       const labels =
-        includedLabels.length > 0
-          ? includedLabels
-          : Array.from(new Set(Object.values(sensorLabelMap).flat()));
+        selectedLabelGroups;
       const baseRows = processedData.data.filter(
         (d) => d.parameter === param && selectedSensors.includes(String(d.sensor))
       );
@@ -312,9 +286,15 @@ const Histogram: React.FC<HistogramProps> = ({
       const size = Math.max((max - min) / binCount, 1e-9);
       return labels.map((label, lIdx) => {
         const labelData = baseRows.filter(
-          (d) => getEffectiveLabel(d as RowWithSensorLabel, sensorLabelMap) === label
+          (d) =>
+            getSelectedLabelMemberships(
+              d as RowWithSensorLabel,
+              sensorLabelMap,
+              labels
+            ).includes(label)
         );
         const xVals = labelData.map((d) => d.value).filter((v) => v !== null && v !== undefined && !isNaN(v));
+        if (xVals.length === 0) return null;
         return {
           x: xVals,
           type: 'histogram',
@@ -327,7 +307,7 @@ const Histogram: React.FC<HistogramProps> = ({
           barmode: 'overlay',
           showlegend: true,
         };
-      });
+      }).filter((trace): trace is NonNullable<typeof trace> => trace !== null);
     }).flat();
   }
 
@@ -394,7 +374,7 @@ const Histogram: React.FC<HistogramProps> = ({
   const infoTextSize = 18;
 
   // Remove the early return for the label guard, and instead set a flag
-  const showLabelInfo = useLabelMode && (!includedLabels || includedLabels.length === 0);
+  const showLabelInfo = useLabelMode && selectedLabelGroups.length === 0;
 
   return (
     <div className="w-full">

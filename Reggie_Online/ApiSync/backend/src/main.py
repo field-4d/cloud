@@ -32,6 +32,10 @@ openapi_tags = [
         "description": "Read-only metadata query endpoints.",
     },
     {
+        "name": "phone-app",
+        "description": "Phone app NFC metadata endpoints.",
+    },
+    {
         "name": "sensors",
         "description": "Sensor registration and update actions.",
     },

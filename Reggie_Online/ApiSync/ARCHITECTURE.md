@@ -1,7 +1,7 @@
 # ApiSync Architecture Documentation
 
 **Author:** Nir Averbuch  
-**Last updated:** 2026-03-30
+**Last updated:** 2026-04-23
 
 This document provides a comprehensive overview of the ApiSync system architecture, including component interactions, data flows, and technology stack.
 
@@ -59,6 +59,7 @@ ApiSync is a FastAPI-based application that provides real-time sensor monitoring
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Router: firestore_endpoints.py                          │  │
 │  │  ├── GET /GCP-FS/metadata/active                         │  │
+│  │  ├── GET /phone-app/NFC/fetch-data                       │  │
 │  │  ├── GET /GCP-FS/metadata/sensors                         │  │
 │  │  ├── GET /GCP-FS/last-package                             │  │
 │  │  ├── GET /GCP-FS/metadata/experiments                     │  │
@@ -341,6 +342,29 @@ Frontend Processing
 6. Frontend updates payload card visual status (green/gray styling)
 7. Frontend displays metadata in modal
 
+### c.1) Phone-App NFC Metadata Flow
+
+```
+Phone App Client
+    │
+    │ GET /phone-app/NFC/fetch-data?lla=Z
+    ▼
+Backend Endpoint
+    │
+    ├─► Query Firestore: sensors/{LLA} document
+    │
+    ├─► Map to API metadata payload
+    │
+    ├─► Remove compatibility field: full_table
+    │
+    └─► Return JSON response
+```
+
+**Notes:**
+- Endpoint is NFC-only: `GET /phone-app/NFC/fetch-data` (no RFID alias).
+- Input is LLA-only (`lla` query parameter).
+- Response keeps metadata envelope but intentionally omits `full_table`.
+
 ### d) Metadata Update Flow
 
 ```
@@ -519,6 +543,7 @@ Frontend Selection Panel
 | `GET /health` | Health check | None |
 | `GET /` | Frontend dashboard | None |
 | `GET /GCP-FS/metadata/active` | Query sensor metadata by LLA | `owner`/`hostname`, `mac_address`, `lla` |
+| `GET /phone-app/NFC/fetch-data` | Phone app metadata query by LLA (NFC-only) | `lla` |
 | `GET /GCP-FS/metadata/sensors` | Get all sensors metadata | `owner`, `mac_address`, `exp_name` (optional) |
 | `GET /GCP-FS/last-package` | Get metadata with persisted last_package payload | `owner`, `mac_address`, `exp_name` (optional) |
 | `GET /GCP-FS/metadata/experiments` | Get experiment names with stats | `owner`, `mac_address` |
@@ -618,6 +643,13 @@ Frontend Selection Panel
 - User authentication and authorization
 - API rate limiting
 - WebSocket connection authentication
+
+## Test Script Safety Split
+
+Test scripts are intentionally separated to reduce accidental writes on live systems:
+
+- `test_script/read-only`: GET-only checks (safe for production verification)
+- `test_script/destructive`: scripts that can write/update/delete Firestore data
 
 ### Scalability Considerations
 - Horizontal scaling with load balancer

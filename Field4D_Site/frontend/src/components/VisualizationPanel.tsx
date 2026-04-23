@@ -17,6 +17,13 @@ import LoadingSpinner from './graph-components/LoadingSpinner';
 import ANOVAResultsScatterPlot from './graph-components/ANOVAResultsScatterPlot';
 import HealthCheckButton from './analytics/HealthCheckButton';
 import { getParameterUnit } from './DataSelector';
+import {
+  applyOutlierFiltering,
+  getCompatibleOutlierMethod,
+  getSupportedOutlierMethods,
+  type OutlierConfig,
+  type OutlierMethod,
+} from '../utils/outlierFiltering';
 
 interface SensorData {
   timestamp: string;
@@ -48,14 +55,8 @@ interface VisualizationPanelProps {
   experimentName?: string;
   getSensorColor?: (sensor: string) => string;
   getSensorDisplayName?: (sensor: string) => string;
-  /**
-   * Whether outlier filtering is enabled (controlled by parent)
-   */
-  outlierFiltering: boolean;
-  /**
-   * Callback to set outlier filtering state (controlled by parent)
-   */
-  setOutlierFiltering: React.Dispatch<React.SetStateAction<boolean>>;
+  outlierConfig: OutlierConfig;
+  setOutlierConfig: React.Dispatch<React.SetStateAction<OutlierConfig>>;
   /**
    * Whether artifact filtering is enabled (controlled by parent)
    */
@@ -122,6 +123,26 @@ const PULSE_CONFIG = {
   // Total animation duration = blinkCount * blinkDuration
 };
 
+const toOutlierVizType = (viz: string): 'scatter' | 'box' | 'histogram' =>
+  viz === 'box' ? 'box' : viz === 'histogram' ? 'histogram' : 'scatter';
+
+const DEFAULT_OUTLIER_HINT_IQR_THRESHOLD = 2.5;
+
+const formatDateChipLabel = (value: string): string => {
+  if (!value) return value;
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const areStringArraysEqual = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i++) {
+    if (left[i] !== right[i]) return false;
+  }
+  return true;
+};
+
 /**
  * VisualizationPanel
  * Allows user to select visualization type, dates, and parameters.
@@ -131,8 +152,7 @@ const PULSE_CONFIG = {
  * @param selectedSensors - sensors to visualize
  * @param experimentName - (optional) experiment name for plot titles
  * @param getSensorColor - (optional) function to get color for a sensor
- * @param outlierFiltering - whether outlier filtering is enabled
- * @param setOutlierFiltering - callback to set outlier filtering state
+ * @param outlierConfig - outlier filtering configuration
  * @returns JSX.Element
  */
 const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
@@ -159,9 +179,6 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   const [plotHeight, setPlotHeight] = useState(1000); // default height
   const [showDates, setShowDates] = useState(false); // Add state for dates toggle
   const [isLoading, setIsLoading] = useState(true); // Add loading state
-  const [outlierMethod, setOutlierMethod] = useState('IQR');
-  const [outlierThreshold, setOutlierThreshold] = useState(1.5);
-  
   // Hour range filter state (only for BoxPlot) - always enabled by default (0-23 = all hours)
   const [hourRangeEnabled, setHourRangeEnabled] = useState(true);
   const [hourRange, setHourRange] = useState<[number, number]>([0, 23]); // Current slider value (for display only)
@@ -240,13 +257,20 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   const [boxPlotGroupingMode, setBoxPlotGroupingMode] = useState<'date-label' | 'label' | 'sensor'>('date-label');
 
   // Extract unique dates from data
-  const allDates = Array.from(new Set(props.data.map(d => (typeof d.timestamp === 'string' ? d.timestamp.split('T')[0] : '')))).filter(Boolean);
+  const allDates = useMemo(
+    () =>
+      Array.from(
+        new Set(props.data.map((d) => (typeof d.timestamp === 'string' ? d.timestamp.split('T')[0] : '')))
+      ).filter(Boolean),
+    [props.data]
+  );
   const [selectedDates, setSelectedDates] = useState<string[]>(allDates);
   const [allDatesSelected, setAllDatesSelected] = useState(true);
 
   // Extract unique parameters from data
   const allParameters = Array.from(new Set(props.data.map(d => d.parameter).filter(Boolean))).map(String);
   const [selectedParameters, setSelectedParameters] = useState<string[]>(allParameters);
+  const currentOutlierVizType = toOutlierVizType(selectedViz);
 
   // Check if artifact filtering is relevant for selected parameters
   const isArtifactFilteringRelevant = useMemo(() => {
@@ -257,8 +281,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   }, [selectedParameters]);
 
   // State for artifact detection and blinking
-  const [hasArtifacts, setHasArtifacts] = useState<boolean>(false);
   const [showBlinkAnimation, setShowBlinkAnimation] = useState<boolean>(false);
+  const [outlierHintPulseToken, setOutlierHintPulseToken] = useState(0);
+  const hintedOutlierSignaturesRef = useRef<Set<string>>(new Set());
 
   // Helper: Check if artifacts exist in the actual data
   function hasArtifactsInData(data: SensorData[]): boolean {
@@ -279,6 +304,13 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       setCorrelationApproved(false);
     }
   }, [selectedViz]);
+
+  useEffect(() => {
+    const compatibleMethod = getCompatibleOutlierMethod(currentOutlierVizType, props.outlierConfig.method);
+    if (compatibleMethod !== props.outlierConfig.method) {
+      props.setOutlierConfig((prev) => ({ ...prev, method: compatibleMethod }));
+    }
+  }, [currentOutlierVizType, props.outlierConfig.method, props.setOutlierConfig]);
 
   // Reset hour filter when leaving box/histogram or disabling the toggle (shared state for both)
   useEffect(() => {
@@ -312,6 +344,24 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     setSelectedCorrelationPair(null);
   };
 
+  // Keep selected dates valid when fresh data updates available dates.
+  useEffect(() => {
+    if (allDates.length === 0) {
+      setSelectedDates((prev) => (prev.length === 0 ? prev : []));
+      setAllDatesSelected(false);
+      return;
+    }
+
+    setSelectedDates((prev) => {
+      if (allDatesSelected) {
+        return areStringArraysEqual(prev, allDates) ? prev : allDates;
+      }
+
+      const next = prev.filter((date) => allDates.includes(date));
+      return areStringArraysEqual(prev, next) ? prev : next;
+    });
+  }, [allDates, allDatesSelected]);
+
   // Filter data by selected dates unless allDatesSelected
   const filteredData = allDatesSelected
     ? props.data
@@ -321,7 +371,6 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   useEffect(() => {
     // Only check after data is loaded and if relevant
     if (isLoading || !isArtifactFilteringRelevant) {
-      setHasArtifacts(false);
       setShowBlinkAnimation(false);
       return;
     }
@@ -334,7 +383,6 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     
     // Check for artifacts in the actual fetched data
     const artifactsFound = hasArtifactsInData(filteredData);
-    setHasArtifacts(artifactsFound);
     
     if (artifactsFound) {
       setShowBlinkAnimation(true);
@@ -368,59 +416,6 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     });
   }
 
-  // Helper: Outlier detection (per parameter, per date)
-  function filterOutliers(data: SensorData[], selectedParameters: string[]) {
-    // Group by parameter and date
-    const grouped: Record<string, Record<string, SensorData[]>> = {};
-    data.forEach(d => {
-      const param = d.parameter;
-      const date = typeof d.timestamp === 'string' ? d.timestamp.split('T')[0] : '';
-      if (!grouped[param]) grouped[param] = {};
-      if (!grouped[param][date]) grouped[param][date] = [];
-      grouped[param][date].push(d);
-    });
-
-    // For each group, compute and filter based on selected method
-    Object.keys(grouped).forEach(param => {
-      Object.keys(grouped[param]).forEach(date => {
-        const values = grouped[param][date]
-          .map(d => d.value)
-          .filter(v => !isNaN(v));
-        
-        if (values.length < 4) return; // Not enough data for statistical analysis
-
-        if (outlierMethod === 'IQR') {
-          // IQR method
-          values.sort((a, b) => a - b);
-          const q1 = values[Math.floor(values.length * 0.25)];
-          const q3 = values[Math.floor(values.length * 0.75)];
-          const iqr = q3 - q1;
-          const lower = q1 - outlierThreshold * iqr;
-          const upper = q3 + outlierThreshold * iqr;
-          grouped[param][date].forEach(d => {
-            if (d.value < lower || d.value > upper) {
-              d.value = NaN; // Mark as outlier
-            }
-          });
-        } else if (outlierMethod === 'ZSCORE') {
-          // Z-Score method
-          const mean = values.reduce((a, b) => a + b, 0) / values.length;
-          const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
-          const std = Math.sqrt(variance);
-          grouped[param][date].forEach(d => {
-            const zScore = Math.abs((d.value - mean) / std);
-            if (zScore > outlierThreshold) {
-              d.value = NaN; // Mark as outlier
-            }
-          });
-        }
-      });
-    });
-
-    // Flatten back to array
-    return data;
-  }
-
   // Helper: Filter data by hour range
   // Each hour includes the full hour: e.g., hour 23 includes 23:00:00 to 23:59:59.999
   // Range 0-23 includes all hours (00:00:00 to 23:59:59.999)
@@ -447,8 +442,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     });
   }
 
-  // Preprocess data for visualization (apply artifact filtering first, then outlier filtering if enabled)
-  const processedData = React.useMemo(() => {
+  // Preprocess data before outlier filtering (artifact -> hour)
+  const baseProcessedData = React.useMemo(() => {
     let data = filteredData;
     
     // Apply artifact filtering first (if enabled and relevant)
@@ -467,19 +462,128 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       }
     }
     
-    // For scatter plot, return after artifact filtering (no outlier filtering)
-    if (selectedViz === 'scatter') return data;
-    
-    // Apply outlier filtering if enabled
-    if (!props.outlierFiltering) return data;
-    
-    // Deep copy to avoid mutating original data
-    const dataCopy = data.map(d => ({
+    return data;
+  }, [
+    filteredData,
+    props.artifactFiltering,
+    isArtifactFilteringRelevant,
+    selectedViz,
+    hourRangeEnabled,
+    appliedHourRange,
+  ]);
+
+  // Preprocess data for visualization (artifact -> hour -> outlier)
+  const processedData = React.useMemo(() => {
+    if (!props.outlierConfig.enabled) return baseProcessedData;
+
+    const compatibleMethod = getCompatibleOutlierMethod(
+      currentOutlierVizType,
+      props.outlierConfig.method
+    );
+
+    const dataCopy = baseProcessedData.map((d) => ({
       ...d,
-      value: typeof d.value === 'number' ? d.value : NaN
+      value: typeof d.value === 'number' ? d.value : Number.NaN,
     }));
-    return filterOutliers(dataCopy, selectedParameters);
-  }, [filteredData, props.artifactFiltering, isArtifactFilteringRelevant, props.outlierFiltering, selectedParameters, outlierMethod, outlierThreshold, selectedViz, hourRangeEnabled, appliedHourRange]);
+
+    return applyOutlierFiltering(dataCopy, {
+      enabled: true,
+      method: compatibleMethod,
+      threshold: props.outlierConfig.threshold,
+    });
+  }, [
+    baseProcessedData,
+    props.outlierConfig,
+    currentOutlierVizType,
+  ]);
+
+  const outlierHintDetection = useMemo(() => {
+    if (baseProcessedData.length === 0) {
+      return { hasDefaultRuleOutliers: false, datasetSignature: 'empty' };
+    }
+
+    const preparedForHint = baseProcessedData.map((row) => {
+      const numericValue = typeof row.value === 'number' && Number.isFinite(row.value) ? row.value : null;
+      return {
+        ...row,
+        value: numericValue ?? Number.NaN,
+        __rawNumericValue: numericValue,
+      };
+    });
+
+    const filteredForHint = applyOutlierFiltering(preparedForHint, {
+      enabled: true,
+      method: 'IQR',
+      threshold: DEFAULT_OUTLIER_HINT_IQR_THRESHOLD,
+    });
+
+    const hasDefaultRuleOutliers = filteredForHint.some((row) => {
+      const raw = row.__rawNumericValue;
+      return typeof raw === 'number' && Number.isFinite(raw) && Number.isNaN(row.value);
+    });
+
+    let finiteCount = 0;
+    let finiteSum = 0;
+    let finiteMin = Number.POSITIVE_INFINITY;
+    let finiteMax = Number.NEGATIVE_INFINITY;
+    for (const row of baseProcessedData) {
+      if (typeof row.value !== 'number' || !Number.isFinite(row.value)) continue;
+      finiteCount += 1;
+      finiteSum += row.value;
+      if (row.value < finiteMin) finiteMin = row.value;
+      if (row.value > finiteMax) finiteMax = row.value;
+    }
+
+    const firstRow = baseProcessedData[0];
+    const lastRow = baseProcessedData[baseProcessedData.length - 1];
+    const dataFingerprint = [
+      baseProcessedData.length,
+      finiteCount,
+      finiteSum.toFixed(6),
+      Number.isFinite(finiteMin) ? finiteMin.toFixed(6) : 'na',
+      Number.isFinite(finiteMax) ? finiteMax.toFixed(6) : 'na',
+      String(firstRow?.timestamp ?? ''),
+      String(lastRow?.timestamp ?? ''),
+      String(firstRow?.parameter ?? ''),
+      String(lastRow?.parameter ?? ''),
+    ].join('|');
+
+    const datasetSignature = [
+      selectedViz,
+      props.groupBy,
+      boxPlotGroupingMode,
+      hourRangeEnabled ? `${appliedHourRange?.[0] ?? 'na'}-${appliedHourRange?.[1] ?? 'na'}` : 'hour-off',
+      props.artifactFiltering ? 'artifact-on' : 'artifact-off',
+      allDatesSelected ? `all:${allDates.length}` : selectedDates.join(','),
+      selectedParameters.join(','),
+      dataFingerprint,
+    ].join('::');
+
+    return { hasDefaultRuleOutliers, datasetSignature };
+  }, [
+    baseProcessedData,
+    selectedViz,
+    props.groupBy,
+    boxPlotGroupingMode,
+    hourRangeEnabled,
+    appliedHourRange,
+    props.artifactFiltering,
+    allDatesSelected,
+    allDates,
+    selectedDates,
+    selectedParameters,
+  ]);
+
+  useEffect(() => {
+    if (props.outlierConfig.enabled) return;
+    if (!outlierHintDetection.hasDefaultRuleOutliers) return;
+
+    const signature = outlierHintDetection.datasetSignature;
+    if (hintedOutlierSignaturesRef.current.has(signature)) return;
+
+    hintedOutlierSignaturesRef.current.add(signature);
+    setOutlierHintPulseToken((prev) => prev + 1);
+  }, [props.outlierConfig.enabled, outlierHintDetection]);
 
   // Hide loading state when processedData is ready (after filtering completes)
   useEffect(() => {
@@ -549,10 +653,6 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
 
     return denominator === 0 ? 0 : numerator / denominator;
   }
-
-  const handleOutlierToggle = (value: boolean) => {
-    props.setOutlierFiltering(value);
-  };
 
   // Generate mock ANOVA results
   const generateMockAnalysisResults = (parameter: string) => {
@@ -677,183 +777,232 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
 
       {/* Visualization Type Selection */}
       {activeTab === 'visualization' && (
-        <div className="flex items-center space-x-2 mb-2">
-          <label className="text-sm font-medium text-gray-700">Visualization:</label>
-          <select
-            className="border border-[#b2b27a] rounded px-2 py-1 text-[#8ac6bb] focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
-            value={selectedViz}
-            onChange={e => setSelectedViz(e.target.value)}
-          >
-            {VISUALIZATIONS.map(viz => (
-              <option key={viz.value} value={viz.value}>{viz.label}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Date Selection */}
-      {activeTab === 'visualization' && (
-        <div className="flex items-center space-x-4 mb-2">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowDates(!showDates)}
-              className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-[#8ac6bb] transition-colors"
-              title="Press to filter dates"
-            >
-              <span>Select Dates</span>
-              <svg
-                className={`w-4 h-4 transform transition-transform ${showDates ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        <div className="mb-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                1) Chart
+              </label>
+              <select
+                className="w-full rounded-md border border-[#b2b27a] bg-white px-3 py-2 text-sm font-medium text-[#3f8378] focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
+                value={selectedViz}
+                onChange={e => setSelectedViz(e.target.value)}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-          {showDates && (
-            <div className="flex flex-col min-w-[200px]">
-              {/* Toolbar for Select All / Deselect All */}
-              <div className="flex space-x-3 mb-1">
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-[#8AC6B6] hover:underline px-2 py-1 rounded transition-colors"
-                  style={{ fontWeight: 600 }}
-                  onClick={() => {
-                    setSelectedDates(allDates);
-                    setAllDatesSelected(true);
-                  }}
-                >
-                  Select All
-                </button>
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-[#8AC6B6] hover:underline px-2 py-1 rounded transition-colors"
-                  style={{ fontWeight: 600 }}
-                  onClick={() => {
-                    setSelectedDates([]);
-                    setAllDatesSelected(false);
-                  }}
-                >
-                  Deselect All
-                </button>
-              </div>
-              <Select
-                isMulti
-                options={[
-                  ...allDates.map(date => ({ value: date, label: date }))
-                ]}
-                value={
-                  selectedDates.map(date => ({ value: date, label: date }))
-                }
-                onChange={selected => {
-                  if (!selected) {
-                    setSelectedDates([]);
-                    setAllDatesSelected(false);
-                  } else {
-                    setSelectedDates(selected.map((opt: any) => opt.value));
-                    setAllDatesSelected(selected.length === allDates.length);
-                  }
-                }}
-                classNamePrefix="select"
-                placeholder="Select dates..."
-                closeMenuOnSelect={false}
-              />
+                {VISUALIZATIONS.map(viz => (
+                  <option key={viz.value} value={viz.value}>{viz.label}</option>
+                ))}
+              </select>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Parameter selection for Scatter and BoxPlot */}
-      {activeTab === 'visualization' && selectedViz === 'scatter' && (
-        <div className="flex items-center space-x-2 mb-2">
-          <label className="text-sm font-medium text-gray-700">Parameters:</label>
-          <div className="min-w-[200px]">
-            <Select
-              isMulti
-              options={[
-                ...allParameters.map(param => ({ value: param, label: param }))
-              ]}
-              value={
-                selectedParameters.map(param => ({ value: param, label: param }))
-              }
-              onChange={selected => {
-                if (!selected) {
-                  setSelectedParameters([]);
-                } else {
-                  setSelectedParameters(selected.map((opt: any) => opt.value));
-                }
-              }}
-              classNamePrefix="select"
-              placeholder="Select parameters..."
-              closeMenuOnSelect={false}
-            />
-          </div>
-          {/* Artifact Filter Toggle for Scatter Plot */}
-          {isArtifactFilteringRelevant && (
-            <>
-              <span className="text-sm font-medium text-gray-700">Filter Artifacts:</span>
-              <ArtifactFilterToggle 
-                enabled={props.artifactFiltering} 
-                onChange={props.setArtifactFiltering}
-                visualizationType="scatter"
-                shouldBlink={showBlinkAnimation}
-                pulseConfig={PULSE_CONFIG}
-                onStopBlink={() => setShowBlinkAnimation(false)}
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'visualization' && (
-        ['box', 'histogram'].includes(selectedViz) && (
-          <div className="flex items-center space-x-2 mb-2">
-            <label className="text-sm font-medium text-gray-700">Parameters:</label>
-            <div className="min-w-[200px]">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                2) Parameters
+              </label>
               <Select
                 isMulti
-                options={[
-                  ...allParameters.map(param => ({ value: param, label: param }))
-                ]}
-                value={
-                  selectedParameters.map(param => ({ value: param, label: param }))
-                }
-                onChange={selected => {
+                options={[...allParameters.map((param) => ({ value: param, label: param }))]}
+                value={selectedParameters.map((param) => ({ value: param, label: param }))}
+                onChange={(selected) => {
                   if (!selected) {
                     setSelectedParameters([]);
-                  } else {
-                    setSelectedParameters(selected.map((opt: any) => opt.value));
+                    return;
                   }
+                  setSelectedParameters(selected.map((opt: any) => opt.value));
                 }}
                 classNamePrefix="select"
                 placeholder="Select parameters..."
                 closeMenuOnSelect={false}
               />
             </div>
-            {/* Outlier toggle next to parameters */}
-            <OutlierToggle 
-              enabled={props.outlierFiltering} 
-              onChange={props.setOutlierFiltering}
-              method={outlierMethod}
-              threshold={outlierThreshold}
-              onMethodChange={setOutlierMethod}
-              onThresholdChange={setOutlierThreshold}
-              visualizationType={selectedViz === 'box' ? 'boxplot' : 'histogram'}
-            />
-            {/* Artifact Filter Toggle */}
-            {isArtifactFilteringRelevant && (
-              <ArtifactFilterToggle 
-                enabled={props.artifactFiltering} 
-                onChange={props.setArtifactFiltering}
-                visualizationType={selectedViz === 'box' ? 'boxplot' : 'histogram'}
-                shouldBlink={showBlinkAnimation}
-                pulseConfig={PULSE_CONFIG}
-                onStopBlink={() => setShowBlinkAnimation(false)}
-              />
-            )}
           </div>
-        )
+        </div>
+      )}
+
+      {/* Date Selection */}
+      {activeTab === 'visualization' && (
+        <div className="mb-3 rounded-xl border border-gray-200 bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowDates(!showDates)}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 text-left hover:bg-[#f7faf9] transition-colors rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-inset"
+            title="Toggle date selection panel"
+          >
+            <div className="flex items-center gap-2 text-sm sm:text-[15px] font-semibold text-gray-700">
+              <span>3) Date Selection</span>
+              <svg
+                className={`w-4 h-4 transform transition-transform duration-200 ${showDates ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <span className="text-xs sm:text-sm font-semibold text-[#5ea99c] whitespace-nowrap">
+              {allDatesSelected ? 'All selected' : `${selectedDates.length} selected`}
+            </span>
+          </button>
+
+          <div
+            className={`grid transition-all duration-200 ease-out ${
+              showDates ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+            }`}
+            aria-hidden={!showDates}
+          >
+            <div className="overflow-hidden">
+              <div
+                className={`px-4 sm:px-5 pb-4 pt-3 border-t border-gray-100 space-y-3 ${
+                  showDates ? 'pointer-events-auto' : 'pointer-events-none'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="min-h-[36px] px-3.5 py-1.5 text-sm font-semibold rounded-md border border-[#8ac6bb] text-[#4d978a] hover:bg-[#e6f0ee] active:bg-[#dcebe7] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    setSelectedDates(allDates);
+                    setAllDatesSelected(true);
+                  }}
+                  disabled={allDatesSelected || allDates.length === 0}
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  className="min-h-[36px] px-3.5 py-1.5 text-sm font-semibold rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b2b27a] focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    setSelectedDates([]);
+                    setAllDatesSelected(false);
+                  }}
+                  disabled={selectedDates.length === 0}
+                >
+                  Clear
+                </button>
+              </div>
+
+              <Select
+                isMulti
+                options={[
+                  ...allDates.map(date => ({ value: date, label: formatDateChipLabel(date) }))
+                ]}
+                value={
+                  selectedDates.map(date => ({ value: date, label: formatDateChipLabel(date) }))
+                }
+                onChange={handleDateChange}
+                classNamePrefix="select"
+                placeholder="Select dates..."
+                closeMenuOnSelect={false}
+                styles={{
+                  valueContainer: (base) => ({
+                    ...base,
+                    flexWrap: 'wrap',
+                    gap: '0.25rem',
+                    paddingTop: '6px',
+                    paddingBottom: '6px',
+                    maxHeight: '104px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                  }),
+                  multiValue: (base) => ({
+                    ...base,
+                    backgroundColor: '#e6f0ee',
+                    borderRadius: '999px',
+                    paddingLeft: '4px',
+                    maxWidth: '100%',
+                  }),
+                  multiValueLabel: (base) => ({
+                    ...base,
+                    color: '#40655f',
+                    fontWeight: 600,
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }),
+                  multiValueRemove: (base) => ({
+                    ...base,
+                    borderRadius: '999px',
+                    ':hover': {
+                      backgroundColor: '#d1e3e0',
+                      color: '#2f4d48',
+                    },
+                  }),
+                  control: (base, state) => ({
+                    ...base,
+                    borderRadius: '0.5rem',
+                    borderColor: state.isFocused ? '#8ac6bb' : '#d1d5db',
+                    boxShadow: state.isFocused ? '0 0 0 1px #8ac6bb' : 'none',
+                    '&:hover': {
+                      borderColor: '#8ac6bb',
+                    },
+                    minHeight: '44px',
+                  }),
+                  placeholder: (base) => ({
+                    ...base,
+                    color: '#6b7280',
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 30,
+                    borderRadius: '0.5rem',
+                    overflow: 'hidden',
+                  }),
+                }}
+              />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'visualization' && (
+        <div className="mb-3 rounded-xl border border-gray-200 bg-white shadow-sm p-3.5">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">4) Data Cleaning (Optional)</div>
+          <div className="rounded-lg bg-gray-50/80 p-3 ring-1 ring-gray-200">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_220px] xl:items-start">
+              <div className="min-w-0 flex-1">
+                <OutlierToggle
+                  enabled={props.outlierConfig.enabled}
+                  onChange={(enabled) =>
+                    props.setOutlierConfig((prev) => ({
+                      ...prev,
+                      enabled,
+                    }))
+                  }
+                  method={props.outlierConfig.method}
+                  threshold={props.outlierConfig.threshold}
+                  onMethodChange={(method) =>
+                    props.setOutlierConfig((prev) => ({
+                      ...prev,
+                      method: method as OutlierMethod,
+                    }))
+                  }
+                  onThresholdChange={(threshold) =>
+                    props.setOutlierConfig((prev) => ({
+                      ...prev,
+                      threshold,
+                    }))
+                  }
+                  visualizationType={currentOutlierVizType === 'box' ? 'boxplot' : currentOutlierVizType}
+                  showPulseHint={!props.outlierConfig.enabled && outlierHintDetection.hasDefaultRuleOutliers}
+                  pulseHintToken={outlierHintPulseToken}
+                />
+              </div>
+
+              {isArtifactFilteringRelevant && (
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-200">
+                  <span className="text-sm font-medium text-gray-700">Artifact filter</span>
+                  <ArtifactFilterToggle
+                    enabled={props.artifactFiltering}
+                    onChange={props.setArtifactFiltering}
+                    visualizationType={currentOutlierVizType === 'box' ? 'boxplot' : currentOutlierVizType}
+                    shouldBlink={showBlinkAnimation}
+                    pulseConfig={PULSE_CONFIG}
+                    onStopBlink={() => setShowBlinkAnimation(false)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Hour Range Filter - BoxPlot and Histogram (shared state, same Apply flow) */}
@@ -1127,20 +1276,21 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
 
       {/* Group by and Error Type Controls */}
       {activeTab === 'visualization' && (
-        <div>
+        <div className="mb-4">
           {(selectedViz === 'scatter' || selectedViz === 'histogram') && (
-            <div className="flex items-center justify-center mb-4 space-x-4">
-              <div className="inline-flex rounded-md shadow-sm bg-gray-100" role="group">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">5) Grouping</span>
+              <div className="inline-flex rounded-lg bg-gray-100 p-1 ring-1 ring-gray-200" role="group">
                 <button
                   type="button"
-                  className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] focus:text-[#8ac6bb] ${props.groupBy === 'sensor' ? 'bg-[#8ac6bb] text-white' : 'bg-white text-gray-700'}`}
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${props.groupBy === 'sensor' ? 'bg-[#8ac6bb] text-white shadow-sm' : 'bg-transparent text-gray-700 hover:bg-white'}`}
                   onClick={() => props.setGroupBy && props.setGroupBy('sensor')}
                 >
                   Group by Sensor
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] focus:text-[#8ac6bb] ${props.groupBy === 'label' ? 'bg-[#8ac6bb] text-white' : 'bg-white text-gray-700'}`}
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${props.groupBy === 'label' ? 'bg-[#8ac6bb] text-white shadow-sm' : 'bg-transparent text-gray-700 hover:bg-white'}`}
                   onClick={() => props.setGroupBy && props.setGroupBy('label')}
                 >
                   Group by Label
@@ -1154,7 +1304,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                     <select
                       value={props.errorType}
                       onChange={(e) => props.setErrorType && props.setErrorType(e.target.value as 'STD' | 'SE')}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
+                      className="h-9 border border-gray-300 rounded px-3 text-sm focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
                     >
                       <option value="SE">Standard Error (SE)</option>
                       <option value="STD">Standard Deviation (STD)</option>
@@ -1173,14 +1323,15 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
             </div>
           )}
           {selectedViz === 'box' && (
-            <div className="flex items-center justify-center mb-4 space-x-4">
-              <div className="inline-flex rounded-md shadow-sm bg-gray-100" role="group">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">5) Grouping</span>
+              <div className="inline-flex rounded-lg bg-gray-100 p-1 ring-1 ring-gray-200" role="group">
                 <button
                   type="button"
-                  className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] ${
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${
                     boxPlotGroupingMode === 'date-label' 
-                      ? 'bg-[#8ac6bb] text-white focus:text-white' 
-                      : 'bg-white text-gray-700 focus:text-[#8ac6bb]'
+                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white' 
+                      : 'bg-transparent text-gray-700 hover:bg-white focus:text-[#8ac6bb]'
                   }`}
                   onClick={() => setBoxPlotGroupingMode('date-label')}
                 >
@@ -1188,10 +1339,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] ${
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${
                     boxPlotGroupingMode === 'label' 
-                      ? 'bg-[#8ac6bb] text-white focus:text-white' 
-                      : 'bg-white text-gray-700 focus:text-[#8ac6bb]'
+                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white' 
+                      : 'bg-transparent text-gray-700 hover:bg-white focus:text-[#8ac6bb]'
                   }`}
                   onClick={() => setBoxPlotGroupingMode('label')}
                 >
@@ -1199,10 +1350,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 </button>
                 <button
                   type="button"
-                  className={`px-4 py-2 text-sm font-medium border border-gray-300 focus:z-10 focus:ring-2 focus:ring-[#8ac6bb] ${
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${
                     boxPlotGroupingMode === 'sensor' 
-                      ? 'bg-[#8ac6bb] text-white focus:text-white' 
-                      : 'bg-white text-gray-700 focus:text-[#8ac6bb]'
+                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white' 
+                      : 'bg-transparent text-gray-700 hover:bg-white focus:text-[#8ac6bb]'
                   }`}
                   onClick={() => setBoxPlotGroupingMode('sensor')}
                 >
@@ -1224,6 +1375,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
         </div>
       ) : (
         <>
+          {/* Grouping uses post-cleaning dataset (`processedData`) across chart types. */}
           {activeTab === 'visualization' && selectedViz === 'scatter' && (
             <div className="flex justify-center">
               <ScatterPlot

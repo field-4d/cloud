@@ -8,8 +8,8 @@ import Plot from 'react-plotly.js';
 import { toast } from 'react-toastify';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
 import {
-  collectLabelsFromRows,
-  getEffectiveLabel,
+  getSelectedLabelMemberships,
+  normalizeIncludedLabels,
   rowMatchesParameter,
   type RowWithSensorLabel,
 } from '../../utils/labelGrouping';
@@ -47,14 +47,7 @@ interface ScatterPlotProps {
   errorType?: 'STD' | 'SE';
 }
 
-// Artifact thresholds per parameter (case-insensitive matching) - same as in VisualizationPanel
-const ARTIFACT_THRESHOLDS: Record<string, number> = {
-  temperature: -40,
-  humidity: -999,
-  // Add more as needed
-};
-
-const defaultGetSensorColor = (sensor: string, selectedSensors: string[]) => {
+const defaultGetSensorColor = (colorKey: string, colorDomain: string[]) => {
   // Extended color palette with 64 distinct colors
   const colors = [
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',  // Blues, Oranges, Greens, Reds, Purples
@@ -72,8 +65,8 @@ const defaultGetSensorColor = (sensor: string, selectedSensors: string[]) => {
     '#FF7F50', '#BA55D3', '#2E8B57', '#FF00FF', '#4169E1',  // Mix of medium-bright
   ];
   
-  // Get the index of the sensor in the selectedSensors array
-  const idx = selectedSensors.indexOf(sensor);
+  // Get the index of the color key in the current color domain
+  const idx = colorDomain.indexOf(colorKey);
   
   // If sensor is not found in selectedSensors, return a default color
   if (idx === -1) return '#1f77b4';
@@ -141,10 +134,102 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   // Always limit to maximum of 2 parameters
   const limitedParameters = selectedParameters.slice(0, 2);
   
-  // Use the provided getSensorColor or the default one
-  const colorFn = getSensorColor
-    ? (sensor: string) => getSensorColor(sensor)
-    : (sensor: string) => defaultGetSensorColor(sensor, selectedSensors);
+  const getColorKey = React.useCallback(
+    (sensor: string) => {
+      const displayName = String(getSensorDisplayName(sensor) ?? '').trim();
+      // Fallback to LLA-based color when location/display name is missing.
+      return displayName !== '' ? displayName : sensor;
+    },
+    [getSensorDisplayName]
+  );
+
+  const colorDomain = React.useMemo(() => {
+    const seen = new Set<string>();
+    const keys: string[] = [];
+    for (const sensor of selectedSensors) {
+      const colorKey = getColorKey(sensor);
+      if (seen.has(colorKey)) continue;
+      seen.add(colorKey);
+      keys.push(colorKey);
+    }
+    return keys;
+  }, [selectedSensors, getColorKey]);
+
+  const buildLegendNamesForParameter = React.useCallback((parameterRows: SensorData[]) => {
+    const rangesBySensor = new Map<string, { latest: number; earliest: number }>();
+    for (const sensor of selectedSensors) {
+      rangesBySensor.set(sensor, { latest: Number.NEGATIVE_INFINITY, earliest: Number.POSITIVE_INFINITY });
+    }
+
+    for (const row of parameterRows) {
+      const sensor = String(row.sensor ?? '');
+      if (!rangesBySensor.has(sensor)) continue;
+      const ts = Date.parse(String(row.timestamp ?? ''));
+      if (!Number.isFinite(ts)) continue;
+      const range = rangesBySensor.get(sensor);
+      if (!range) continue;
+      range.latest = Math.max(range.latest, ts);
+      range.earliest = Math.min(range.earliest, ts);
+    }
+
+    const groupedByLocation = new Map<string, string[]>();
+    for (const sensor of selectedSensors) {
+      const displayName = getSensorDisplayName(sensor);
+      const group = groupedByLocation.get(displayName);
+      if (group) {
+        group.push(sensor);
+      } else {
+        groupedByLocation.set(displayName, [sensor]);
+      }
+    }
+
+    const legendNames: Record<string, string> = {};
+    for (const [displayName, sensorsInLocation] of groupedByLocation.entries()) {
+      if (sensorsInLocation.length <= 1) {
+        legendNames[sensorsInLocation[0]] = displayName;
+        continue;
+      }
+
+      const ranked = sensorsInLocation
+        .slice()
+        .sort((left, right) => {
+          const leftRange = rangesBySensor.get(left);
+          const rightRange = rangesBySensor.get(right);
+          const leftLatest = leftRange?.latest ?? Number.NEGATIVE_INFINITY;
+          const rightLatest = rightRange?.latest ?? Number.NEGATIVE_INFINITY;
+          if (leftLatest !== rightLatest) return rightLatest - leftLatest;
+          const leftEarliest = leftRange?.earliest ?? Number.POSITIVE_INFINITY;
+          const rightEarliest = rightRange?.earliest ?? Number.POSITIVE_INFINITY;
+          if (leftEarliest !== rightEarliest) return rightEarliest - leftEarliest;
+          return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+      ranked.forEach((sensor, index) => {
+        if (index === 0) {
+          legendNames[sensor] = displayName;
+          return;
+        }
+        if (ranked.length === 2) {
+          legendNames[sensor] = `${displayName} (replaced)`;
+          return;
+        }
+        legendNames[sensor] = `${displayName} (replaced ${index})`;
+      });
+    }
+
+    return legendNames;
+  }, [selectedSensors, getSensorDisplayName]);
+
+  // Use location/display-name color grouping so replacement LLAs share the same color.
+  const colorFn = React.useCallback(
+    (sensor: string) => {
+      const colorKey = getColorKey(sensor);
+      return getSensorColor
+        ? getSensorColor(colorKey)
+        : defaultGetSensorColor(colorKey, colorDomain);
+    },
+    [getSensorColor, getColorKey, colorDomain]
+  );
 
   // Default axis configuration
   const defaultAxisConfig: AxisConfig = {
@@ -171,16 +256,10 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   }
 
   let plotData: any[] = [];
+  const selectedLabelGroups = normalizeIncludedLabels(includedLabels ?? []);
 
   if (groupBy === 'label' && sensorLabelMap) {
-    // Labels to plot: user selection, validated against labels present in long-format rows (and map fallback)
-    const discovered = collectLabelsFromRows(data as RowWithSensorLabel[], selectedSensors, sensorLabelMap);
-    const fromMap = Array.from(new Set(Object.values(sensorLabelMap).flat()));
-    const union = Array.from(new Set([...discovered, ...fromMap]));
-    const labelsToPlot =
-      includedLabels && includedLabels.length > 0
-        ? includedLabels.filter((l) => union.includes(l))
-        : union;
+    const labelsToPlot = selectedLabelGroups;
     const labelColor = getLabelColors(labelsToPlot);
 
     for (let paramIdx = 0; paramIdx < limitedParameters.length; paramIdx++) {
@@ -191,7 +270,11 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           (d) =>
             rowMatchesParameter(d as RowWithSensorLabel, param) &&
             selectedSensors.includes(String(d.sensor)) &&
-            getEffectiveLabel(d as RowWithSensorLabel, sensorLabelMap) === label
+            getSelectedLabelMemberships(
+              d as RowWithSensorLabel,
+              sensorLabelMap,
+              labelsToPlot
+            ).includes(label)
         );
         if (paramData.length === 0) return;
         const sensorsInGroup = Array.from(new Set(paramData.map((d) => String(d.sensor))));
@@ -199,16 +282,11 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         const byTimestamp: Record<string, number[]> = {};
         paramData.forEach(d => {
           const ts = String(d.timestamp);
-          if (!byTimestamp[ts]) byTimestamp[ts] = [];
           const numValue = Number(d.value);
-          
-          // Check if this is an artifact value (before filtering)
-          const paramLower = String(d.parameter).toLowerCase();
-          const artifactThreshold = ARTIFACT_THRESHOLDS[paramLower];
-          const isArtifact = artifactThreshold !== undefined && numValue === artifactThreshold;
-          
-          // Only include valid numeric values (exclude NaN, null, undefined, and artifact values)
-          if (!isNaN(numValue) && numValue !== null && numValue !== undefined && !isArtifact) {
+
+          // Grouping consumes the post-cleaning dataset from VisualizationPanel.
+          if (!isNaN(numValue) && numValue !== null && numValue !== undefined) {
+            if (!byTimestamp[ts]) byTimestamp[ts] = [];
             byTimestamp[ts].push(numValue);
           }
         });
@@ -286,28 +364,30 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   } else {
     // Default: group by sensor
     plotData = limitedParameters.flatMap((param, paramIdx) => {
-          // Filter data for this parameter
-          const paramData = data.filter((d) => rowMatchesParameter(d as RowWithSensorLabel, param));
+      // Filter data for this parameter
+      const paramData = data.filter((d) => rowMatchesParameter(d as RowWithSensorLabel, param));
+      const legendNameBySensor = buildLegendNamesForParameter(paramData);
       return selectedSensors
-            .map(sensor => {
+        .map(sensor => {
           const sensorData = paramData.filter(d => String(d.sensor) === sensor);
-              const color = colorFn(sensor);
-              return {
+          const color = colorFn(sensor);
+          const legendSensorName = legendNameBySensor[sensor] ?? getSensorDisplayName(sensor);
+          return {
             x: sensorData.map(d => String(d.timestamp)),
             y: sensorData.map(d => d.value == null ? null : Number(d.value)),
-                type: 'scatter',
-                mode: 'lines',
+            type: 'scatter',
+            mode: 'lines',
             name: selectedParameters.length > 1
-              ? `${getSensorDisplayName(sensor)}-${param.replace('SensorData_', '')}`
-              : getSensorDisplayName(sensor),
-                yaxis: paramIdx === 0 ? 'y' : 'y2',
-                line: {
-                  color: color,
-                  width: 2,
-                },
-              };
-            })
-            .sort((a, b) => a.name.localeCompare(b.name));
+              ? `${legendSensorName}-${param.replace('SensorData_', '')}`
+              : legendSensorName,
+            yaxis: paramIdx === 0 ? 'y' : 'y2',
+            line: {
+              color: color,
+              width: 2,
+            },
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
     }).flat();
   }
 
@@ -317,7 +397,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   // Guard: If groupBy is 'label' and no includedLabels, show info message
   const labelWarningFontColor = '#8AC6BB';
   const labelWarningFontSize = 20;
-  if (groupBy === 'label' && (!includedLabels || includedLabels.length === 0)) {
+  if (groupBy === 'label' && selectedLabelGroups.length === 0) {
     return <LabelWarningPlaceholder fontColor={labelWarningFontColor} fontSize={labelWarningFontSize} />;
   }
 

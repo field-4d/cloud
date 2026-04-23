@@ -67,6 +67,7 @@ ApiSync/
 ## Installation
 
 1. **Clone or navigate to the project directory**
+   - Run all commands below from the `ApiSync` folder (project root).
 
 2. **Install dependencies:**
    ```bash
@@ -103,6 +104,24 @@ The server will start on `http://localhost:8000`
 - **REST API**: `https://apisync-1000435921680.us-central1.run.app`
 - **WebSocket**: `wss://apisync-1000435921680.us-central1.run.app/ws/ping`
 
+### minimal-deploy (PowerShell)
+
+Run from the `ApiSync` project root:
+
+```powershell
+docker build -t gcr.io/iucc-f4d/apisync:latest .
+
+docker push gcr.io/iucc-f4d/apisync:latest
+
+gcloud run deploy apisync `
+  --image gcr.io/iucc-f4d/apisync:latest `
+  --region us-central1 `
+  --set-secrets=/secrets/auth/.env=apisync-env:latest `
+  --set-env-vars="ENV_FILE_PATH=/secrets/auth/.env" `
+  --allow-unauthenticated `
+  --project iucc-f4d
+```
+
 ### Access Points (Local)
 
 - **Frontend Dashboard**: `http://localhost:8000/`
@@ -119,6 +138,7 @@ The server will start on `http://localhost:8000`
 - **Sensor Registration**: `POST http://localhost:8000/FS/sensor/register`
 - **Sensor Update**: `POST http://localhost:8000/FS/sensor/update`
 - **Metadata Update**: `POST http://localhost:8000/FS/sensor/update-metadata`
+- **Sensor Delete (hard delete)**: `POST http://localhost:8000/FS/sensor/delete`
 
 ### OpenAPI / Swagger Organization
 
@@ -141,6 +161,7 @@ Current tag groups are intentionally organized for user flow:
    - `POST /FS/sensor/register`
    - `POST /FS/sensor/update`
    - `POST /FS/sensor/update-metadata`
+   - `POST /FS/sensor/delete`
 
 Notes:
 - This organization affects documentation presentation only.
@@ -237,6 +258,58 @@ Update existing sensor's `last_seen` timestamp.
 - If document EXISTS:
   - When `active_exp` is True: Validates owner and mac match; returns error on mismatch. Updates `last_seen` and `updated_at`.
   - When `active_exp` is False: Updates `last_seen`, `updated_at`, and optionally `owner` and `mac` (from hostname/mac_address in the request).
+
+#### `POST /FS/sensor/delete`
+
+Hard-delete an existing sensor document from Firestore.
+
+**Usage Example (curl):**
+```bash
+curl -X POST "http://localhost:8000/FS/sensor/delete" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hostname": "f4d_test",
+    "mac_address": "aaaaaaaaaaaa",
+    "lla": "fd002124b00ccf7399b"
+  }'
+```
+
+**Request Body:**
+```json
+{
+  "hostname": "f4d_test",
+  "mac_address": "aaaaaaaaaaaa",
+  "lla": "fd002124b00ccf7399b"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "status": "deleted",
+  "message": "Deleted sensor document for fd002124b00ccf7399b"
+}
+```
+
+**Error Response (if sensor not found):**
+```json
+{
+  "detail": "Sensor with LLA 'fd002124b00ccf7399b' not found."
+}
+```
+
+**Behavior:**
+- If document MISSING: Returns `404`.
+- If document EXISTS but owner/mac mismatch: Returns `400`.
+- If document EXISTS and owner/mac match: Permanently deletes the document and returns `200`.
+
+**Example Error Response (owner/mac mismatch):**
+```json
+{
+  "detail": "Owner mismatch: expected 'f4d_test', found 'other_owner'"
+}
+```
 
 #### `POST /FS/sensor/update-metadata`
 
@@ -812,6 +885,96 @@ The frontend dashboard (`http://localhost:8000/`) provides:
    - **Upload CSV**: Imports edited rows back into the frontend
    - Uses `LLA` as the required row key
    - Supports batch metadata updates using the existing `/FS/sensor/update-metadata` endpoint
+
+### Upload/Download CSV Mechanism
+
+The CSV workflow is designed for bulk metadata edits on the currently selected owner/device sensor list (`All sensors` context).
+
+**Download CSV Template**
+- The `Download CSV Template` button is enabled only after sensors are loaded for the selected owner and device.
+- The frontend exports one row per loaded sensor and includes `LLA` as the canonical row key.
+- The downloaded file is named with owner/device context (for example: `sensor_metadata_template_<owner>_<mac>.csv`).
+
+**Edit the CSV**
+- Keep the header row intact.
+- Do not remove or rename the `LLA` column (required for row matching).
+- Edit metadata fields (for example label/location/experiment name) for the sensors you want to update.
+- If an `LLA` looks shortened/ambiguous, use the exact full `LLA` value from the downloaded template.
+
+**Upload CSV**
+- The `Upload CSV` action parses the file and validates:
+  - Header exists and data rows are present
+  - `LLA` column exists
+  - Each row can be resolved to exactly one loaded sensor
+- Invalid or ambiguous rows are rejected with a clear error message so accidental updates are avoided.
+
+**Apply Updates**
+- After validation, the dashboard asks for confirmation with the number of sensors affected.
+- Accepted rows are converted into a batch metadata payload and sent to `/FS/sensor/update-metadata`.
+- On success, updated metadata is reflected in the UI after refresh/reload of the relevant data.
+
+**CSV Upload Endpoint (Full Request/Response)**
+
+- **Method**: `POST`
+- **Full URL (local)**: `http://localhost:8000/FS/sensor/update-metadata`
+- **Content-Type**: `application/json`
+- **Used by frontend CSV upload**: `body = { "sensors": [...] }`
+
+Example `curl` request:
+
+```bash
+curl -X POST "http://localhost:8000/FS/sensor/update-metadata" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sensors": [
+      {
+        "lla": "fd002124b00ccf7399b",
+        "hostname": "f4d_test",
+        "mac_address": "aaaaaaaaaaaa",
+        "updates": {
+          "exp_name": "Image_V3",
+          "location": "Plot A - East",
+          "label": ["Plant_01", "Leaf_03"],
+          "label_options": ["Plant_01", "Leaf_03", "Leaf_04"]
+        }
+      },
+      {
+        "lla": "fd002124b00ccf7399a",
+        "hostname": "f4d_test",
+        "mac_address": "aaaaaaaaaaaa",
+        "updates": {
+          "location": "Plot A - West",
+          "label": ["Plant_02"]
+        }
+      }
+    ]
+  }'
+```
+
+Example success response (`HTTP 200`):
+
+```json
+{
+  "success": true,
+  "status": "updated",
+  "message": "Successfully updated 2 sensor(s)",
+  "updated_llas": ["fd002124b00ccf7399b", "fd002124b00ccf7399a"],
+  "failed_llas": null,
+  "total_operations": 2
+}
+```
+
+Example error response (`HTTP 400`):
+
+```json
+{
+  "detail": "Batch update failed"
+}
+```
+
+**Scope and Safety**
+- CSV import/export applies only to the currently loaded owner/device sensor list.
+- This mechanism reuses the same backend metadata update endpoint as manual and bulk form-based edits, ensuring consistent write behavior.
 
 7. **Metadata Modal**: Clickable payload cards to view detailed sensor metadata
    - Click any payload card to open a modal with sensor metadata

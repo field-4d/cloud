@@ -17,7 +17,12 @@ import VisualizationPanel from './VisualizationPanel';
 import { API_ENDPOINTS } from '../config';
 import { apiLog, logger } from '../config/logger';
 import LabelFilter from './LabelFilter';
-import { expandCompositesByTokenOverlap } from '../utils/labelTokenUtils';
+import { applyOutlierFiltering, type OutlierConfig } from '../utils/outlierFiltering';
+import {
+  getSelectedLabelMemberships,
+  normalizeIncludedLabels,
+  type RowWithSensorLabel,
+} from '../utils/labelGrouping';
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -25,6 +30,9 @@ dayjs.extend(timezone);
 
 // Set the timezone to Israel
 const TIMEZONE = 'Asia/Jerusalem';
+
+const normalizeLocationKey = (value: string): string =>
+  String(value).trim().toLocaleLowerCase();
 
 interface ExperimentSummary {
   experimentName: string;
@@ -82,6 +90,15 @@ interface SensorData {
 interface SensorOption {
   value: string;
   label: string;
+}
+
+interface SensorDisplayOption {
+  displayKey: string;
+  displayLabel: string;
+  llaIds: string[];
+  isLocationBacked: boolean;
+  sortPrimary: string;
+  sortSecondary: string;
 }
 
 interface SensorDataRow {
@@ -325,6 +342,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   maxDate,
 }) => {
   const [selectedSensors, setSelectedSensors] = useState<string[]>([]);
+  const [selectedDisplayKeys, setSelectedDisplayKeys] = useState<string[]>([]);
   const [visualizedSensors, setVisualizedSensors] = useState<string[]>([]);
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
   const [availableSensors, setAvailableSensors] = useState<string[]>([]);
@@ -347,13 +365,11 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const currentExperiment = experimentSummaries.find(exp => exp.experimentName === selectedExperiment);
   const hasLabelOptions = Boolean(currentExperiment?.labelOptions?.length);
 
-  /** User's Include picks expanded by token overlap with labelOptions; used for fetch + viz. Falls back to raw picks if expansion is empty. */
-  const expandedIncludedLabels = React.useMemo(() => {
-    if (includedLabels.length === 0) return [];
-    const opts = currentExperiment?.labelOptions ?? [];
-    const expanded = expandCompositesByTokenOverlap(includedLabels, opts);
-    return expanded.length > 0 ? expanded : [...includedLabels];
-  }, [includedLabels, currentExperiment?.labelOptions]);
+  /** Strict include labels for grouping/export; no composite expansion. */
+  const selectedIncludeLabels = React.useMemo(
+    () => normalizeIncludedLabels(includedLabels),
+    [includedLabels]
+  );
 
   /** Pool for sensor multiselect / Select All: label-filtered list, or all available before filter applies. */
   const sensorSelectionPool = React.useMemo(
@@ -362,21 +378,12 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     [sensorsAfterLabelFilter, availableSensors]
   );
 
-  /**
-   * When the label pool changes without going through LabelFilter (e.g. experiment load),
-   * clamp selection to the pool. Label-driven updates set selectedSensors in onFilterChange.
-   */
-  React.useEffect(() => {
-    setSelectedSensors((prev) => {
-      const pruned = prev.filter((s) => sensorSelectionPool.includes(s));
-      if (pruned.length === prev.length && pruned.length > 0) return prev;
-      if (pruned.length > 0) return pruned;
-      return sensorSelectionPool;
-    });
-  }, [sensorSelectionPool]);
-
   // Outlier filtering state (single source of truth)
-  const [outlierFiltering, setOutlierFiltering] = React.useState<boolean>(false);
+  const [outlierConfig, setOutlierConfig] = React.useState<OutlierConfig>({
+    enabled: false,
+    method: 'IQR',
+    threshold: 1.5,
+  });
   
   // Artifact filtering state (single source of truth)
   const [artifactFiltering, setArtifactFiltering] = React.useState<boolean>(false);
@@ -394,36 +401,6 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     });
   }
 
-  // Helper: IQR-based outlier detection (same as in VisualizationPanel)
-  function filterOutliersIQR(data, selectedParameters) {
-    const grouped = {};
-    data.forEach(d => {
-      const param = d.parameter;
-      const date = typeof d.timestamp === 'string' ? d.timestamp.split('T')[0] : '';
-      if (!grouped[param]) grouped[param] = {};
-      if (!grouped[param][date]) grouped[param][date] = [];
-      grouped[param][date].push(d);
-    });
-    Object.keys(grouped).forEach(param => {
-      Object.keys(grouped[param]).forEach(date => {
-        const values = grouped[param][date].map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v));
-        if (values.length < 4) return;
-        values.sort((a, b) => a - b);
-        const q1 = values[Math.floor(values.length * 0.25)];
-        const q3 = values[Math.floor(values.length * 0.75)];
-        const iqr = q3 - q1;
-        const lower = q1 - 1.5 * iqr;
-        const upper = q3 + 1.5 * iqr;
-        grouped[param][date].forEach(d => {
-          if (d.value < lower || d.value > upper) {
-            d.value = null;
-          }
-        });
-      });
-    });
-    return data;
-  }
-
   // Use processed data for CSV export if filtering is enabled
   const processedSensorData = React.useMemo(() => {
     let data = sensorData.map(d => ({ ...d }));
@@ -434,12 +411,12 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     }
     
     // Then apply outlier filtering
-    if (outlierFiltering) {
-      data = filterOutliersIQR(data, selectedParameters);
+    if (outlierConfig.enabled) {
+      data = applyOutlierFiltering(data, outlierConfig);
     }
     
     return data;
-  }, [sensorData, artifactFiltering, outlierFiltering, selectedParameters]);
+  }, [sensorData, artifactFiltering, outlierConfig]);
 
   // Reset and update available data when experiment changes
   useEffect(() => {
@@ -451,6 +428,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         setAvailableSensors(experimentData.sensors || []);
         setAvailableParameters(experimentData.parameters || []);
         setSelectedSensors([]);
+        setSelectedDisplayKeys([]);
         setSelectedParameters([]);
         setSensorData([]);
         setSensorLabelMap(
@@ -473,6 +451,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       setAvailableSensors([]);
       setAvailableParameters([]);
       setSelectedSensors([]);
+      setSelectedDisplayKeys([]);
       setSelectedParameters([]);
       setSensorData([]);
       setSensorLabelMap({});
@@ -500,7 +479,9 @@ const DataSelector: React.FC<DataSelectorProps> = ({
    * @param selectedOptions - MultiValue<SensorOption>
    */
   const handleSensorChange = (selectedOptions: MultiValue<SensorOption>) => {
-    setSelectedSensors(selectedOptions.map(option => option.value));
+    const nextDisplayKeys = selectedOptions.map((option) => option.value);
+    setSelectedDisplayKeys(nextDisplayKeys);
+    setSelectedSensors(expandDisplayKeysToSensors(nextDisplayKeys));
   };
 
   const getSensorDisplayName = React.useCallback((sensor: string) => {
@@ -524,6 +505,80 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     });
   }, [getSensorDisplayName]);
 
+  const buildReplacementNamesForParameter = React.useCallback((
+    parameterRows: SensorData[],
+    sensors: string[]
+  ) => {
+    const rangesBySensor = new Map<string, { latest: number; earliest: number }>();
+    for (const sensor of sensors) {
+      rangesBySensor.set(sensor, {
+        latest: Number.NEGATIVE_INFINITY,
+        earliest: Number.POSITIVE_INFINITY,
+      });
+    }
+
+    for (const row of parameterRows) {
+      const sensor = String(row.sensor ?? '');
+      if (!rangesBySensor.has(sensor)) continue;
+      const ts = Date.parse(String(row.timestamp ?? ''));
+      if (!Number.isFinite(ts)) continue;
+      const range = rangesBySensor.get(sensor);
+      if (!range) continue;
+      range.latest = Math.max(range.latest, ts);
+      range.earliest = Math.min(range.earliest, ts);
+    }
+
+    const groupedByLocation = new Map<string, string[]>();
+    for (const sensor of sensors) {
+      const displayName = getSensorDisplayName(sensor);
+      const group = groupedByLocation.get(displayName);
+      if (group) {
+        group.push(sensor);
+      } else {
+        groupedByLocation.set(displayName, [sensor]);
+      }
+    }
+
+    const namesBySensor: Record<string, string> = {};
+    for (const [displayName, sensorsInLocation] of groupedByLocation.entries()) {
+      if (sensorsInLocation.length <= 1) {
+        namesBySensor[sensorsInLocation[0]] = displayName;
+        continue;
+      }
+
+      const ranked = sensorsInLocation
+        .slice()
+        .sort((left, right) => {
+          const leftRange = rangesBySensor.get(left);
+          const rightRange = rangesBySensor.get(right);
+          const leftLatest = leftRange?.latest ?? Number.NEGATIVE_INFINITY;
+          const rightLatest = rightRange?.latest ?? Number.NEGATIVE_INFINITY;
+          if (leftLatest !== rightLatest) return rightLatest - leftLatest;
+          const leftEarliest = leftRange?.earliest ?? Number.POSITIVE_INFINITY;
+          const rightEarliest = rightRange?.earliest ?? Number.POSITIVE_INFINITY;
+          if (leftEarliest !== rightEarliest) return rightEarliest - leftEarliest;
+          return left.localeCompare(right, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          });
+        });
+
+      ranked.forEach((sensor, index) => {
+        if (index === 0) {
+          namesBySensor[sensor] = displayName;
+          return;
+        }
+        if (ranked.length === 2) {
+          namesBySensor[sensor] = `${displayName} (replaced)`;
+          return;
+        }
+        namesBySensor[sensor] = `${displayName} (replaced ${index})`;
+      });
+    }
+
+    return namesBySensor;
+  }, [getSensorDisplayName]);
+
   const formatCsvTimestamp = React.useCallback((timestamp: string) => {
     const trimmed = String(timestamp).trim();
     return trimmed
@@ -532,18 +587,112 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       .replace(/Z$/, '');
   }, []);
 
-  /** Sensor multiselect: value = LLA (internal); label = location only when known, else LLA. */
-  const sensorOptions: SensorOption[] = React.useMemo(() => {
-    return sensorSelectionPool
-      .slice()
-      .sort((a, b) => {
-        const la = (sensorLocationMap[a] ?? '').trim();
-        const lb = (sensorLocationMap[b] ?? '').trim();
-        if (la !== lb) return la.localeCompare(lb);
-        return a.localeCompare(b);
-      })
-      .map((sensor) => ({ value: sensor, label: getSensorDisplayName(sensor) }));
-  }, [sensorSelectionPool, sensorLocationMap, getSensorDisplayName]);
+  const {
+    displayOptions,
+    displayKeyToLlas,
+    llaToDisplayKey,
+    sensorOptions,
+  } = React.useMemo(() => {
+    const grouped = new Map<string, SensorDisplayOption>();
+
+    for (const sensor of sensorSelectionPool) {
+      const rawLocation = sensorLocationMap[sensor];
+      const location = rawLocation != null ? String(rawLocation).trim() : '';
+      const isLocationBacked = location !== '';
+      const displayKey = isLocationBacked
+        ? `location:${normalizeLocationKey(location)}`
+        : `lla:${sensor}`;
+      const displayLabel = isLocationBacked ? location : sensor;
+      const sortPrimary = isLocationBacked
+        ? normalizeLocationKey(location)
+        : normalizeLocationKey(sensor);
+
+      const existing = grouped.get(displayKey);
+      if (existing) {
+        existing.llaIds.push(sensor);
+        continue;
+      }
+
+      grouped.set(displayKey, {
+        displayKey,
+        displayLabel,
+        llaIds: [sensor],
+        isLocationBacked,
+        sortPrimary,
+        sortSecondary: sensor,
+      });
+    }
+
+    const dedupedOptions = Array.from(grouped.values())
+      .map((option) => ({
+        ...option,
+        llaIds: option.llaIds.slice().sort((a, b) =>
+          a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+        ),
+      }))
+      .sort((left, right) => {
+        const byPrimary = left.sortPrimary.localeCompare(right.sortPrimary, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        if (byPrimary !== 0) return byPrimary;
+        return left.sortSecondary.localeCompare(right.sortSecondary, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      });
+
+    const keyToLlas: Record<string, string[]> = {};
+    const sensorToKey: Record<string, string> = {};
+    for (const option of dedupedOptions) {
+      keyToLlas[option.displayKey] = option.llaIds;
+      for (const lla of option.llaIds) {
+        sensorToKey[lla] = option.displayKey;
+      }
+    }
+
+    return {
+      displayOptions: dedupedOptions,
+      displayKeyToLlas: keyToLlas,
+      llaToDisplayKey: sensorToKey,
+      sensorOptions: dedupedOptions.map((option) => ({
+        value: option.displayKey,
+        label: option.displayLabel,
+      })),
+    };
+  }, [sensorSelectionPool, sensorLocationMap]);
+
+  const expandDisplayKeysToSensors = React.useCallback((displayKeys: string[]) => {
+    const seen = new Set<string>();
+    const expanded: string[] = [];
+    const poolSet = new Set(sensorSelectionPool);
+    for (const key of displayKeys) {
+      const llas = displayKeyToLlas[key] ?? [];
+      for (const lla of llas) {
+        if (!poolSet.has(lla) || seen.has(lla)) continue;
+        seen.add(lla);
+        expanded.push(lla);
+      }
+    }
+    return expanded.slice().sort(compareSensorNames);
+  }, [displayKeyToLlas, sensorSelectionPool, compareSensorNames]);
+
+  /**
+   * Clamp selected display options when pool/mapping changes.
+   * Defaults to all currently available visible options.
+   */
+  React.useEffect(() => {
+    setSelectedDisplayKeys((prev) => {
+      const valid = prev.filter((key) => displayKeyToLlas[key] != null);
+      if (valid.length === prev.length && valid.length > 0) return prev;
+      if (valid.length > 0) return valid;
+      return displayOptions.map((option) => option.displayKey);
+    });
+  }, [displayOptions, displayKeyToLlas]);
+
+  React.useEffect(() => {
+    setSelectedSensors(expandDisplayKeysToSensors(selectedDisplayKeys));
+  }, [selectedDisplayKeys, expandDisplayKeysToSensors]);
 
   // Convert availableParameters to options format for react-select.
   const parameterOptions: ParameterOption[] = availableParameters
@@ -816,19 +965,34 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const handleDownloadCSV = () => {
     if (processedSensorData.length === 0) return;
 
+    const csvCell = (value: string | number) => {
+      const text = String(value ?? '');
+      const escaped = text.replace(/"/g, '""');
+      return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
+    };
+
+    const safeHeaderLabel = (label: string) =>
+      String(label)
+        .trim()
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/\s+/g, ' ');
+
     // Group by Label mode
-    if (groupBy === 'label' && Object.keys(sensorLabelMap).length > 0 && expandedIncludedLabels.length > 0) {
+    if (groupBy === 'label' && selectedIncludeLabels.length > 0) {
       const labelMap = sensorLabelMap;
-      const labelsToExport = expandedIncludedLabels;
+      const labelsToExport = selectedIncludeLabels;
       
       // For each parameter, build a map: timestamp -> label -> [values]
       const byTimestamp: Record<string, Record<string, Record<string, number[]>>> = {};
       processedSensorData.forEach(d => {
         const param = d.parameter;
         const timestamp = d.timestamp;
-        const sensor = String(d.sensor);
-        const sensorLabels = (labelMap[sensor] || []).filter(l => labelsToExport.includes(l));
-        sensorLabels.forEach(label => {
+        const matchedLabels = getSelectedLabelMemberships(
+          d as RowWithSensorLabel,
+          labelMap,
+          labelsToExport
+        );
+        matchedLabels.forEach((label) => {
           if (!byTimestamp[timestamp]) byTimestamp[timestamp] = {};
           if (!byTimestamp[timestamp][label]) byTimestamp[timestamp][label] = {};
           if (!byTimestamp[timestamp][label][param]) byTimestamp[timestamp][label][param] = [];
@@ -846,8 +1010,9 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         // Build columns: for each label, add mean and errorType (SE or STD)
         const columns: string[] = ['Timestamp'];
         labelsToExport.forEach(label => {
-          columns.push(`${label}-Mean`);
-          columns.push(`${label}-${errorType}`);
+          const safeLabel = safeHeaderLabel(label);
+          columns.push(`${safeLabel}-Mean`);
+          columns.push(`${safeLabel}-${errorType}`);
         });
 
         // Build rows
@@ -882,7 +1047,10 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         });
 
         // Combine header and rows
-        const csvContent = [columns.join(','), ...rows.map(row => row.join(','))].join('\n');
+        const csvContent = [
+          columns.map(csvCell).join(','),
+          ...rows.map(row => row.map(csvCell).join(',')),
+        ].join('\n');
 
         // Create and trigger download
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -930,12 +1098,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       const paramData = dataByParameter[param];
       const timestamps = Object.keys(paramData).sort();
       const sensors = [...visualizedSensors].sort(compareSensorNames);
-      const sensorHeaderMap = sensors.reduce<Record<string, string>>((acc, sensor) => {
-        const displayName = getSensorDisplayName(sensor);
-        const duplicateCount = Object.values(acc).filter((name) => name === displayName).length;
-        acc[sensor] = duplicateCount > 0 ? `${displayName} (${sensor})` : displayName;
-        return acc;
-      }, {});
+      const rowsForParameter = processedSensorData.filter((row) => row.parameter === param);
+      const sensorHeaderMap = buildReplacementNamesForParameter(rowsForParameter, sensors);
 
       // Create CSV content
       const rows = timestamps.map(timestamp => {
@@ -1016,7 +1180,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
                 className="ml-2 font-semibold"
                 style={{ color: '#8AC6B6' }}
               >
-                ({selectedSensors.length}/{sensorSelectionPool.length})
+                ({selectedDisplayKeys.length}/{sensorOptions.length})
               </span>
             </label>
           </div>
@@ -1032,8 +1196,16 @@ const DataSelector: React.FC<DataSelectorProps> = ({
                   setSensorsAfterLabelFilter(filteredSensors);
                   setIncludedLabels(includeLabels);
                   setExcludeLabels(excludeLabels);
-                  // Keep sensor multiselect aligned with OR/AND label logic (add/remove with each change)
-                  setSelectedSensors(filteredSensors);
+                  // Keep visible selector aligned with label-filtered LLAs.
+                  const nextDisplayKeys = Array.from(
+                    new Set(
+                      filteredSensors
+                        .map((sensor) => llaToDisplayKey[sensor])
+                        .filter((value): value is string => Boolean(value))
+                    )
+                  );
+                  setSelectedDisplayKeys(nextDisplayKeys);
+                  setSelectedSensors(expandDisplayKeysToSensors(nextDisplayKeys));
                 }}
               />
             </div>
@@ -1042,21 +1214,24 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           <div className="flex items-center space-x-2 mb-2">
             <button
               onClick={() => {
-                if (selectedSensors.length === sensorSelectionPool.length) {
+                if (selectedDisplayKeys.length === sensorOptions.length) {
+                  setSelectedDisplayKeys([]);
                   setSelectedSensors([]);
                 } else {
-                  setSelectedSensors([...sensorSelectionPool]);
+                  const nextDisplayKeys = displayOptions.map((option) => option.displayKey);
+                  setSelectedDisplayKeys(nextDisplayKeys);
+                  setSelectedSensors(expandDisplayKeysToSensors(nextDisplayKeys));
                 }
               }}
               className="text-sm text-[#8ac6bb] hover:text-[#7ab6ab]"
             >
-              {selectedSensors.length === sensorSelectionPool.length ? 'Deselect All' : 'Select All'}
+              {selectedDisplayKeys.length === sensorOptions.length ? 'Deselect All' : 'Select All'}
             </button>
           </div>
           <Select<SensorOption, true>
             isMulti
             options={sensorOptions}
-            value={sensorOptions.filter(option => selectedSensors.includes(option.value))}
+            value={sensorOptions.filter((option) => selectedDisplayKeys.includes(option.value))}
             onChange={handleSensorChange}
             className="basic-multi-select"
             classNamePrefix="select"
@@ -1078,7 +1253,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
         {/* Parameter Selection */}
         <div>
-          <label className="block text-sm font-medium text-gfray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Parameters
           </label>
           <Select<ParameterOption, true>
@@ -1158,12 +1333,12 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             experimentName={selectedExperiment}
             getSensorColor={getSensorColor}
             getSensorDisplayName={getSensorDisplayName}
-            outlierFiltering={outlierFiltering}
-            setOutlierFiltering={setOutlierFiltering}
+            outlierConfig={outlierConfig}
+            setOutlierConfig={setOutlierConfig}
             artifactFiltering={artifactFiltering}
             setArtifactFiltering={setArtifactFiltering}
               sensorLabelMap={sensorLabelMap}
-            includedLabels={expandedIncludedLabels}
+            includedLabels={selectedIncludeLabels}
             excludeLabels={excludeLabels}
             groupBy={groupBy}
             setGroupBy={setGroupBy}

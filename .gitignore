@@ -2,45 +2,44 @@
 *
 
 # Keep these folders
-!process_files/
-!query_last_timestamp/
-!update-labels/
-!upload_To_bucket/
-!users-devices-permission/
-!F4D/
-!Field4D_Site/
-!field4d_analytics/
-!login_and_issue_jwt/
-!F4D_Pi_V2/
 !cloud_upload_alerts/
-!Reggie_Online/
-!F4D_python/
-!f4d_bq_sync/
+!F4D/
+!f4d-auth-service/
+!f4d-bq-sync/
 !/f4d-register-device/
+!F4D_Pi_V2/
+!F4D_python/
+!fetch_google/
+!field4d_analytics/
+!Field4D_Site/
+!/legacy gcp cloud function/
+!Reggie_Online/
 !/SPAC automatic Pull/
 
 # Also keep their contents
-!process_files/**
-!query_last_timestamp/**
-!update-labels/**
-!upload_To_bucket/**
-!users-devices-permission/**
-!F4D/**
-!Field4D_Site/**
-!field4d_analytics/**
-!/login_and_issue_jwt/** 
-!/F4D_Pi_V2/**
 !/cloud_upload_alerts/**
-!/Reggie_Online/**
-!/F4D_python/**
-!/f4d_bq_sync/**
+!F4D/**
+!/f4d-auth-service/**
+!/f4d-bq-sync/**
 !/f4d-register-device/**
+!/F4D_Pi_V2/**
+!/F4D_python/**
+!/fetch_google/**
+!field4d_analytics/**
+!Field4D_Site/**
+!/legacy gcp cloud function/**
+!/Reggie_Online/**
 !/SPAC automatic Pull/**
 
-# Ignore generated Python files in F4D_python
-F4D_python/venv/
-F4D_python/**/__pycache__/
-F4D_python/**/*.pyc
+# Ignore generated Python files everywhere
+**/venv/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
 
 # Keep .gitignore itself
 !.gitignore
@@ -51,5 +50,8 @@ F4D_python/**/*.pyc
 .env.*
 **/.env
 **/.env.*
+
+# Never commit service-account key files
+fetch_google/read_BQ.json
 
 # Keep f4d-register-device ignored

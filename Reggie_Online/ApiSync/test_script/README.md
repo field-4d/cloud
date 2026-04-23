@@ -1,3 +1,47 @@
+# Test Scripts Safety Guide
+
+This directory is split into two explicit groups to reduce risk on live systems.
+
+## Folder layout
+
+- `test_script/read-only/`  
+  Safe scripts that use GET-only checks and should not modify Firestore documents.
+
+- `test_script/destructive/`  
+  Scripts that can write, register, update, or delete Firestore data.  
+  Do not run these against production/live environments.
+
+## Read-only scripts (safe for live checks)
+
+- `read-only/6.test_new_endpoints.py`
+  - GET checks for metadata and experiments endpoints.
+
+- `read-only/8.test_phone_app_nfc.py`
+  - GET checks for `phone-app/NFC/fetch-data`.
+  - Validates JSON response and `Last_Seen` recency.
+
+## Destructive scripts (can change DB)
+
+- `destructive/1.test_websocket.py`
+- `destructive/2.test_update_metadata.py`
+- `destructive/3.test_last_package.py`
+- `destructive/4.test_batch_last_package.py`
+- `destructive/5.test_runner.py`
+- `destructive/7.test_delete_sensor.py`
+
+## Removed
+
+- `test_script/test_runner.py` was deleted intentionally.
+
+## Recommendation
+
+When checking production, run only:
+
+```bash
+python test_script/read-only/6.test_new_endpoints.py
+python test_script/read-only/8.test_phone_app_nfc.py
+```
+
 # Test Scripts for ApiSync
 
 This folder contains test scripts to verify the ApiSync FastAPI endpoints are working correctly.

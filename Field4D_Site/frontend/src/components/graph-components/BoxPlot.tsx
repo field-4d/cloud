@@ -6,9 +6,13 @@
 import React, { useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import { toast } from 'react-toastify';
-import { BoxPlotData } from 'plotly.js-dist-min';
+import { BoxPlotData, Data } from 'plotly.js-dist-min';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
-import { getEffectiveLabel, type RowWithSensorLabel } from '../../utils/labelGrouping';
+import {
+  getSelectedLabelMemberships,
+  normalizeIncludedLabels,
+  type RowWithSensorLabel,
+} from '../../utils/labelGrouping';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -137,15 +141,19 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   // Expand data for label grouping
   let expandedData: SensorData[] = data;
   const useLabelGrouping = groupBy === 'label' || mainGroupBy === 'date' || subGroupBy === 'label';
+  const selectedLabelGroups = normalizeIncludedLabels(includedLabels);
   
   if (useLabelGrouping) {
     expandedData = [];
     data.forEach((d) => {
-      const eff = getEffectiveLabel(d as RowWithSensorLabel, sensorLabelMap);
-      if (eff === null) return;
-      if (includedLabels.length === 0 || includedLabels.includes(eff)) {
-        expandedData.push({ ...d, label: eff });
-      }
+      const memberships = getSelectedLabelMemberships(
+        d as RowWithSensorLabel,
+        sensorLabelMap,
+        selectedLabelGroups
+      );
+      memberships.forEach((label) => {
+        expandedData.push({ ...d, label });
+      });
     });
   }
 
@@ -187,8 +195,8 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     groupKey = (d: SensorData) => d.label || 'Unknown';
   }
 
-  // For each parameter and group, create a box trace
-  const traces: Partial<BoxPlotData>[] = limitedParameters.flatMap((param, paramIdx) => {
+  // For each parameter and group, create base box traces
+  const boxTraces: Partial<BoxPlotData>[] = limitedParameters.flatMap((param, paramIdx) => {
     // If hierarchical grouping (Date → Label), structure differently
     if (useHierarchicalGrouping && mainGroupKey && subGroupKey) {
       // Get all unique main groups and sub groups
@@ -222,9 +230,13 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
           );
           
           if (filtered.length > 0) {
+            const values = filtered
+              .map(d => d.value)
+              .filter(v => v !== null && v !== undefined && !isNaN(v));
+            if (values.length === 0) return;
             traceData.push({
               mainGroup,
-              values: filtered.map(d => d.value).filter(v => v !== null && v !== undefined && !isNaN(v))
+              values
             });
           }
         });
@@ -245,7 +257,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
           x: xPositions,
           name: `${subGroup}${limitedParameters.length > 1 ? ` - ${param}` : ''}`,
           type: "box",
-          boxpoints: 'outliers',
+          boxpoints: false,
           marker: { color: undefined }, // Let Plotly handle colors for grouped boxes
           yaxis: paramIdx === 0 ? 'y' : 'y2',
         };
@@ -255,14 +267,18 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     const groups = Array.from(new Set(expandedData.filter(d => d.parameter === param && selectedSensors.includes(d.sensor)).map(groupKey)));
     return groups.map(group => {
       const filtered = expandedData.filter(d => d.parameter === param && selectedSensors.includes(d.sensor) && groupKey(d) === group);
+      const values = filtered
+        .map(d => d.value)
+        .filter(v => v !== null && v !== undefined && !isNaN(v));
+      if (values.length === 0) return null;
       return {
-        y: filtered.map(d => d.value),
-        x: Array(filtered.length).fill(group),
+        y: values,
+        x: Array(values.length).fill(group),
         name: groupBy === 'sensor'
           ? `${group}${limitedParameters.length > 1 ? ` - ${param}` : ''}`
           : `${group}${limitedParameters.length > 1 ? ` - ${param}` : ''}`,
         type: "box",
-        boxpoints: 'outliers',
+        boxpoints: false,
         marker: { color: groupBy === 'sensor' ? getSensorColor(group) : undefined },
         yaxis: paramIdx === 0 ? 'y' : 'y2',
       };
@@ -271,6 +287,37 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   }).flat()
     .filter(t => t !== null)
     .sort((a, b) => a.name!.localeCompare(b.name!)); // Sort traces alphabetically by name
+
+  // Add a stripplot-style raw-points overlay (jittered, translucent) on top of each box.
+  // We keep this as lightweight box traces with transparent boxes so grouped offsets remain aligned.
+  const stripOverlayTraces: Partial<BoxPlotData>[] = boxTraces.map((trace) => {
+    const baseColor =
+      trace.marker && typeof trace.marker === 'object' && 'color' in trace.marker
+        ? trace.marker.color
+        : '#5EA99C';
+
+    return {
+      x: trace.x,
+      y: trace.y,
+      name: trace.name,
+      type: 'box',
+      yaxis: trace.yaxis,
+      showlegend: false,
+      hoverinfo: 'x+y',
+      boxpoints: 'all',
+      jitter: 0.42,
+      pointpos: 0,
+      fillcolor: 'rgba(0,0,0,0)',
+      line: { width: 0, color: 'rgba(0,0,0,0)' },
+      marker: {
+        color: baseColor as any,
+        size: 5.5,
+        opacity: 0.5,
+      },
+    };
+  });
+
+  const traces: Partial<Data>[] = [...boxTraces, ...stripOverlayTraces];
 
   // Layout with two y-axes
   const layout: Partial<import('plotly.js-dist-min').Layout> = {
@@ -351,7 +398,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   // Guard: If groupBy is 'label' and no includedLabels, show info message
   const labelWarningFontColor = '#8AC6BB';
   const labelWarningFontSize = 20;
-  if (groupBy === 'label' && (!includedLabels || includedLabels.length === 0)) {
+  if (groupBy === 'label' && selectedLabelGroups.length === 0) {
     return <LabelWarningPlaceholder fontColor={labelWarningFontColor} fontSize={labelWarningFontSize} />;
   }
 

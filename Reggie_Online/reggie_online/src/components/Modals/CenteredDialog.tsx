@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+ccimport type { ReactNode } from "react";
 
 type CenteredDialogProps = {
   open: boolean;

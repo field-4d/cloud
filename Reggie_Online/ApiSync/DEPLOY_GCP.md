@@ -49,27 +49,15 @@ gcloud secrets versions add apisync-env --data-file=backend/auth/.env
 From the ApiSync project root:
 
 ```bash
-docker build -t gcr.io/YOUR_PROJECT_ID/apisync:latest .
-```
-
-Or use Artifact Registry:
-
-```bash
-docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_REPO/apisync:latest .
+docker build -t gcr.io/iucc-f4d/apisync:latest .
 ```
 
 ## 3. Push image
 
-Docker must be running. Cloud Run expects the image to already exist in the registry; it does not build or push for you.
+Cloud Run expects the image to already exist in the registry; it does not build or push for you.
 
 ```bash
-docker push gcr.io/YOUR_PROJECT_ID/apisync:latest
-```
-
-Or with Artifact Registry:
-
-```bash
-docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_REPO/apisync:latest
+docker push gcr.io/iucc-f4d/apisync:latest
 ```
 
 ## 4. Deploy to Cloud Run
@@ -78,14 +66,29 @@ Mount the secret and set `ENV_FILE_PATH` so the app loads credentials at runtime
 
 ```bash
 gcloud run deploy apisync \
-  --image gcr.io/YOUR_PROJECT_ID/apisync:latest \
+  --image gcr.io/iucc-f4d/apisync:latest \
   --region us-central1 \
   --set-secrets=/secrets/auth/.env=apisync-env:latest \
   --set-env-vars="ENV_FILE_PATH=/secrets/auth/.env" \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --project iucc-f4d
 ```
 
-Replace `YOUR_PROJECT_ID` (and `YOUR_REPO` if using Artifact Registry) with your values.
+### minimal-deploy (PowerShell)
+
+```powershell
+docker build -t gcr.io/iucc-f4d/apisync:latest .
+
+docker push gcr.io/iucc-f4d/apisync:latest
+
+gcloud run deploy apisync `
+  --image gcr.io/iucc-f4d/apisync:latest `
+  --region us-central1 `
+  --set-secrets=/secrets/auth/.env=apisync-env:latest `
+  --set-env-vars="ENV_FILE_PATH=/secrets/auth/.env" `
+  --allow-unauthenticated `
+  --project iucc-f4d
+```
 
 ## Future Updates (code changes)
 

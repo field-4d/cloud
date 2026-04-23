@@ -655,16 +655,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen bg-[#f7f8f3]">
-      {/* Fixed top-right buttons */}
-      <div className="fixed top-4 right-4 flex items-center space-x-2 z-50">
-        <button
-          onClick={handleLogout}
-          className="bg-[#b2b27a] text-white py-2 px-4 rounded hover:bg-[#8ac6bb] transition-colors"
-        >
-          Log Out
-        </button>
-      </div>
-
       {/* Sidebar */}
       {isSidebarCollapsed ? (
         <div className="w-full h-16 bg-[#f7f8f3] flex items-center border-b border-[#b2b27a] px-4 z-20 fixed top-0 left-0">
@@ -863,6 +853,15 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <div className={`flex-1 p-4 bg-[#f7f8f3] ${isSidebarCollapsed ? 'pt-20' : ''} relative`}>
+        <div className="absolute top-4 right-4 z-40">
+          <button
+            onClick={handleLogout}
+            className="bg-[#b2b27a] text-white py-2 px-4 rounded hover:bg-[#8ac6bb] transition-colors"
+          >
+            Log Out
+          </button>
+        </div>
+
         {selectedPermission && (
           <div className="space-y-4">
             <DataSelector 

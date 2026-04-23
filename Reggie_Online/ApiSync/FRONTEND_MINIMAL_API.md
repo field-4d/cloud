@@ -1,469 +1,492 @@
-# Frontend WebSocket Ping (Minimal)
+# Frontend Minimal API
 
-```js
-const ws = new WebSocket("ws://localhost:8000/ws/ping");
+Contract for the **`reggie_online`** SPA when talking to the **ApiSync** FastAPI backend (`backend/src`). All HTTP paths are appended to the env **`VITE_API_BASE`** (no trailing slash). Real-time pings use a separate full WebSocket URL **`VITE_WS_PING`** (for example `wss://<host>/ws/ping`).
 
-ws.onopen = () => console.log("connected");
-ws.onmessage = (event) => {
-  const msg = JSON.parse(event.data);
-  if (msg.type === "Ping") console.log("Ping:", msg);
-};
-ws.onclose = () => console.log("disconnected");
-```
-# Frontend Minimal API Guide
+| Env var | Purpose |
+|--------|---------|
+| `VITE_API_BASE` | Prefix for REST `fetch` calls |
+| `VITE_WS_PING` | Full WebSocket URL for `/ws/ping` |
 
-Minimal endpoint guide for frontend development, ordered exactly like Swagger tags in `backend/src/main.py`:
+Code references: `reggie_online/src/api/apisyncClient.ts`, `reggie_online/src/api/permissions.ts`, `reggie_online/src/api/metadata.ts`, `reggie_online/src/pages/DashboardPage.tsx`, `reggie_online/src/hooks/useDeviceDashboard.ts`, `reggie_online/src/utils/replaceSensor.ts`, `backend/src/api/firestore_endpoints.py`, `backend/src/api/websocket_endpoints.py`.
 
-1. `system`
-2. `permissions`
-3. `metadata`
-4. `sensors`
+---
 
-## Mini Frontend (What It Is)
+## Authentication Roadmap
 
-This project also includes a very small frontend shell in `frontend/index_external_css.html`.  
-It is intentionally minimal: the file only renders a full-page `<iframe>` that loads `frontend/index.html`.
+- **Current (development):** No authentication. Plain `fetch` / `WebSocket` with JSON bodies only where noted.
+- **Planned (pre-production / production):** **JWT Bearer** authentication on protected routes.
+- **Suggested header once enabled:**
 
-- `index_external_css.html`: tiny wrapper/entry page (iframe host)
-- `index.html`: the actual app UI (WebSocket monitor + API-driven controls)
-- `frontend/styles/*.css`: external style files used by `index.html`
+  `Authorization: Bearer <token>`
 
-## Mini Frontend Features (What Each One Does + How It Works)
+Until JWT is implemented, omit the header. After rollout, the backend team will document which routes require a token and error shapes (`401` / `403`).
 
-1. **WebSocket Connection (Ping monitor)**
-   - **What it does:** Connects/disconnects from `/ws/ping` and shows live connection state.
-   - **How it works:** user clicks Connect -> browser opens WS -> incoming Ping payloads are rendered as cards in "Received Payloads".
+---
 
-2. **Health Check**
-   - **What it does:** Verifies backend availability quickly.
-   - **How it works:** calls `GET /health` and displays status + raw response in the health panel.
+## Resolve permissions (owner / MAC list for an email)
 
-3. **Permissions Resolve (Owner/MAC context)**
-   - **What it does:** Loads allowed owners and devices for a user email.
-   - **How it works:** calls `GET /GCP-FS/permissions/resolve?email=...`, then populates owner/device dropdowns used by experiment and metadata views.
+### Purpose
 
-4. **Experiment Browser + Stats**
-   - **What it does:** Shows experiments for selected owner/MAC, with active/inactive filtering.
-   - **How it works:** calls metadata experiment endpoints, fills experiment dropdown, updates totals (total/active/inactive), and supports manual/auto refresh.
+Map a user email to the list of **owners** and **MAC addresses** they may use (home screen device picker).
 
-5. **Sensors List and Metadata Panel**
-   - **What it does:** Displays sensors for selected experiment (or all sensors) and enables metadata review/edit flows.
-   - **How it works:** uses metadata endpoints to fetch rows and render cards; modal/details views are populated from API responses.
+### Endpoint
 
-6. **Payload Filters and UX Controls**
-   - **What it does:** Filters visible Ping cards by owner/device and controls visual behavior.
-   - **How it works:** UI-only filtering is applied on already-received payload cards; includes clear list, max payload count, blink color, and blink duration controls.
+`GET /GCP-FS/permissions/resolve`
 
-7. **CSV Import/Export for Metadata**
-   - **What it does:** Supports bulk metadata edits using CSV templates.
-   - **How it works:** frontend exports current sensor set to CSV template, user edits, then upload parses CSV and sends update requests to metadata endpoints.
+### Current Auth
 
-8. **Last_Package Handling in Current Mode**
-   - **What it does:** Backend still stores `Last_Package` in Firestore, but frontend Ping monitor stays Ping-only.
-   - **How it works:** with `LAST_PACKAGE_WS_ENABLED = False` (default), sender receives WS ack, and frontend does not get broadcast Last_Package cards.
+None required.
 
-## Base URL and Example Values
+### Future Auth
 
-- Base URL (GCP): `https://apisync-1000435921680.us-central1.run.app`
-- Email: `Field4D_ADMIN@field4d.com`
-- Owner: `f4dv2`
-- MAC examples: `d83adde260d1`, `d83adde261b0`
-- `exp_name` is optional and dynamic during testing.
+JWT Bearer token planned.
 
-### WebSocket Note (Current Backend Behavior)
+### Query Params
 
-- `Ping` remains the frontend real-time WebSocket flow.
-- `Last_Package` received over WebSocket is processed and stored in Firestore.
-- With `LAST_PACKAGE_WS_ENABLED = False` (current default), `Last_Package` is not forwarded/broadcast to frontend clients.
-- Sender receives an acknowledge payload:
+| Param | Required | Description |
+|-------|----------|-------------|
+| `email` | Yes | User email (URL-encoded in the client). |
 
-```json
-{
-  "received": true,
-  "disabled": true,
-  "stored": true,
-  "type": "Last_Package",
-  "message": "Stored in Firestore but not forwarded over WebSocket"
-}
-```
+Frontend: `reggie_online/src/api/permissions.ts` — `encodeURIComponent(email)`.
 
-## 1) System
+### Request Payload
 
-### GET /health
+None.
 
-**What it does**  
-Checks backend health quickly.
-
-**Endpoint**  
-`GET /health`
-
-**Request example**
-
-```bash
-curl "https://apisync-1000435921680.us-central1.run.app/health"
-```
-
-**Response**
-
-```json
-{
-  "status": "ok"
-}
-```
-
-### GET /
-
-**What it does**  
-Serves frontend HTML page from backend.
-
-**Endpoint**  
-`GET /`
-
-**Request example**
-
-```bash
-curl -I "https://apisync-1000435921680.us-central1.run.app/"
-```
-
-**Response**  
-HTTP `200` with HTML content (`text/html`).
-
-## 2) Permissions
-
-### GET /GCP-FS/permissions/resolve
-
-**What it does**  
-Resolves all owner/MAC combinations available for a user email.
-
-**Endpoint**  
-`GET /GCP-FS/permissions/resolve?email={email}`
-
-**Request example**
-
-```bash
-curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/permissions/resolve?email=Field4D_ADMIN@field4d.com"
-```
-
-**Response**
+### Example Response
 
 ```json
 {
   "success": true,
-  "email": "Field4D_ADMIN@field4d.com",
+  "email": "user@example.com",
   "owners": [
     {
-      "owner": "f4dv2",
-      "mac_addresses": ["d83adde260d1", "d83adde261b0"]
+      "owner": "f4d_test",
+      "mac_addresses": ["aaaaaaaaaaaa"]
     }
   ]
 }
 ```
 
-Note: if canonical `/api/permissions/resolve` is enabled later, it belongs to this same section.
+Shape from `PermissionsResolveResponse` in `backend/src/api/firestore_endpoints.py`.
 
-## 3) Metadata (Read-only Queries)
+### Notes
 
-### GET /GCP-FS/metadata/active
+- On failure the backend may return **`404`** with detail `"No permissions found for this email"` (`PermissionsNotFoundError`).
+- **`500` / `502` / `503`** are possible for upstream or format errors; the frontend surfaces a generic error string from `apiGet` (`reggie_online/src/api/apisyncClient.ts`).
 
-**What it does**  
-Returns one sensor metadata record by `owner` + `mac_address` + `lla`.
+---
 
-**Endpoint**  
-`GET /GCP-FS/metadata/active?owner={owner}&mac_address={mac_address}&lla={lla}`
+## List sensors for owner + MAC
 
-**Request example**
+### Purpose
 
-```bash
-curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/metadata/active?owner=f4dv2&mac_address=d83adde260d1&lla=fd002124b001204bd42"
-```
+Load all sensor rows for a device (dashboard grid, refresh, CSV validation).
 
-**Response**
+### Endpoint
 
-```json
-{
-  "success": true,
-  "count": 1,
-  "data": [
-    {
-      "Owner": "f4dv2",
-      "Mac_Address": "d83adde260d1",
-      "LLA": "fd002124b001204bd42",
-      "Active_Exp": false
-    }
-  ]
-}
-```
+`GET /GCP-FS/metadata/sensors`
 
-### GET /GCP-FS/metadata/sensors
+### Current Auth
 
-**What it does**  
-Returns all sensors metadata for an owner/MAC, optionally filtered by `exp_name`.
+None required.
 
-**Endpoint**  
-`GET /GCP-FS/metadata/sensors?owner={owner}&mac_address={mac_address}&exp_name={exp_name}`
+### Future Auth
 
-**Request example**
+JWT Bearer token planned.
 
-```bash
-curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/metadata/sensors?owner=f4dv2&mac_address=d83adde260d1&exp_name=YOUR_DYNAMIC_EXPERIMENT_NAME"
-```
+### Query Params
 
-**Response**
+| Param | Required | Description |
+|-------|----------|-------------|
+| `owner` | Yes | Owner / hostname id (e.g. `f4d_test`). |
+| `mac_address` | Yes | MAC address (lowercase hex as stored). |
+| `exp_name` | No | Exact `exp_name` filter; **not** sent by `reggie_online` today. |
+
+### Request Payload
+
+None.
+
+### Example Response
 
 ```json
 {
   "success": true,
+  "project": "my-gcp-project",
+  "dataset": "f4d_test",
+  "table": "aaaaaaaaaaaa_metadata",
+  "full_table": "my-gcp-project.f4d_test.aaaaaaaaaaaa_metadata",
   "count": 2,
   "data": [
     {
-      "LLA": "fd002124b001204bd42",
-      "Label": ["plot_a"],
-      "Active_Exp": true
-    },
-    {
-      "LLA": "fd002124b00ccf7399a",
+      "Owner": "f4d_test",
+      "Mac_Address": "aaaaaaaaaaaa",
+      "LLA": "fd002124b00ccf7399b",
+      "Exp_Name": "Demo",
+      "Active_Exp": false,
       "Label": [],
-      "Active_Exp": false
+      "Location": "Lab A",
+      "Last_Seen": "2026-04-19T10:00:00+00:00"
     }
   ]
 }
 ```
 
-### GET /GCP-FS/last-package
+Rows use **PascalCase** API field names from `_map_firestore_to_api_format` in `backend/src/api/firestore_repository.py`. The frontend types also allow **lowercase** aliases for some fields (`reggie_online/src/api/metadata.ts`).
 
-**What it does**  
-Returns metadata plus latest Last_Package data for each matching sensor.
+### Notes
 
-**Endpoint**  
-`GET /GCP-FS/last-package?owner={owner}&mac_address={mac_address}&exp_name={exp_name}`
+- **`500`** on Firestore or unexpected errors.
+- Optional `exp_name` is supported by the backend for filtered queries; the current dashboard always loads the full list for the pair `(owner, mac_address)`.
 
-**Request example**
+---
 
-```bash
-curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/last-package?owner=f4dv2&mac_address=d83adde260d1"
-```
+## List experiments (names + counts)
 
-**Response**
+### Purpose
+
+Populate experiment pills and statistics for the selected owner/MAC.
+
+### Endpoint
+
+`GET /GCP-FS/metadata/experiments`
+
+### Current Auth
+
+None required.
+
+### Future Auth
+
+JWT Bearer token planned.
+
+### Query Params
+
+| Param | Required |
+|-------|----------|
+| `owner` | Yes |
+| `mac_address` | Yes |
+
+### Request Payload
+
+None.
+
+### Example Response
 
 ```json
 {
   "success": true,
+  "project": "my-gcp-project",
+  "dataset": "f4d_test",
+  "table": "aaaaaaaaaaaa_metadata",
+  "count": 1,
+  "experiments": [
+    {
+      "exp_name": "Demo",
+      "total_sensors": 4,
+      "active_count": 1,
+      "inactive_count": 3
+    }
+  ]
+}
+```
+
+### Notes
+
+- Empty `exp_name` strings are grouped as their own bucket in the backend (`get_experiment_names`).
+
+---
+
+## Single-sensor metadata (details drawer)
+
+### Purpose
+
+Fetch one sensor document by LLA for the details modal (`getActiveMetadata`).
+
+### Endpoint
+
+`GET /GCP-FS/metadata/active`
+
+### Current Auth
+
+None required.
+
+### Future Auth
+
+JWT Bearer token planned.
+
+### Query Params
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `owner` | Yes* | Owner id. |
+| `hostname` | Yes* | Backward-compatible alias for `owner` (frontend uses **`owner`** only). |
+| `mac_address` | Yes | MAC address. |
+| `lla` | Yes | Firestore document id (LLA). |
+
+\*Exactly one of `owner` or `hostname` is required (`422` if both missing).
+
+### Request Payload
+
+None.
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "project": "my-gcp-project",
+  "dataset": "f4d_test",
+  "table": "aaaaaaaaaaaa_metadata",
+  "full_table": "my-gcp-project.f4d_test.aaaaaaaaaaaa_metadata",
   "count": 1,
   "data": [
     {
-      "LLA": "fd002124b001204bd42",
-      "Last_Package": {
-        "temperature": 21.5,
-        "humidity": 63.2
+      "Owner": "f4d_test",
+      "Mac_Address": "aaaaaaaaaaaa",
+      "LLA": "fd002124b00ccf7399b",
+      "Exp_Name": "Demo",
+      "Coordinates_X": 0,
+      "Coordinates_Y": 0,
+      "Coordinates_Z": 0
+    }
+  ]
+}
+```
+
+### Notes
+
+- **`404`** if the document does not exist.
+- **`400`** if owner/MAC in the query does not match the document (`ValueError` from repository).
+- Frontend uses the **first** element of `data` when present (`useDeviceDashboard.ts`).
+
+---
+
+## Update sensor metadata (batch — primary frontend contract)
+
+### Purpose
+
+Bulk Firestore updates used for:
+
+- Start / end experiment (`DashboardPage.tsx` — `handleConfirmStartExperiment`, `handleConfirmEndExperiment`)
+- CSV upload confirmation (`handleConfirmUpload`)
+- Replace sensor (`buildReplaceSensorBatchPayload` in `replaceSensor.ts` + `postBatchMetadataUpdate`)
+- Clear prepared experiment (`handleConfirmClearPreparedExperiment`)
+
+### Endpoint
+
+`POST /FS/sensor/update-metadata`
+
+### Current Auth
+
+None required.
+
+### Future Auth
+
+JWT Bearer token planned.
+
+### Query Params
+
+None.
+
+### Request Payload
+
+**Batch shape (used everywhere in `reggie_online`):**
+
+```json
+{
+  "sensors": [
+    {
+      "lla": "fd002124b00ccf7399b",
+      "hostname": "f4d_test",
+      "mac_address": "aaaaaaaaaaaa",
+      "updates": {
+        "exp_name": "Demo",
+        "active_exp": true,
+        "is_active": true,
+        "exp_started_at": "2026-04-19T12:34:56"
       }
     }
   ]
 }
 ```
 
-### GET /GCP-FS/metadata/experiments
+- **`hostname`** in payloads is the **owner** string (legacy name; repository still uses the parameter name `hostname`).
+- **`updates`** is a loose object; known keys are mapped to Firestore in `batch_update_sensor_metadata` (`exp_name`, `exp_location`, `label`, `location`, `coordinates`, `label_options`, `rfid`, `frequency`, `is_active`, `is_valid`, `active_exp`, `exp_id`). Other keys are written through to Firestore (e.g. `exp_started_at`, `exp_ended_at`).
 
-**What it does**  
-Returns experiments list and active/inactive statistics for selected owner/MAC.
+**Replace-sensor** sends two entries: old LLA (`location` suffixed with `-replaced`, `active_exp` / `is_active` false) and new LLA (copies `exp_id`, `exp_name`, `location`, etc.) — see `buildReplaceSensorBatchPayload`.
 
-**Endpoint**  
-`GET /GCP-FS/metadata/experiments?owner={owner}&mac_address={mac_address}`
+**Clear prepared** sets many fields to empty/false, including `label: []`, `coordinates: { "x": null, "y": null, "z": null }`.
 
-**Request example**
+**Single-sensor alternative (supported by backend, not used by current `reggie_online` HTTP helpers):**
 
-```bash
-curl "https://apisync-1000435921680.us-central1.run.app/GCP-FS/metadata/experiments?owner=f4dv2&mac_address=d83adde260d1"
+```json
+{
+  "owner": "f4d_test",
+  "mac_address": "aaaaaaaaaaaa",
+  "lla": "fd002124b00ccf7399b",
+  "updates": { "label": ["A", "B"] }
+}
 ```
 
-**Response**
+(`owner` may be omitted if `hostname` is provided; `lla` + `updates` are required for single mode.)
+
+### Example Response (batch)
 
 ```json
 {
   "success": true,
-  "count": 2,
-  "experiments": [
-    {
-      "exp_name": "Experiment_A",
-      "total_sensors": 10,
-      "active_count": 6,
-      "inactive_count": 4
-    },
-    {
-      "exp_name": "",
-      "total_sensors": 2,
-      "active_count": 0,
-      "inactive_count": 2
+  "status": "updated",
+  "message": "Successfully updated 2 sensor(s)",
+  "updated_llas": ["fd002124b00ccf7399b", "fd002124b00ccf7399a"],
+  "failed_llas": null,
+  "total_operations": 2
+}
+```
+
+On partial failure, `success` may be `false`, `failed_llas` maps LLA → error string, HTTP **`400`** from the endpoint.
+
+### Notes
+
+- Headers: `Content-Type: application/json` (`DashboardPage.tsx`).
+- When **`active_exp`** is true on a document, batch updates **enforce** matching `hostname` / `mac_address` against the stored owner/MAC; when inactive, owner/MAC may be updated from the payload (`batch_update_sensor_metadata` in `firestore_repository.py`).
+- Timestamp strings for start/end in the UI use `toISOString().slice(0, 19)` (no timezone suffix in the string).
+- **Mismatch:** `postBatchMetadataUpdate` treats success as `response.ok && body.success`. **`handleConfirmUpload`** only checks `response.ok` (not `body.success`) — align error handling if the backend returns `200` with `success: false` (it should not on normal FastAPI paths).
+
+---
+
+## Delete sensor
+
+### Purpose
+
+Hard-delete a sensor document (`postSensorDelete` from sensor details).
+
+### Endpoint
+
+`POST /FS/sensor/delete`
+
+### Current Auth
+
+None required.
+
+### Future Auth
+
+JWT Bearer token planned.
+
+### Query Params
+
+None.
+
+### Request Payload
+
+Backend model: `SensorUpdateRequest` — same three fields as the frontend `DeleteSensorRequest`.
+
+```json
+{
+  "hostname": "f4d_test",
+  "mac_address": "aaaaaaaaaaaa",
+  "lla": "fd002124b00ccf7399b"
+}
+```
+
+Here **`hostname`** is the owner id (same as elsewhere).
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "status": "deleted",
+  "message": "Deleted sensor document for fd002124b00ccf7399b"
+}
+```
+
+### Notes
+
+- **`404`** + `detail` if sensor missing (`status` `not_found` in repository before HTTP mapping).
+- **`400`** on owner/MAC mismatch (`status` `mismatch`).
+- Frontend parses error **`detail`** from JSON on failure (`metadata.ts`). Checks `body.success` on success.
+
+---
+
+## WebSocket `/ws/ping` (dashboard real-time)
+
+### Purpose
+
+The dashboard opens a **reconnecting** WebSocket (`createReconnectingPingSocket` in `useDeviceDashboard.ts`) to receive **broadcast** JSON messages when **other clients** send ping traffic to the server. The **`reggie_online` app does not send WebSocket messages** in the current code; it only listens.
+
+### Endpoint
+
+Full URL: **`VITE_WS_PING`** (must match the ApiSync host path `/ws/ping`).
+
+### Current Auth
+
+None required.
+
+### Future Auth
+
+JWT for WebSockets is not implemented in this repo; expect the same Bearer story to apply to connections or to an initial HTTP handshake before production—confirm with backend when available.
+
+### Query Params
+
+None (URL is fixed in env).
+
+### Request Payload
+
+N/A for the browser client today (no `WebSocket.send` in `reggie_online`).
+
+### Example message (broadcast after server processes a client text frame)
+
+Ping / validation broadcast shape:
+
+```json
+{
+  "received": true,
+  "timestamp": "2026-04-19T12:34:56Z",
+  "payload": {
+    "owner": "f4d_test",
+    "hostname": "f4d_test",
+    "mac_address": "aaaaaaaaaaaa",
+    "type": "Ping",
+    "LLA": "fd002124b00ccf7399b",
+    "validation": {
+      "is_valid": true,
+      "message": "Sensor added",
+      "error": null
     }
-  ]
-}
-```
-
-## 4) Sensors (Write/Update Actions)
-
----
-> **IMPORTANT - STOP**
->
-> **DEVICE INSTALLATION REQUIRED BEFORE ANY WRITE ACTIONS**
->
-> **DO NOT USE** `POST /FS/sensor/register`, `POST /FS/sensor/update`, or `POST /FS/sensor/update-metadata`
-> for her environment until a device is installed.
->
-> Until installation is complete, use read-only endpoints only.
----
-
-### POST /FS/sensor/register
-
-**What it does**  
-Registers a new sensor document if not already registered.
-
-**Endpoint**  
-`POST /FS/sensor/register`
-
-**Request example**
-
-```bash
-curl -X POST "https://apisync-1000435921680.us-central1.run.app/FS/sensor/register" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"hostname\":\"f4dv2\",\"mac_address\":\"d83adde260d1\",\"lla\":\"fd002124b001204bd42\"}"
-```
-
-**Response**
-
-```json
-{
-  "success": true,
-  "status": "created",
-  "message": "Created new sensor document for fd002124b001204bd42"
-}
-```
-
-### POST /FS/sensor/update
-
-**What it does**  
-Updates sensor heartbeat/last_seen for an already-registered sensor.
-
-**Endpoint**  
-`POST /FS/sensor/update`
-
-**Request example**
-
-```bash
-curl -X POST "https://apisync-1000435921680.us-central1.run.app/FS/sensor/update" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"hostname\":\"f4dv2\",\"mac_address\":\"d83adde260d1\",\"lla\":\"fd002124b001204bd42\"}"
-```
-
-**Response**
-
-```json
-{
-  "success": true,
-  "status": "updated",
-  "message": "Updated last_seen timestamp for sensor fd002124b001204bd42"
-}
-```
-
-### POST /FS/sensor/update-metadata
-
-**What it does**  
-Updates metadata for one sensor (single mode) or many sensors (batch mode).
-
-**Endpoint**  
-`POST /FS/sensor/update-metadata`
-
-**Request example (single)**
-
-```bash
-curl -X POST "https://apisync-1000435921680.us-central1.run.app/FS/sensor/update-metadata" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"owner\":\"f4dv2\",\"mac_address\":\"d83adde260d1\",\"lla\":\"fd002124b001204bd42\",\"updates\":{\"label_options\":[\"plot_a\",\"plot_b\",\"irrigation_zone_1\"],\"label\":[\"plot_a\",\"irrigation_zone_1\"],\"coordinates\":{\"x\":12.5,\"y\":4.8,\"z\":1.1}}}"
-```
-
-**Response (single)**
-
-```json
-{
-  "success": true,
-  "status": "updated",
-  "message": "Updated metadata for sensor fd002124b001204bd42",
-  "updated_fields": ["label_options", "label", "coordinates"]
-}
-```
-
-**Request example (batch)**
-
-```bash
-curl -X POST "https://apisync-1000435921680.us-central1.run.app/FS/sensor/update-metadata" ^
-  -H "Content-Type: application/json" ^
-  -d "{\"sensors\":[{\"lla\":\"fd002124b001204bd42\",\"hostname\":\"f4dv2\",\"mac_address\":\"d83adde260d1\",\"updates\":{\"label\":[\"plot_a\"],\"coordinates\":{\"x\":10.0,\"y\":20.0,\"z\":0.0}}},{\"lla\":\"fd002124b00ccf7399a\",\"hostname\":\"f4dv2\",\"mac_address\":\"d83adde261b0\",\"updates\":{\"label\":[\"plot_b\"],\"coordinates\":{\"x\":11.0,\"y\":21.0,\"z\":0.2}}}]}"
-```
-
-**Response (batch)**
-
-```json
-{
-  "success": true,
-  "status": "updated",
-  "updated_llas": ["fd002124b001204bd42", "fd002124b00ccf7399a"],
-  "failed_llas": {}
-}
-```
-
-Note: frontend currently sends `owner` in single mode and `hostname` in batch mode. Backend supports both for compatibility.
-
-## Metadata Editing Rules for Frontend
-
-### Active experiment (`active_exp = true`)
-
-Allowed:
-- `label`
-- `coordinates`
-
-Do not update directly:
-- `exp_name`
-- `exp_location`
-- `location`
-- `active_exp`, `exp_started_at`, `exp_ended_at` (except via dedicated start/end experiment actions)
-
-### Inactive experiment (`active_exp = false`)
-
-Allowed:
-- `exp_name` (dynamic/testing value is fine)
-- `exp_location`
-- `location`
-- `label`
-- `coordinates`
-
-## Label and Label Options (Multi-Select Contract)
-
-Use arrays for both fields:
-
-- `label_options`: all selectable labels
-- `label`: selected labels for this sensor
-
-Example:
-
-```json
-{
-  "updates": {
-    "label_options": ["plot_a", "plot_b", "north_block", "south_block"],
-    "label": ["plot_a", "north_block"]
   }
 }
 ```
 
-Suggested frontend parsing for text input:
+The dashboard matches **`payload.LLA`** (or `lla`) to rows, and only for the **optimistic “new sensor”** path it requires owner/MAC to match the open dashboard context and `type` **`ping`** with validation message **`Sensor added`** (`useDeviceDashboard.ts`).
 
-- delimiters: `,` `;` `|`
-- trim spaces
-- drop empty values
-- dedupe values (keep first occurrence)
-- send result as `updates.label` array
+Invalid JSON sent **to** the server is broadcast as:
 
-Input:
+```json
+{
+  "received": false,
+  "timestamp": "2026-04-19T12:34:56Z",
+  "error": "Invalid JSON format"
+}
+```
 
-`plot_a | north_block; plot_a, irrigation_zone_1`
+### Notes
 
-Parsed:
+- **`Last_Package`** over WebSocket: backend may still persist data; with `LAST_PACKAGE_WS_ENABLED = False` in `websocket_endpoints.py`, broadcast behavior is limited and senders get a sender-only ack — the React app does not rely on Last_Package broadcasts today.
 
-`["plot_a", "north_block", "irrigation_zone_1"]`
+---
+
+## Related backend endpoints (not called by `reggie_online` today)
+
+These exist in `firestore_endpoints.py` if you need them later:
+
+- `POST /FS/sensor/register`, `POST /FS/sensor/update` — device lifecycle; not used by the current SPA.
+- `GET /GCP-FS/last-package` — same row shape as `/GCP-FS/metadata/sensors` with `Last_Package` populated.
+- `GET /health` — liveness (used by ops, not the React app).
+
+---
+
+## Common mistakes
+
+- **Wrong path prefix:** Read endpoints use **`/GCP-FS/...`**; writes use **`/FS/...`** (no `GCP-FS`). Mixing them returns **`404`**.
+- **Owner field naming:** Query params and JSON use **`owner`** or **`hostname`** depending on endpoint; batch items use **`hostname`** for the owner string — keep consistent with existing payloads.
+- **Case on API rows:** Metadata **GET** responses favor **PascalCase** keys; **POST** `updates` use **snake_case** Firestore-style keys (`active_exp`, `exp_name`, …).

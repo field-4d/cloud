@@ -434,6 +434,81 @@ async def get_sensor_metadata(
         raise
 
 
+async def get_sensor_metadata_by_lla(lla: str) -> Dict[str, Any]:
+    """
+    Get sensor metadata from Firestore for a specific LLA without owner/MAC validation.
+
+    Args:
+        lla: LLA value (document ID)
+
+    Returns:
+        dict: Response in standardized API format:
+            - success (bool): True if successful
+            - count (int): Number of records (always 1 for single LLA)
+            - data (list): List with one mapped metadata record
+            - project, dataset, table, full_table: Compatibility fields
+
+    Raises:
+        NotFound: If document doesn't exist
+    """
+    operation_start = time.time()
+    logger.info(f"[GET_SENSOR_METADATA_BY_LLA] Starting query | LLA: {lla}")
+
+    try:
+        db = await get_client()
+
+        doc_ref = db.collection(SENSORS_COLLECTION).document(lla)
+        doc = await doc_ref.get()
+
+        if not doc.exists:
+            raise NotFound(f"Document not found: sensors/{lla}")
+
+        doc_data = doc.to_dict()
+        mapped_data = _map_firestore_to_api_format(doc_data, lla)
+
+        owner = str(doc_data.get("owner", "") or "")
+        mac_address = str(doc_data.get("mac", "") or "")
+
+        project_id = os.getenv("GCP_PROJECT_ID", "unknown")
+        table_name = f"{mac_address}_metadata" if mac_address else "_metadata"
+
+        total_duration = time.time() - operation_start
+        logger.info(
+            f"[GET_SENSOR_METADATA_BY_LLA] Query completed | "
+            f"Owner: {owner or 'None'} | "
+            f"MAC: {mac_address or 'None'} | "
+            f"Duration: {total_duration:.3f}s"
+        )
+
+        return {
+            "success": True,
+            "project": project_id,
+            "dataset": owner,
+            "table": table_name,
+            "full_table": f"{project_id}.{owner}.{table_name}",
+            "count": 1,
+            "data": [mapped_data]
+        }
+
+    except NotFound:
+        total_duration = time.time() - operation_start
+        logger.warning(
+            f"[GET_SENSOR_METADATA_BY_LLA] Document not found | "
+            f"LLA: {lla} | "
+            f"Duration: {total_duration:.3f}s"
+        )
+        raise
+    except Exception as e:
+        total_duration = time.time() - operation_start
+        logger.error(
+            f"[GET_SENSOR_METADATA_BY_LLA] Error | "
+            f"Error: {str(e)} | "
+            f"Duration: {total_duration:.3f}s",
+            exc_info=True
+        )
+        raise
+
+
 async def get_all_sensors_metadata(
     owner: str,
     mac_address: str,
