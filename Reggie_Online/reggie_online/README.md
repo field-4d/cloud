@@ -205,13 +205,13 @@ sequenceDiagram
 sequenceDiagram
   participant User
   participant Dash as DashboardPage
-  participant Details as SensorDetailsModal
+  participant SensorDetails as SensorDetailsModal
   participant Replace as ReplaceSensorModal
   participant API as "POST /FS/sensor/update-metadata"
   User->>Dash: Click sensor card
-  Dash->>Details: Open details modal
-  User->>Details: Replace Sensor
-  Details->>Replace: open batch replace UI
+  Dash->>SensorDetails: Open details modal
+  User->>SensorDetails: Replace Sensor
+  SensorDetails->>Replace: open batch replace UI
   User->>Replace: Confirm then Approve and send
   Replace->>API: batch 2 sensors deactivate + activate
   API-->>Dash: success
