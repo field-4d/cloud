@@ -1,76 +1,70 @@
-# Google Cloud Data Processing Project (F4D)
+# Field4D Google Cloud Monorepo
 
-## F4D Folder (Located in `6to4` on the Raspberry Pi)
+This repository contains Field4D cloud services, data pipelines, frontend/backend applications, Raspberry Pi ingestion code, and legacy Cloud Functions.
 
-The **F4D** folder is a core component of the `6to4` project deployed on the Raspberry Pi. It contains specialized scripts and utilities designed for the **Field4D (F4D)** initiative—an advanced system for collecting, transforming, and analyzing agricultural and environmental data.
+## Repository Structure
 
-This folder is dedicated to high-level data processing tasks and includes:
+Current top-level folders:
 
-- **Data Transformation**: Python scripts to clean, normalize, and restructure raw sensor data into analysis-ready formats.
-- **Analytics Tools**: Functions and scripts for performing advanced statistical analysis and machine learning model integration.
-- **Reporting**: Modules for generating visualizations and structured reports, aiding in decision-making and research insights.
+- `Field4D_Site/` - main web application (frontend + backend)
+- `Reggie_Online/` - ApiSync service and related tooling
+- `f4d-auth-service/` - auth service for issuing/verifying access
+- `f4d-bq-sync/` - BigQuery synchronization service
+- `field4d_analytics/` - analytics and statistics APIs/jobs
+- `fetch_google/` - BigQuery/data pull scripts and notebooks
+- `legacy gcp cloud function/` - archived legacy Cloud Functions (migrated under one folder):
+  - `login_and_issue_jwt/`
+  - `process_files/`
+  - `query_last_timestamp/`
+  - `update-labels/`
+  - `upload_To_bucket/`
+  - `users-devices-permission/`
+- `F4D/` - original Field4D processing utilities
+- `F4D_python/` - Python ingestion/runtime stack
+- `F4D_Pi_V2/` - Raspberry Pi v2 runtime/project
+- `f4d-register-device/` - device registration components
+- `cloud_upload_alerts/` - alert/upload cloud workflows
+- `SPAC automatic Pull/` - SPAC automation utilities
 
-This folder is essential for researchers and developers working on the F4D project, offering streamlined tools for end-to-end data management.
+## Notes on Folder Renames / Reorganization
 
-Each subfolder also contains its own `README.md` file with specific documentation for that module.
+The project was reorganized and some historical roots were moved/renamed, for example:
 
----
+- `f4d_bq_sync/` -> `f4d-bq-sync/`
+- `login_and_issue_jwt/` and other old function folders -> `legacy gcp cloud function/...`
 
-## Other Folders in the Repository !
+When adding new top-level directories, update `.gitignore` allowlist rules accordingly because this repo uses a default-ignore pattern (`*`) with explicit include paths.
 
-- **fetch_google**: Scripts to retrieve data from Google Cloud services, such as BigQuery or Cloud Storage.
-- **F4D_python**: Python serial ingest service that reads device messages, pushes live events to ApiSync, and flushes aggregated sensor data into DuckDB.
-- **process_files**: Contains file preprocessing logic including reformatting, validation, and batch handling.
-- **query_last_timestamp**: Tools to identify the latest data record timestamps for incremental data pulling.
-- **update-labels**: Scripts for dynamically updating metadata labels in Google Cloud resources.
-- **upload_To_bucket**: Logic for uploading local files and results to GCP Storage Buckets.
-- **users-devices-permission**: Utilities for managing permission mappings between users, devices, and experiments.
-- **Reggie_Online**: ApiSync FastAPI + WebSocket service for real-time sensor payloads, Firestore metadata management, and permissions resolve endpoints.
+## Security and Credentials
 
-Each directory supports a different stage of the data lifecycle—ranging from ingestion to permission management—and collectively powers the F4D data pipeline.
-
-Each of these folders includes its own `README.md` for further documentation.
-
----
-
-## Project Structure Overview
-
-- `F4D/`: Core processing, analytics, and reporting logic for the Field4D initiative.
-- `F4D_Pi_V2/`: Newest version of the Raspberry Pi-side Field4D processing stack.
-- `F4D_python/`: Serial ingest and synchronization service with DuckDB storage, timed flushes, and ApiSync live updates.
-- `fetch_google/`: Interfaces for cloud data extraction.
-- `process_files/`: Local data processing and reformatting.
-- `query_last_timestamp/`: Utilities to track data update state.
-- `update-labels/`: Cloud resource label automation.
-- `upload_To_bucket/`: Cloud export logic.
-- `users-devices-permission/`: User-device access control.
-- `field4d_analytics/`: FastAPI for statistics.
-- `f4d_bq_sync/`: HTTP service for syncing Field4D data into BigQuery (Cloud Run).
-- `login_and_issue_jwt/`: Isuue JWT token and handle login
-- `Field4D_Site/`: Field4d.com site front + back
-- `Reggie_Online/`: ApiSync service (FastAPI + WebSocket) with Firestore-backed sensor metadata, `last-package`, and permissions-resolve APIs.
----
-
-## Key Scripts
-
-- **`data_fetcher.py`**: Main entry point for downloading data from cloud resources.
-- **`main_by_config.py`**: Automated execution of data tasks using a defined config file.
-- **`main_interactive.py`**: A manual, interactive script for on-demand execution.
-- **`config.json`**: The configuration file used to customize fetch and processing parameters.
-
----
+- Never commit secrets, service account keys, or `.env` files.
+- The repository ignore rules block common secret files and Python-generated artifacts.
+- `fetch_google/read_BQ.json` is explicitly ignored and must stay local-only.
+- If a credential was ever committed, rotate/revoke it immediately in Google Cloud.
+- GitHub Push Protection is enabled and will block pushes containing detected credentials.
 
 ## Getting Started
 
-1. Ensure the Raspberry Pi has access to the required **Google Cloud credentials** (e.g., service account JSON key).
-2. Install all necessary Python dependencies (listed in `requirements.txt` or pip-free setup).
-3. Run a script as needed. Example:
-   ```bash
-   python main_by_config.py
-   ```
+1. Go into the specific module you want to run.
+2. Read that module's local `README.md`.
+3. Install dependencies from that module's `requirements.txt` / `package.json`.
+4. Configure credentials locally (environment variables or local key files outside git-tracked paths).
+5. Run the module-specific start command.
 
----
+Example:
+
+```bash
+cd Field4D_Site/frontend
+npm install
+npm run dev
+```
+
+## Contributing
+
+- Keep changes scoped to one module when possible.
+- Avoid committing generated files (`__pycache__`, `*.pyc`, virtual env folders, notebook outputs unless intentional).
+- If you add or move top-level folders, update `.gitignore` allowlist entries.
 
 ## License
 
-This repository is licensed under the terms provided in the `LICENSE` file. Please review it before using or distributing the code.
+See `LICENSE`.
