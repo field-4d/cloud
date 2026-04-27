@@ -6,6 +6,8 @@ import threading
 import queue
 import time
 
+import subprocess
+
 ENV_PATH = "/home/pi/F4D/.env"
 
 # Queue for packets waiting to be sent
@@ -32,7 +34,16 @@ def read_env():
 
     return env
 
-
+def get_system_timezone() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["timedatectl", "show", "--property=Timezone", "--value"],
+            text=True
+        ).strip()
+    except Exception as e:
+        print(f"Failed to read system timezone: {e}")
+        return None
+    
 def get_ws_ping_url(api_sync_url: str) -> str:
     if api_sync_url.startswith("https://"):
         return api_sync_url.replace("https://", "wss://", 1) + "/ws/ping"
@@ -84,7 +95,7 @@ async def send_last_package_async(packet: dict):
     hostname = env.get("HOSTNAME")
     mac_address = env.get("MAC_ADDRESS")
     api_sync_url = env.get("API_SYNC_URL")
-
+ 
     if not hostname or not mac_address or not api_sync_url:
         raise ValueError("Missing env keys. Required: HOSTNAME, MAC_ADDRESS, API_SYNC_URL")
 
@@ -94,6 +105,7 @@ async def send_last_package_async(packet: dict):
         "type": "Last_Package",
         "owner": hostname,
         "mac_address": mac_address,
+        "time_zone": get_system_timezone(),
         "sensors": packet
     }
 
@@ -139,8 +151,8 @@ def _sender_worker():
                 response = json.loads(response)
                 received = response.get("received", False)
                 ipv6 = packet.get("ipv6", "unknown")
-                print(f"[Web-Socket] LastPackage for {ipv6} received={received}")
-                print(f"[Web-Socket] Send+response time: {elapsed:.4f} seconds")
+                print(f"[Fire-Store] LastPackage for {ipv6} received={received}")
+                print(f"[Fire-Store] Send+response time: {elapsed:.4f} seconds")
             except json.JSONDecodeError:
                 print("[Web-Socket] ApiSync returned non-JSON response")
 

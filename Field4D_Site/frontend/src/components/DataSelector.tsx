@@ -509,8 +509,16 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     parameterRows: SensorData[],
     sensors: string[]
   ) => {
+    const presentSensors = Array.from(
+      new Set(
+        parameterRows
+          .map((row) => String(row.sensor ?? ''))
+          .filter((sensor) => sensors.includes(sensor))
+      )
+    );
+
     const rangesBySensor = new Map<string, { latest: number; earliest: number }>();
-    for (const sensor of sensors) {
+    for (const sensor of presentSensors) {
       rangesBySensor.set(sensor, {
         latest: Number.NEGATIVE_INFINITY,
         earliest: Number.POSITIVE_INFINITY,
@@ -529,7 +537,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     }
 
     const groupedByLocation = new Map<string, string[]>();
-    for (const sensor of sensors) {
+    for (const sensor of presentSensors) {
       const displayName = getSensorDisplayName(sensor);
       const group = groupedByLocation.get(displayName);
       if (group) {
@@ -1097,9 +1105,15 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     selectedParameters.forEach(param => {
       const paramData = dataByParameter[param];
       const timestamps = Object.keys(paramData).sort();
-      const sensors = [...visualizedSensors].sort(compareSensorNames);
       const rowsForParameter = processedSensorData.filter((row) => row.parameter === param);
+      const presentSensors = Array.from(
+        new Set(rowsForParameter.map((row) => String(row.sensor ?? '')))
+      );
+      const sensors = [...visualizedSensors]
+        .filter((sensor) => presentSensors.includes(sensor))
+        .sort(compareSensorNames);
       const sensorHeaderMap = buildReplacementNamesForParameter(rowsForParameter, sensors);
+      if (sensors.length === 0) return;
 
       // Create CSV content
       const rows = timestamps.map(timestamp => {

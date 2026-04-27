@@ -156,8 +156,16 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   }, [selectedSensors, getColorKey]);
 
   const buildLegendNamesForParameter = React.useCallback((parameterRows: SensorData[]) => {
+    const presentSensors = Array.from(
+      new Set(
+        parameterRows
+          .map((row) => String(row.sensor ?? ''))
+          .filter((sensor) => selectedSensors.includes(sensor))
+      )
+    );
+
     const rangesBySensor = new Map<string, { latest: number; earliest: number }>();
-    for (const sensor of selectedSensors) {
+    for (const sensor of presentSensors) {
       rangesBySensor.set(sensor, { latest: Number.NEGATIVE_INFINITY, earliest: Number.POSITIVE_INFINITY });
     }
 
@@ -173,7 +181,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
     }
 
     const groupedByLocation = new Map<string, string[]>();
-    for (const sensor of selectedSensors) {
+    for (const sensor of presentSensors) {
       const displayName = getSensorDisplayName(sensor);
       const group = groupedByLocation.get(displayName);
       if (group) {
@@ -367,7 +375,15 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
       // Filter data for this parameter
       const paramData = data.filter((d) => rowMatchesParameter(d as RowWithSensorLabel, param));
       const legendNameBySensor = buildLegendNamesForParameter(paramData);
+      const presentSensors = Array.from(
+        new Set(
+          paramData
+            .map((d) => String(d.sensor ?? ''))
+            .filter((sensor) => selectedSensors.includes(sensor))
+        )
+      );
       return selectedSensors
+        .filter((sensor) => presentSensors.includes(sensor))
         .map(sensor => {
           const sensorData = paramData.filter(d => String(d.sensor) === sensor);
           const color = colorFn(sensor);

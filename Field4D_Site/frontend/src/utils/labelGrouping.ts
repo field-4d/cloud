@@ -108,7 +108,5 @@ export function getSelectedLabelMemberships(
   const normalized = normalizeIncludedLabels(includeLabels);
   if (normalized.length === 0) return [];
   const rowTokens = collectRowLabelTokens(d, sensorLabelMap);
-  return normalized.filter((label) =>
-    parseLabelTokens(label).some((token) => rowTokens.has(String(token).trim()))
-  );
+  return normalized.filter((label) => rowTokens.has(label));
 }
