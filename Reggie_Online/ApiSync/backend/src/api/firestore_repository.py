@@ -158,6 +158,7 @@ def _map_firestore_to_api_format(doc_data: Dict[str, Any], lla: str) -> Dict[str
         "Email_Sent": alerts.get("email_sent", False),
         # Nested last telemetry/package payload (Firestore: last_package)
         "Last_Package": doc_data.get("last_package") if doc_data.get("last_package") is not None else {},
+        "Time_Zone": doc_data.get("time_zone", ""),
     }
     
     # Handle Timestamp fields - convert to ISO format strings
@@ -1432,7 +1433,8 @@ async def batch_update_sensor_metadata(
 async def update_sensor_last_package(
     sensors_data: Dict[str, Dict[str, Any]],
     hostname: Optional[str] = None,
-    mac_address: Optional[str] = None
+    mac_address: Optional[str] = None,
+    time_zone: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Update the last_package field for one or more sensors in Firestore.
@@ -1535,6 +1537,7 @@ async def update_sensor_last_package(
                 "last_package": package_data,
                 "last_seen": SERVER_TIMESTAMP,
                 "updated_at": SERVER_TIMESTAMP,
+                "time_zone": time_zone if time_zone else {},
             }
             if not is_active_exp:
                 if hostname:

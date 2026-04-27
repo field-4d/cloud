@@ -246,7 +246,9 @@ async def websocket_ping(websocket: WebSocket):
                 # Extract owner and mac_address for auto-registration (support both 'owner' and 'hostname')
                 package_owner = payload.get("owner") or payload.get("hostname")
                 package_mac_address = payload.get("mac_address")
+                package_time_zone = payload.get("time_zone",{})
                 sensors_data = payload.get("sensors", {})
+
                 updated_llas = []
                 registered_llas = []
                 errors = []
@@ -279,7 +281,8 @@ async def websocket_ping(websocket: WebSocket):
                     batch_result = await update_sensor_last_package(
                         valid_sensors_data,
                         hostname=package_owner,  # Repository function still uses 'hostname' parameter name
-                        mac_address=package_mac_address
+                        mac_address=package_mac_address,
+                        time_zone=package_time_zone
                     )
                     
                     # Always process successful operations, even if some failed
