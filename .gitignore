@@ -6,34 +6,34 @@
 !/F4D/
 !/f4d-auth-service/
 !/f4d-bq-sync/
-!/f4d-register-device/
+!/f4d-email-sender/
 !/F4D_Pi_V2/
 !/F4D_python/
+!/f4d-register-device/
+!/f4d-user-access-manager
 !/fetch_google/
 !/field4d_analytics/
 !/Field4D_Site/
 !/legacy gcp cloud function/
 !/Reggie_Online/
 !/SPAC automatic Pull/
-!/f4d-email-sender/
-!/f4d-user-access-manager
 
 # Also keep their contents
 !/cloud_upload_alerts/**
 !/F4D/**
 !/f4d-auth-service/**
 !/f4d-bq-sync/**
-!/f4d-register-device/**
+!/f4d-email-sender/**
 !/F4D_Pi_V2/**
 !/F4D_python/**
+!/f4d-register-device/**
+!/f4d-user-access-manager/**
 !/fetch_google/**
 !/field4d_analytics/**
 !/Field4D_Site/**
 !/legacy gcp cloud function/**
 !/Reggie_Online/**
 !/SPAC automatic Pull/**
-!/f4d-email-sender/** 
-!/f4d-user-access-manager/**
 
 # Ignore generated Python files everywhere
 **/venv/
