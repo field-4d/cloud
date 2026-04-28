@@ -14,6 +14,7 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { API_ENDPOINTS } from '../config';
 import { apiLog, logger } from '../config/logger';
+import PermissionDashboard from './PermissionDashboard';
 
 interface Permission {
   email: string;
@@ -50,6 +51,16 @@ const SENSOR_OPTIONS: { value: SensorType; label: string }[] = [
 const DEVICE_OPTIONS: DeviceId[] = [1, 2, 3];
 
 const Y_AXIS_COLORS = ['#8ac6bb', '#b2b27a', '#e6a157'];
+type MainModule = 'data_viewer' | 'management';
+type ManagementTab = 'users' | 'permissions' | 'devices';
+
+const normalizeDashboardRole = (value: unknown): 'read' | 'admin' | 'system_admin' => {
+  if (typeof value !== 'string') return 'read';
+  const cleaned = value.trim().toLowerCase();
+  if (cleaned === 'system_admin') return 'system_admin';
+  if (cleaned === 'admin') return 'admin';
+  return 'read';
+};
 
 interface ExperimentSummary {
   experimentName: string;
@@ -118,6 +129,20 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
  */
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+  const actorEmail = typeof userData.email === 'string' ? userData.email : '';
+  const actorRole = normalizeDashboardRole(userData.role);
+  const canCreateUsers = actorRole === 'system_admin';
+  const [activeMainModule, setActiveMainModule] = useState<MainModule>('data_viewer');
+  const [activeManagementPage, setActiveManagementPage] = useState<ManagementTab>('permissions');
+  const [isDataViewerOpen, setIsDataViewerOpen] = useState(true);
+  const [isManagementOpen, setIsManagementOpen] = useState(false);
+
+  useEffect(() => {
+    if (!canCreateUsers && activeManagementPage === 'users') {
+      setActiveManagementPage('permissions');
+    }
+  }, [canCreateUsers, activeManagementPage]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
   const [sensorData, setSensorData] = useState<SensorData[]>([]);
@@ -691,6 +716,28 @@ const Dashboard: React.FC = () => {
 
           {/* Selection container with flex-shrink-0 */}
           <div className="flex-shrink-0">
+            <div className="mb-5 rounded-xl border border-[#c7ddd6] bg-[#eef7f4] p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDataViewerOpen((prev) => !prev);
+                  setActiveMainModule('data_viewer');
+                }}
+                className={`mb-2 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-base font-semibold transition-colors ${
+                  activeMainModule === 'data_viewer'
+                    ? 'bg-[#d8ece6] text-[#405f57]'
+                    : 'text-[#4b5f59] hover:bg-[#e6f2ee]'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`inline-block h-5 w-1.5 rounded ${activeMainModule === 'data_viewer' ? 'bg-[#7bb8ac]' : 'bg-transparent'}`} />
+                  Data Viewer
+                </span>
+                <span className="text-[11px] text-[#6b7e78]">{isDataViewerOpen ? '▾' : '▸'}</span>
+              </button>
+
+            {isDataViewerOpen && activeMainModule === 'data_viewer' && (
+              <div className="rounded-lg bg-white/60 p-2">
             {/* Owner Selection - only show if user has more than one owner */}
             {uniqueOwners.length > 1 && (
               <div className="mb-6">
@@ -746,7 +793,6 @@ const Dashboard: React.FC = () => {
                 </label>
                 <div className="relative">
                   {(() => {
-                    // Separate experiments into active and inactive
                     const activeExperiments = experimentSummaries
                       .filter(isExperimentActive)
                       .slice()
@@ -755,16 +801,12 @@ const Dashboard: React.FC = () => {
                       .filter(exp => !isExperimentActive(exp))
                       .slice()
                       .sort(sortExperimentsDescending);
-
-                    // Calculate size to show: active experiments + separator + first 5 inactive + placeholder
-                    // This limits the visible height while still allowing scroll
                     const baseSize = activeExperiments.length + 
                                      (inactiveExperiments.length > 0 && activeExperiments.length > 0 ? 1 : 0) + 
-                                     5 + // Show first 5 inactive
-                                     1; // "Choose an experiment" option
-                    const calculatedSize = Math.min(baseSize, 8); // Cap at 8 for reasonable height
-                    const shouldUseSize = inactiveExperiments.length > 5 && isExperimentSelectOpen; // Only use size when open and there are more than 5 inactive
-
+                                     5 + 
+                                     1; 
+                    const calculatedSize = Math.min(baseSize, 8);
+                    const shouldUseSize = inactiveExperiments.length > 5 && isExperimentSelectOpen;
                     return (
                       <select
                         ref={experimentSelectRef}
@@ -772,7 +814,6 @@ const Dashboard: React.FC = () => {
                         onChange={(e) => {
                           setSelectedExperiment(e.target.value);
                           setIsExperimentSelectOpen(false);
-                          // Blur the select to close it
                           if (experimentSelectRef.current) {
                             experimentSelectRef.current.blur();
                           }
@@ -782,7 +823,6 @@ const Dashboard: React.FC = () => {
                           handleExperimentSelectFocus();
                         }}
                         onBlur={() => {
-                          // Delay to allow onChange to fire first
                           setTimeout(() => setIsExperimentSelectOpen(false), 200);
                         }}
                         size={shouldUseSize ? calculatedSize : undefined}
@@ -827,7 +867,6 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Date Range Selection */}
             {selectedExperiment && experimentSummaries.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-[#8ac6bb] mb-2">
@@ -847,13 +886,59 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             )}
+              </div>
+            )}
+            </div>
+
+            <div className="mb-6 rounded-xl border border-[#d7d3c7] bg-[#f7f5ef] p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsManagementOpen((prev) => !prev);
+                  setActiveMainModule('management');
+                }}
+                className={`mb-2 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-base font-semibold transition-colors ${
+                  activeMainModule === 'management'
+                    ? 'bg-[#ece7d8] text-[#5e5a4b]'
+                    : 'text-[#5c5d53] hover:bg-[#efecdf]'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`inline-block h-5 w-1.5 rounded ${activeMainModule === 'management' ? 'bg-[#b8b08f]' : 'bg-transparent'}`} />
+                  Management
+                </span>
+                <span className="text-[11px] text-[#7a7567]">{isManagementOpen ? '▾' : '▸'}</span>
+              </button>
+
+            {isManagementOpen && (
+              <div className="mb-2 rounded-lg bg-white/70 p-2">
+                {((canCreateUsers ? ['users', 'permissions', 'devices'] : ['permissions', 'devices']) as ManagementTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => {
+                      setActiveMainModule('management');
+                      setActiveManagementPage(tab);
+                    }}
+                    className={`mb-1 w-full rounded-md px-3 py-2 text-left text-sm capitalize transition-colors ${
+                      activeManagementPage === tab && activeMainModule === 'management'
+                        ? 'border-l-4 border-[#b8b08f] bg-[#f0ecdf] pl-2 text-[#5d584b] font-medium'
+                        : 'text-[#5d5f55] hover:bg-[#f3efe4]'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            )}
+            </div>
           </div>
         </div>
       )}
 
       {/* Main Content */}
       <div className={`flex-1 p-4 bg-[#f7f8f3] ${isSidebarCollapsed ? 'pt-20' : ''} relative`}>
-        <div className="absolute top-4 right-4 z-40">
+        <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
           <button
             onClick={handleLogout}
             className="bg-[#b2b27a] text-white py-2 px-4 rounded hover:bg-[#8ac6bb] transition-colors"
@@ -862,7 +947,7 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        {selectedPermission && (
+        {activeMainModule === 'data_viewer' && selectedPermission && (
           <div className="space-y-4">
             <DataSelector 
               experimentSummaries={experimentSummaries}
@@ -876,6 +961,20 @@ const Dashboard: React.FC = () => {
               owner={selectedPermission.owner}
               mac_address={selectedPermission.mac_address}
             />
+          </div>
+        )}
+        {activeMainModule === 'management' && (
+          <div className="pt-14">
+            {activeManagementPage === 'devices' ? (
+              <div className="rounded-xl border border-[#b2b27a] bg-white p-6 text-[#5f6b45] shadow">
+                <h3 className="mb-2 text-lg font-semibold">Devices</h3>
+                <p>Device management is coming soon.</p>
+              </div>
+            ) : activeManagementPage === 'users' && canCreateUsers ? (
+              <PermissionDashboard actorEmail={actorEmail} actorRole={actorRole} mode="embedded" permissionMode="new_user" />
+            ) : (
+              <PermissionDashboard actorEmail={actorEmail} actorRole={actorRole} mode="embedded" permissionMode="permission_assignment" />
+            )} 
           </div>
         )}
       </div>

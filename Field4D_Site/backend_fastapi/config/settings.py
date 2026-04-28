@@ -41,6 +41,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GCP_ANALYTICS_URL"),
     )
+    access_manager_url: str | None = PydField(
+        default="https://f4d-user-access-manager-1000435921680.europe-west1.run.app",
+        validation_alias=AliasChoices("ACCESS_MANAGER_URL"),
+    )
     cors_allow_origins: str | None = PydField(
         default="http://localhost:5173",
         validation_alias=AliasChoices("CORS_ALLOW_ORIGINS"),
@@ -49,6 +53,7 @@ class Settings(BaseSettings):
     sensors_data_table: str = "iucc-f4d.Field4D.F4D_sensors_data"
     permissions_table: str = "iucc-f4d.Field4D.F4D_permissions"
     mac_to_device_table: str = "iucc-f4d.Field4D.F4D_mac_to_device"
+    user_table: str = "iucc-f4d.Field4D.F4D_user_table"
 
     @field_validator(
         "google_cloud_project",
@@ -56,6 +61,7 @@ class Settings(BaseSettings):
         "gcp_auth_url",
         "analytics_url",
         "gcp_analytics_url",
+        "access_manager_url",
         "cors_allow_origins",
         mode="before",
     )

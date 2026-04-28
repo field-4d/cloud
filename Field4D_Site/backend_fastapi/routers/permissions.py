@@ -31,7 +31,8 @@ class PermissionsResponse(BaseModel):
 
 @router.get("/permissions", response_model=PermissionsResponse)
 def get_permissions(email: str = Query(..., min_length=1)) -> PermissionsResponse:
-    if not email.strip():
+    cleaned_email = "".join(email.split()).lower()
+    if not cleaned_email:
         raise HTTPException(status_code=400, detail="email is required")
 
     settings = get_settings()
@@ -50,11 +51,11 @@ SELECT
 FROM `{settings.permissions_table}` AS p
 LEFT JOIN `{settings.mac_to_device_table}` AS m
   ON p.mac_address = m.mac_address
-WHERE p.email = @email
+WHERE LOWER(REGEXP_REPLACE(p.email, r'\\s+', '')) = @email
 ORDER BY p.owner, p.mac_address, p.experiment;
 """
 
-    query_parameters = [bigquery.ScalarQueryParameter("email", "STRING", email)]
+    query_parameters = [bigquery.ScalarQueryParameter("email", "STRING", cleaned_email)]
     rows = run_query(query=query, query_parameters=query_parameters)
 
     permissions: list[PermissionRow] = []

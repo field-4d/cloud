@@ -1,3 +1,15 @@
+"""Field4D FastAPI application entrypoint.
+
+Current API groups:
+- auth: login proxy + role/permission enrichment
+- permissions: read user permissions
+- permission-management: role-aware management endpoints
+  (devices/experiments lookup, users search, duplicate checks,
+  new-user creation, existing-user assignment, batch assignment)
+- experiment-summary / fetch-data: data-viewer API
+- analytics-health: analytics service proxy health endpoint
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,6 +19,7 @@ from routers.analytics_health import router as analytics_health_router
 from routers.auth import router as auth_router
 from routers.experiment_summary import router as experiment_summary_router
 from routers.fetch_data import router as fetch_data_router
+from routers.permission_management import router as permission_management_router
 from routers.permissions import router as permissions_router
 
 
@@ -43,3 +56,4 @@ app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(experiment_summary_router, prefix="/api", tags=["experiment-summary"])
 app.include_router(fetch_data_router, prefix="/api", tags=["fetch-data"])
 app.include_router(permissions_router, prefix="/api", tags=["permissions"])
+app.include_router(permission_management_router, prefix="/api", tags=["permission-management"])

@@ -25,6 +25,14 @@ export const API_BASE_URL = getBaseUrl();
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth`,
   PERMISSIONS: `${API_BASE_URL}/api/permissions`,
+  ADD_PERMISSION: `${API_BASE_URL}/api/permissions/add`,
+  PERMISSION_MANAGE_DEVICES: `${API_BASE_URL}/api/permissions/manage/devices`,
+  PERMISSION_MANAGE_EXPERIMENTS: `${API_BASE_URL}/api/permissions/manage/experiments`,
+  PERMISSION_MANAGE_NEW_USER: `${API_BASE_URL}/api/permissions/manage/new-user`,
+  PERMISSION_MANAGE_EXISTING_USER: `${API_BASE_URL}/api/permissions/manage/existing-user`,
+  PERMISSION_MANAGE_EXISTING_USERS_BATCH: `${API_BASE_URL}/api/permissions/manage/existing-users/batch`,
+  PERMISSION_CHECK_EXISTING: `${API_BASE_URL}/api/permissions/check-existing`,
+  USERS_SEARCH: `${API_BASE_URL}/api/users/search`,
   EXPERIMENT_SUMMARY: `${API_BASE_URL}/api/experiment-summary`,
   FETCH_DATA: `${API_BASE_URL}/api/fetch-data`,
 };

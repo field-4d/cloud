@@ -1,7 +1,7 @@
 # Field4D Frontend
 
 **Author:** Nir Averbuch  
-**Last updated:** 2026-03-29
+**Last updated:** 2026-04-27
 
 Single-page application (**React 18**, **TypeScript**, **Vite**) for Field4D: login, pick a permitted system and experiment, select sensors/parameters/dates, fetch long-format data from the **FastAPI** backend, and visualize it with **Plotly**. The browser **never** talks to BigQuery directly.
 
@@ -12,8 +12,11 @@ Single-page application (**React 18**, **TypeScript**, **Vite**) for Field4D: lo
 
 ## Features
 
-- **Auth** — Login via `POST /api/auth`; JWT stored for the session (see `authUtils.ts`)
+- **Auth** — Login via `POST /api/auth`; response includes token + role + permissions; JWT stored for the session (see `authUtils.ts`)
 - **Permissions** — `GET /api/permissions` drives which owner / MAC / experiments appear in the dashboard
+- **Role-aware management** — Embedded management UI (Users/Permissions/Devices) with backend-enforced scopes
+- **Batch assignment** — Existing-user permission assignment supports multi-user/multi-experiment batch flow
+- **Duplicate prevention UX** — Existing-permission checks disable/skip duplicates before submit
 - **Experiment summary** — `POST /api/experiment-summary` loads sensors, parameters, **sensor label map**, locations, and label counts
 - **Data fetch** — `POST /api/fetch-data` loads time-series rows; requests are **chunked** (20 sensors per request) in `DataSelector.tsx`
 - **Label-aware UI** — Include/exclude labels (`LabelFilter.tsx`), atomic token helpers (`labelTokenUtils.ts`, `labelAtomOptions.ts`), effective label for charts (`labelGrouping.ts`)
@@ -49,7 +52,8 @@ frontend/
     │   └── labelDisplay.ts     # Display helpers for sensor + location labels
     ├── components/
     │   ├── Auth.tsx
-    │   ├── Dashboard.tsx       # Systems, experiments, experiment-summary POST
+    │   ├── Dashboard.tsx       # Sidebar modules (Data Viewer / Management), collapsible sections
+    │   ├── PermissionDashboard.tsx  # Users/Permissions management UI (embedded/modal)
     │   ├── DataSelector.tsx    # Sensors, parameters, dates, fetch-data POST (chunked)
     │   ├── LabelFilter.tsx
     │   ├── VisualizationPanel.tsx
@@ -183,6 +187,12 @@ export const API_BASE_URL = /* … */;
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth`,
   PERMISSIONS: `${API_BASE_URL}/api/permissions`,
+  PERMISSION_MANAGE_DEVICES: `${API_BASE_URL}/api/permissions/manage/devices`,
+  PERMISSION_MANAGE_EXPERIMENTS: `${API_BASE_URL}/api/permissions/manage/experiments`,
+  PERMISSION_MANAGE_NEW_USER: `${API_BASE_URL}/api/permissions/manage/new-user`,
+  PERMISSION_MANAGE_EXISTING_USERS_BATCH: `${API_BASE_URL}/api/permissions/manage/existing-users/batch`,
+  PERMISSION_CHECK_EXISTING: `${API_BASE_URL}/api/permissions/check-existing`,
+  USERS_SEARCH: `${API_BASE_URL}/api/users/search`,
   EXPERIMENT_SUMMARY: `${API_BASE_URL}/api/experiment-summary`,
   FETCH_DATA: `${API_BASE_URL}/api/fetch-data`,
 };
@@ -232,7 +242,19 @@ Types below match the FastAPI models. Field names are **camelCase** in JSON wher
   "success": true,
   "message": "Authentication successful",
   "userData": { "email": "user@example.com" },
-  "jwtToken": "<jwt string>"
+  "jwtToken": "<jwt string>",
+  "access_token": "<jwt string>",
+  "token_type": "bearer",
+  "email": "user@example.com",
+  "role": "admin",
+  "permissions": [
+    {
+      "owner": "owner_id",
+      "mac_address": "aa:bb:cc",
+      "experiment": "exp_1",
+      "role": "admin"
+    }
+  ]
 }
 ```
 
@@ -358,12 +380,55 @@ Long-format rows are stored in React state and consumed by **`VisualizationPanel
 
 ---
 
+## Management API usage (frontend)
+
+Used by `PermissionDashboard.tsx`:
+
+- `GET /api/permissions/manage/devices?actor_email=...`
+- `GET /api/permissions/manage/experiments?actor_email=...&owner=...&mac_address=...`
+- `GET /api/users/search?q=...&actor_email=...` (search only, min 2 chars)
+- `POST /api/permissions/check-existing` (duplicate pre-check)
+- `POST /api/permissions/manage/new-user` (**system_admin only**)
+- `POST /api/permissions/manage/existing-users/batch` (multi-user/multi-experiment)
+
+### Management role behavior
+
+- `read`: cannot access management actions
+- `admin`: can assign permissions only within admin-scoped MACs
+- `system_admin`: can assign globally and create new users
+
+### Wildcard behavior
+
+For `admin` and `system_admin`, assignment uses wildcard experiment:
+
+```json
+{
+  "exp_name": "*",
+  "role_val": "admin"
+}
+```
+
+or in batch:
+
+```json
+{
+  "exp_names": ["*"],
+  "role_val": "system_admin"
+}
+```
+
+---
+
 ## Application Flow (for developers)
 
 1. **`Auth.tsx`** — User logs in → JWT stored (cookie / memory per `authUtils.ts`).
-2. **`Dashboard.tsx`** — Loads permissions → user picks **owner/MAC** (system) and **experiment** → calls **`POST /api/experiment-summary`** → passes `sensorLabelMap`, `sensorLocationMap`, parameters, sensors into children.
-3. **`DataSelector.tsx`** — User selects sensors, parameters, date range → **`POST /api/fetch-data`** (chunked) → sets long-format **`sensorData`**.
-4. **`VisualizationPanel.tsx`** — Renders plots and CSV export from **`sensorData`**, using **`getEffectiveLabel`** / maps for label grouping.
+2. **`Dashboard.tsx`** — Sidebar defaults to **Data Viewer**; loads permissions → user picks **owner/MAC** (system) and **experiment** → calls **`POST /api/experiment-summary`** → passes `sensorLabelMap`, `sensorLocationMap`, parameters, sensors into children.
+3. **Management module** — Sidebar `Management` section renders `PermissionDashboard` in page mode:
+   - `Users` page: new-user flow (system_admin only)
+   - `Permissions` page: existing-user assignment flow
+   - `Devices` page: placeholder
+4. **`DataSelector.tsx`** — User selects sensors, parameters, date range → **`POST /api/fetch-data`** (chunked) → sets long-format **`sensorData`**.
+5. **`VisualizationPanel.tsx`** — Renders plots and CSV export from **`sensorData`**, using **`getEffectiveLabel`** / maps for label grouping.
 
 ---
 

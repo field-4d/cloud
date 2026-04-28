@@ -2,7 +2,7 @@
 
 > **Note:** Active development may live on a `Dev` branch and can be unstable. Prefer `main` for stable snapshots.
 
-**Last updated:** April 16, 2026
+**Last updated:** April 27, 2026
 
 Web application for visualizing and analyzing **long-format sensor data** stored in **Google BigQuery**. The **React** frontend talks to a **Python FastAPI** backend; BigQuery credentials stay on the server.
 
@@ -38,8 +38,9 @@ A legacy **Node/Express** backend may exist in older branches or folders; the ma
 
 1. User signs in via **`POST /api/auth`** (FastAPI forwards to external GCP auth service).
 2. **`GET /api/permissions`** loads allowed `(owner, mac_address, experiment)` rows.
-3. **`POST /api/experiment-summary`** returns experiment metadata: sensors, parameters, **latest label per sensor (LLA)**, locations, counts.
-4. **`POST /api/fetch-data`** returns long-format rows for selected sensors/parameters/date range; each row includes the **current label assignment** for that sensor (see backend README).
+3. **`POST /api/experiment-summary`** returns experiment metadata: `experimentId` (`Exp_ID`), sensors, parameters, **latest label per sensor (LLA)**, locations, counts.
+4. **`POST /api/fetch-data`** returns long-format rows for selected sensors/parameters/date range; each row includes the **current label assignment** for that sensor (see backend README). Date windows are handled as UTC timestamps.
+5. **Management routes** (FastAPI) proxy to the access-manager service and normalize responses for frontend JSON usage (Cloud Function responses are plain text).
 
 **Sensor labels** are **assignment-based** (latest non-empty `Label` per experiment + LLA in BigQuery), not “whatever text was on that row at that timestamp.” Grouping and filtering follow that model.
 
@@ -107,7 +108,8 @@ Production CORS reminder:
 | Path | Role |
 |------|------|
 | `src/components/Auth.tsx` | Login; brute-force lockout UX (see constants in file). |
-| `src/components/Dashboard.tsx` | Systems (MAC), experiments, loads experiment summary. |
+| `src/components/Dashboard.tsx` | Sidebar module navigation (**Data Viewer** + **Management**), collapsible sections, Data Viewer controls, management page routing. |
+| `src/components/PermissionDashboard.tsx` | Embedded/modal management UI with `permissionMode` (`new_user` or `permission_assignment`), role-aware restrictions, searchable selectors, batch assignment UX. |
 | `src/components/DataSelector.tsx` | Sensors, parameters, date range, chunked **`POST /api/fetch-data`** (chunk size 20 sensors per request). |
 | `src/components/LabelFilter.tsx` | Include/exclude labels (atomic tokens), drives which sensors stay selected. |
 | `src/components/VisualizationPanel.tsx` | Plotly charts, CSV export, hour-range filter for box plots. |
@@ -129,9 +131,15 @@ Abbreviated index:
 | GET | `/health` | Liveness |
 | POST | `/api/auth` | Login → JWT |
 | GET | `/api/permissions` | Permissions for `email` |
-| POST | `/api/experiment-summary` | Per-experiment sensors, parameters, **sensorLabelMap**, locations |
+| POST | `/api/experiment-summary` | Per-experiment `experimentId`, sensors, parameters, **sensorLabelMap**, locations |
 | POST | `/api/fetch-data` | Long-format sensor rows |
 | GET | `/api/analytics-health` | Analytics service health proxy |
+| GET | `/api/permissions/manage/devices` | Device scope for management UI (role-aware) |
+| GET | `/api/permissions/manage/experiments` | Experiments for selected device (role-aware) |
+| GET | `/api/users/search` | Search existing users (admin/system_admin only) |
+| POST | `/api/permissions/check-existing` | Check existing user+experiment permissions for duplicate prevention |
+| POST | `/api/permissions/manage/new-user` | Create user + initial permission (**system_admin only**) |
+| POST | `/api/permissions/manage/existing-users/batch` | Batch add permissions for selected users/experiments |
 
 **Authentication request (example):**
 
@@ -155,6 +163,24 @@ Abbreviated index:
 Use `"*"` inside the array to request all experiments for that device (see backend validation).
 
 Password hashing for the external auth service matches SHA-256 → Base64 of the digest (documented in backend README; legacy Node examples in git history).
+
+---
+
+## Management and roles (current behavior)
+
+- **Sidebar modules:** `Data Viewer` and `Management` are separate collapsible sections.
+- **Data Viewer default:** opens by default and keeps existing filtering/graph behavior.
+- **Management pages:**
+  - `Users` → new-user flow (visible/usable only for `system_admin`)
+  - `Permissions` → existing-user permission assignment
+  - `Devices` → placeholder
+- **Role enforcement (backend authoritative):**
+  - `read` cannot manage users/permissions
+  - `admin` can manage only within MACs where actor has admin scope
+  - `system_admin` can manage globally
+  - only `system_admin` can create new users
+- **Wildcard behavior:** for `admin`/`system_admin`, permission assignment uses wildcard experiment (`*`) in management flow.
+- **Duplicate UX protection:** frontend pre-checks existing permissions and skips duplicates; backend still enforces duplicate checks (409) as final safety.
 
 ---
 
