@@ -22,6 +22,7 @@ TABLE_CONFIG = {
             bigquery.SchemaField("LLA", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("Owner", "STRING"),
             bigquery.SchemaField("Mac_Address", "STRING"),
+            bigquery.SchemaField("Time_Zone", "STRING"),
             bigquery.SchemaField("Exp_ID", "INT64"),
             bigquery.SchemaField("Exp_Name", "STRING"),
             bigquery.SchemaField("Exp_Location", "STRING"),
@@ -56,6 +57,7 @@ TABLE_CONFIG = {
             bigquery.SchemaField("LLA", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("Owner", "STRING"),
             bigquery.SchemaField("Mac_Address", "STRING"),
+            bigquery.SchemaField("Time_Zone", "STRING"),
             bigquery.SchemaField("Exp_ID", "INT64"),
             bigquery.SchemaField("Exp_Name", "STRING"),
             bigquery.SchemaField("Exp_Location", "STRING"),
@@ -132,12 +134,14 @@ def check_dataset_exists(client: bigquery.Client, dataset_ref: str) -> bool:
 
 def ensure_dataset_exists(client: bigquery.Client) -> None:
     dataset_ref = get_dataset_ref()
-    if check_dataset_exists(client, dataset_ref):
-        return
 
     dataset = bigquery.Dataset(dataset_ref)
     dataset.location = "me-west1"
-    client.create_dataset(dataset)
+
+    try:
+        client.create_dataset(dataset, exists_ok=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed to ensure dataset exists: {dataset_ref}: {e}")
 
 
 def check_table_exists(client: bigquery.Client, table_ref: str) -> bool:
@@ -152,19 +156,19 @@ def ensure_table_exists(client: bigquery.Client, table_name: str) -> None:
     ensure_dataset_exists(client)
 
     table_ref = get_table_ref(table_name)
-    if check_table_exists(client, table_ref):
-        return
-
     config = TABLE_CONFIG[table_name]
-    table = bigquery.Table(table_ref, schema=config["schema"])
 
+    table = bigquery.Table(table_ref, schema=config["schema"])
     table.time_partitioning = bigquery.TimePartitioning(
         type_=bigquery.TimePartitioningType.DAY,
         field=config["partition_field"],
     )
     table.clustering_fields = config["clustering_fields"]
 
-    client.create_table(table)
+    try:
+        client.create_table(table, exists_ok=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed to ensure table exists: {table_ref}: {e}")
 
 
 def normalize_scalar(value: Any) -> Any:
@@ -330,14 +334,42 @@ def handle_upload_rows(payload: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
         }, 400
 
     client = get_bq_client()
-    ensure_table_exists(client, table_name)
     table_ref = get_table_ref(table_name)
+
+    try:
+        ensure_table_exists(client, table_name)
+    except Exception as e:
+        return {
+            "status": "error",
+            "action": "upload_rows",
+            "table_name": table_name,
+            "message": f"Failed while ensuring dataset/table exists: {e}",
+        }, 500
 
     inserted_rows = 0
     chunk_errors = []
 
     for chunk_index, chunk in enumerate(chunk_rows(cleaned_rows, DEFAULT_INSERT_CHUNK_SIZE), start=1):
-        errors = client.insert_rows_json(table_ref, chunk)
+        try:
+            errors = client.insert_rows_json(table_ref, chunk)
+        except NotFound:
+            try:
+                ensure_table_exists(client, table_name)
+                errors = client.insert_rows_json(table_ref, chunk)
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "action": "upload_rows",
+                    "table_name": table_name,
+                    "message": f"Insert failed after recreate attempt on chunk {chunk_index}: {e}",
+                }, 500
+        except Exception as e:
+            return {
+                "status": "error",
+                "action": "upload_rows",
+                "table_name": table_name,
+                "message": f"Unexpected insert exception on chunk {chunk_index}: {e}",
+            }, 500
 
         if errors:
             chunk_errors.append({

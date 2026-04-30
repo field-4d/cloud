@@ -5,6 +5,8 @@ import json
 import uuid
 
 
+import subprocess
+
 DB_PATH = "/home/pi/F4D/DB/local.duckdb"
 
 def now_local():
@@ -18,6 +20,16 @@ def now_local_millis():
     return now.replace(microsecond=(now.microsecond // 1000) * 1000)
 
 
+def get_system_timezone() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["timedatectl", "show", "--property=Timezone", "--value"],
+            text=True
+        ).strip()
+    except Exception as e:
+        print(f"Failed to read system timezone: {e}")
+        return None
+    
 
 def get_connection():
     Path("/home/pi/F4D/DB").mkdir(parents=True, exist_ok=True)
@@ -952,6 +964,7 @@ def init_sensors_data_table(con):
         LLA TEXT NOT NULL,
         Owner TEXT,
         Mac_Address TEXT,
+        Time_Zone TEXT,
         Exp_ID INTEGER,
         Exp_Name TEXT,
         Exp_Location TEXT,
@@ -1004,6 +1017,7 @@ def init_packet_events_table(con):
         LLA TEXT NOT NULL,
         Owner TEXT,
         Mac_Address TEXT,
+        Time_Zone TEXT,    
         Exp_ID INTEGER,
         Exp_Name TEXT,
         Exp_Location TEXT,
@@ -1094,6 +1108,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
     
     interval_timestamp = parse_timestamp(interval_timestamp, trim_to_seconds=True)
     timebucket = make_timebucket(interval_timestamp)
+    time_zone = get_system_timezone()
 
     active_sensor_rows = []
     all_packet_events = []
@@ -1210,6 +1225,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
                     LLA,
                     Owner,
                     Mac_Address,
+                    Time_Zone,
                     Exp_ID,
                     Exp_Name,
                     Exp_Location,
@@ -1225,7 +1241,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
                     Package_Count_3min,
                     Source
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
             """, [
                 str(uuid.uuid4()),
                 interval_timestamp,
@@ -1234,6 +1250,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
                 sensor_row["LLA"],
                 sensor_row["Owner"],
                 sensor_row["Mac_Address"],
+                time_zone,
                 sensor_row["Exp_ID"],
                 sensor_row["Exp_Name"],
                 sensor_row["Exp_Location"],
@@ -1262,6 +1279,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
                 LLA,
                 Owner,
                 Mac_Address,
+                time_zone,
                 Exp_ID,
                 Exp_Name,
                 Exp_Location,
@@ -1277,7 +1295,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
                 Packet_Count_3min,
                 Source
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
         """, [
             str(uuid.uuid4()),
             interval_timestamp,
@@ -1286,6 +1304,7 @@ def write_flash_buffer_to_sensors_data(flash_buffer: dict, interval_timestamp: d
             event["LLA"],
             event["Owner"],
             event["Mac_Address"],
+            time_zone,
             event["Exp_ID"],
             event["Exp_Name"],
             event["Exp_Location"],
