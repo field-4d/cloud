@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import LoadingSpinner from './LoadingSpinner';
+import { getParameterDisplayLabel } from '../../constants/parameterMetadata';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -156,7 +157,7 @@ const CorrelationMatrix: React.FC<CorrelationMatrixProps> = ({
           zmin: -1,
           zmax: 1,
           hoverongaps: false,
-          hoverinfo: 'x+y+z',
+          hovertemplate: '%{x}<br>%{y}<br>Correlation: %{z:.3f}<extra></extra>',
           text: correlationData.matrix.map(row => 
             row.map(val => val.toFixed(2))
           ),
@@ -175,7 +176,7 @@ const CorrelationMatrix: React.FC<CorrelationMatrixProps> = ({
             title: 'Parameters',
             titlefont: { size: axisConfig.textSize },
             tickfont: { size: axisConfig.tickSize },
-            ticktext: selectedParameters.map(label => `${label} (${getParameterUnit(label)})`),
+            ticktext: selectedParameters.map((label) => getParameterDisplayLabel(label)),
             tickvals: selectedParameters,
             standoff: axisConfig.distanceFromPlot,
           },
@@ -183,7 +184,7 @@ const CorrelationMatrix: React.FC<CorrelationMatrixProps> = ({
             title: 'Parameters',
             titlefont: { size: axisConfig.textSize },
             tickfont: { size: axisConfig.tickSize },
-            ticktext: selectedParameters.map(label => `${label} (${getParameterUnit(label)})`),
+            ticktext: selectedParameters.map((label) => getParameterDisplayLabel(label)),
             tickvals: selectedParameters,
             standoff: axisConfig.distanceFromPlot,
           },

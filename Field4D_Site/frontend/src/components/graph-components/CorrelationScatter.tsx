@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import LoadingSpinner from './LoadingSpinner';
+import {
+  getParameterDisplayLabel,
+  getParameterUnit,
+} from '../../constants/parameterMetadata';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -31,46 +35,6 @@ interface CorrelationScatterProps {
   axisConfig?: AxisConfig; // Optional axis configuration
 }
 
-// Parameter units mapping
-const PARAMETER_UNITS: { [key: string]: string } = {
-  'RH': '%',
-  'Temperature': '°C',
-  'VPD': 'kPa',
-  'PAR': 'μmol/m²/s',
-  'CO2': 'ppm',
-  'Pressure': 'kPa',
-  'Wind Speed': 'm/s',
-  'Wind Direction': '°',
-  'Rain': 'mm',
-  'Soil Moisture': '%',
-  'Leaf Temperature': '°C',
-  'Stomatal Conductance': 'mmol/m²/s',
-  'Photosynthesis': 'μmol/m²/s',
-  'Transpiration': 'mmol/m²/s',
-  'Water Potential': 'MPa',
-  'Chlorophyll': 'SPAD',
-  'NDVI': 'unitless',
-  'LAI': 'm²/m²',
-  'Biomass': 'g/m²',
-  'Yield': 'kg/ha',
-};
-
-// Helper function to get parameter unit
-const getParameterUnit = (param: string): string => {
-  // Try exact match first
-  if (PARAMETER_UNITS[param]) {
-    return PARAMETER_UNITS[param];
-  }
-  
-  // Try case-insensitive match
-  const paramLower = param.toLowerCase();
-  const match = Object.keys(PARAMETER_UNITS).find(key => 
-    key.toLowerCase() === paramLower
-  );
-  
-  return match ? PARAMETER_UNITS[match] : '';
-};
-
 const CorrelationScatter: React.FC<CorrelationScatterProps> = ({ 
   data, 
   param1, 
@@ -86,9 +50,9 @@ const CorrelationScatter: React.FC<CorrelationScatterProps> = ({
 
   // Memoize axis titles
   const axisTitles = useMemo(() => ({
-    x: param1Unit ? `${param1} (${param1Unit})` : param1,
-    y: param2Unit ? `${param2} (${param2Unit})` : param2
-  }), [param1, param2, param1Unit, param2Unit]);
+    x: getParameterDisplayLabel(param1),
+    y: getParameterDisplayLabel(param2),
+  }), [param1, param2]);
 
   // Memoize filtered data
   const filteredData = useMemo(() => {
@@ -156,7 +120,8 @@ const CorrelationScatter: React.FC<CorrelationScatterProps> = ({
         color: '#8AC6B6',
         size: 8,
         opacity: 0.7
-      }
+      },
+      hovertemplate: `${getParameterDisplayLabel(param1)}: %{x}${param1Unit ? ` ${param1Unit}` : ''}<br>${getParameterDisplayLabel(param2)}: %{y}${param2Unit ? ` ${param2Unit}` : ''}<extra></extra>`,
     },
     {
       x: regressionLine.x,

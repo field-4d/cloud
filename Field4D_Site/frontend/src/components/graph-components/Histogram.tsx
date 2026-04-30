@@ -13,6 +13,10 @@ import {
   normalizeIncludedLabels,
   type RowWithSensorLabel,
 } from '../../utils/labelGrouping';
+import {
+  getParameterDisplayLabel,
+  getParameterUnit as getMetadataParameterUnit,
+} from '../../constants/parameterMetadata';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -249,7 +253,7 @@ const Histogram: React.FC<HistogramProps> = ({
         return {
           x: [],
           type: 'histogram',
-          name: `${param} (${getParameterUnit(param)})`,
+          name: getParameterDisplayLabel(param),
           marker: { color: COLORS[idx % COLORS.length] },
           xaxis: `x${idx + 1}`,
           yaxis: `y${idx + 1}`,
@@ -263,13 +267,14 @@ const Histogram: React.FC<HistogramProps> = ({
       return {
         x: xVals,
         type: 'histogram',
-        name: `${param} (${getParameterUnit(param)})`,
+        name: getParameterDisplayLabel(param),
         marker: { color: COLORS[idx % COLORS.length] },
         xaxis: `x${idx + 1}`,
         yaxis: `y${idx + 1}`,
         opacity: 0.8,
         xbins: { start: min, end: max, size },
         showlegend: false,
+        hovertemplate: `${getParameterDisplayLabel(param)}: %{x}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<br>Count: %{y}<extra></extra>`,
       };
     });
   } else if (useLabelMode) {
@@ -298,7 +303,7 @@ const Histogram: React.FC<HistogramProps> = ({
         return {
           x: xVals,
           type: 'histogram',
-          name: `${label}-${param}`,
+          name: `${label} - ${getParameterDisplayLabel(param)}`,
           marker: { color: COLORS[lIdx % COLORS.length] },
           xaxis: `x${pIdx + 1}`,
           yaxis: `y${pIdx + 1}`,
@@ -306,6 +311,7 @@ const Histogram: React.FC<HistogramProps> = ({
           xbins: { start: min, end: max, size },
           barmode: 'overlay',
           showlegend: true,
+          hovertemplate: `${getParameterDisplayLabel(param)}: %{x}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<br>Count: %{y}<extra>${label}</extra>`,
         };
       }).filter((trace): trace is NonNullable<typeof trace> => trace !== null);
     }).flat();
@@ -346,10 +352,9 @@ const Histogram: React.FC<HistogramProps> = ({
 
   // Add x and y axis configurations for each subplot
   parametersToRender.forEach((param, idx) => {
-    const unit = getParameterUnit(param);
     layout[`xaxis${idx + 1 === 1 ? '' : idx + 1}`] = {
       title: {
-        text: `${param} (${unit})`,
+        text: getParameterDisplayLabel(param),
         font: { size: axisConfig.textSize },
         standoff: axisConfig.distanceFromPlot,
       },
@@ -387,8 +392,8 @@ const Histogram: React.FC<HistogramProps> = ({
               <span style={{ fontSize: infoTextSize, color: '#8AC6BB', fontWeight: 'bold' }} className="mb-2">Showing up to 10 parameters at a time</span>
               <Select
                 isMulti
-                options={parameters.map(param => ({ value: param, label: param }))}
-                value={multiParams.map(param => ({ value: param, label: param }))}
+                options={parameters.map(param => ({ value: param, label: getParameterDisplayLabel(param) }))}
+                value={multiParams.map(param => ({ value: param, label: getParameterDisplayLabel(param) }))}
                 onChange={selected => {
                   const vals = Array.isArray(selected) ? selected.map(opt => opt.value) : [];
                   setMultiParams(vals.slice(0, 10));

@@ -13,6 +13,11 @@ import {
   normalizeIncludedLabels,
   type RowWithSensorLabel,
 } from '../../utils/labelGrouping';
+import {
+  getParameterDisplayLabel,
+  getParameterUnit as getMetadataParameterUnit,
+  getYAxisTitle,
+} from '../../constants/parameterMetadata';
 
 // Axis configuration interface
 interface AxisConfig {
@@ -56,17 +61,6 @@ interface BoxPlotProps {
   includedLabels?: string[]; // Add this
 }
 
-// Helper to map parameter names to units
-const getParameterUnit = (param: string): string => {
-  if (param.toLowerCase().includes('temp')) return '°C';
-  if (param.toLowerCase().includes('humidity')) return '%';
-  if (param.toLowerCase().includes('pressure')) return 'hPa';
-  if (param.toLowerCase().includes('light')) return 'lux';
-  if (param.toLowerCase().includes('co2')) return 'ppm';
-  if (param.toLowerCase().includes('battery')) return 'V';
-  if (param.toLowerCase().includes('rssi')) return 'dBm';
-  return '';
-};
 
 /**
  * BoxPlot
@@ -104,6 +98,8 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   sensorLabelMap = {},
   includedLabels = [],
 }) => {
+  const yAxisTitle = getYAxisTitle(selectedParameters.slice(0, 2));
+
   // Check for parameter limit and notify if exceeded
   useEffect(() => {
     if (selectedParameters.length > 2) {
@@ -255,11 +251,12 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
         return {
           y: yValues,
           x: xPositions,
-          name: `${subGroup}${limitedParameters.length > 1 ? ` - ${param}` : ''}`,
+          name: `${subGroup}${limitedParameters.length > 1 ? ` - ${getParameterDisplayLabel(param)}` : ''}`,
           type: "box",
           boxpoints: false,
           marker: { color: undefined }, // Let Plotly handle colors for grouped boxes
           yaxis: paramIdx === 0 ? 'y' : 'y2',
+          hovertemplate: `${getParameterDisplayLabel(param)}: %{y}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<extra>${subGroup}</extra>`,
         };
       }).filter(t => t !== null) as Partial<BoxPlotData>[];
     } else {
@@ -275,12 +272,13 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
         y: values,
         x: Array(values.length).fill(group),
         name: groupBy === 'sensor'
-          ? `${group}${limitedParameters.length > 1 ? ` - ${param}` : ''}`
-          : `${group}${limitedParameters.length > 1 ? ` - ${param}` : ''}`,
+          ? `${group}${limitedParameters.length > 1 ? ` - ${getParameterDisplayLabel(param)}` : ''}`
+          : `${group}${limitedParameters.length > 1 ? ` - ${getParameterDisplayLabel(param)}` : ''}`,
         type: "box",
         boxpoints: false,
         marker: { color: groupBy === 'sensor' ? getSensorColor(group) : undefined },
         yaxis: paramIdx === 0 ? 'y' : 'y2',
+        hovertemplate: `${getParameterDisplayLabel(param)}: %{y}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<extra>${group}</extra>`,
       };
     });
     }
@@ -343,7 +341,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     },
     yaxis: {
       title: {
-        text: `${limitedParameters[0]?.replace('SensorData_', '') || ''} (${getParameterUnit(limitedParameters[0]?.replace('SensorData_', '') || '')})`,
+        text: yAxisTitle,
         font: { size: axisConfig.textSize },
         standoff: axisConfig.distanceFromPlot,
       },
@@ -358,7 +356,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     },
     yaxis2: {
       title: {
-        text: `${limitedParameters[1]?.replace('SensorData_', '') || ''} (${getParameterUnit(limitedParameters[1]?.replace('SensorData_', '') || '')})`,
+        text: limitedParameters.length > 1 ? yAxisTitle : '',
         font: { size: axisConfig.textSize },
         standoff: axisConfig.distanceFromPlot,
       },

@@ -7,7 +7,14 @@
 import React, { useState, useEffect } from 'react';
 import { Range, RangeKeyDict } from 'react-date-range';
 import Plot from 'react-plotly.js';
-import Select, { MultiValue, components, OptionProps } from 'react-select';
+import Select, {
+  GroupBase,
+  MultiValue,
+  components,
+  OptionProps,
+  GroupHeadingProps,
+  FormatOptionLabelMeta,
+} from 'react-select';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -23,6 +30,11 @@ import {
   normalizeIncludedLabels,
   type RowWithSensorLabel,
 } from '../utils/labelGrouping';
+import {
+  PARAMETER_OPTIONS,
+  getParameterDisplayLabel,
+  getParameterUnit,
+} from '../constants/parameterMetadata';
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -53,7 +65,12 @@ interface ExperimentSummary {
 interface ParameterOption {
   value: string;
   label: string;
-  unit: string;
+  rawLabel: string;
+}
+
+interface ParameterGroupOption {
+  label: string;
+  options: ParameterOption[];
 }
 
 interface DataSelectorProps {
@@ -123,23 +140,36 @@ const ARTIFACT_THRESHOLDS: Record<string, number> = {
 };
 
 // Custom Option components with checkbox
-const ParameterOption = (props: OptionProps<ParameterOption, true>) => {
+const ParameterOption = (props: OptionProps<ParameterOption, true, GroupBase<ParameterOption>>) => {
   return (
     <div className="cursor-pointer">
       <components.Option {...props}>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-start space-x-2">
           <input
             type="checkbox"
             checked={props.isSelected}
             onChange={() => null}
             className="rounded text-[#8ac6bb] focus:ring-[#8ac6bb] cursor-pointer"
           />
-          <span>{props.label}</span>
+          <div className="flex flex-col leading-tight">
+            <span>{props.label}</span>
+            <span className="text-xs text-gray-400">{props.data.rawLabel}</span>
+          </div>
         </div>
       </components.Option>
     </div>
   );
 };
+
+const ParameterGroupHeading = (
+  props: GroupHeadingProps<ParameterOption, true, GroupBase<ParameterOption>>
+) => (
+  <components.GroupHeading {...props}>
+    <div className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
+      {props.children}
+    </div>
+  </components.GroupHeading>
+);
 
 const SensorOption = (props: OptionProps<SensorOption, true>) => {
   return (
@@ -159,88 +189,6 @@ const SensorOption = (props: OptionProps<SensorOption, true>) => {
   );
 };
 
-// Add this after the interfaces and before the DataSelector component
-const PARAMETER_OPTIONS = [
-  {
-    label: 'Basic Environmental',
-    options: [
-      { value: 'temperature', label: 'Temperature (°C)', unit: '°C' },
-      { value: 'humidity', label: 'Relative Humidity (RH)', unit: '%' },
-      { value: 'barometric_pressure', label: 'Barometric Pressure (hPa)', unit: 'hPa' },
-      { value: 'light', label: 'Light Intensity (lux)', unit: 'lux' },
-      { value: 'battery', label: 'Battery Level (mV)', unit: 'mV' },
-      { value: 'co2_ppm', label: 'CO2 Concentration (PPM)', unit: 'ppm' },
-      { value: 'air_velocity', label: 'Air Velocity', unit: 'm/s' }
-    ]
-  },
-  {
-    label: 'BMP390 Sensors',
-    options: [
-      { value: 'bmp_390_u18_pressure', label: 'BMP390 U18 Pressure (hPa)', unit: 'hPa' },
-      { value: 'bmp_390_u18_temperature', label: 'BMP390 U18 Temperature (°C)', unit: '°C' },
-      { value: 'bmp_390_u19_pressure', label: 'BMP390 U19 Pressure (hPa)', unit: 'hPa' },
-      { value: 'bmp_390_u19_temperature', label: 'BMP390 U19 Temperature (°C)', unit: '°C' }
-    ]
-  },
-  {
-    label: 'HDC2010 Sensors',
-    options: [
-      { value: 'hdc_2010_u13_temperature', label: 'HDC2010 U13 Temperature (°C)', unit: '°C' },
-      { value: 'hdc_2010_u13_humidity', label: 'HDC2010 U13 Relative Humidity (RH)', unit: '%' },
-      { value: 'hdc_2010_u16_temperature', label: 'HDC2010 U16 Temperature (°C)', unit: '°C' },
-      { value: 'hdc_2010_u16_humidity', label: 'HDC2010 U16 Relative Humidity (RH)', unit: '%' },
-      { value: 'hdc_2010_u17_temperature', label: 'HDC2010 U17 Temperature (°C)', unit: '°C' },
-      { value: 'hdc_2010_u17_humidity', label: 'HDC2010 U17 Relative Humidity (RH)', unit: '%' }
-    ]
-  },
-  {
-    label: 'OPT3001 Light Sensors',
-    options: [
-      { value: 'opt_3001_u1_light_intensity', label: 'OPT3001 U1 Light Intensity (lux)', unit: 'lux' },
-      { value: 'opt_3001_u2_light_intensity', label: 'OPT3001 U2 Light Intensity (lux)', unit: 'lux' },
-      { value: 'opt_3001_u3_light_intensity', label: 'OPT3001 U3 Light Intensity (lux)', unit: 'lux' },
-      { value: 'opt_3001_u4_light_intensity', label: 'OPT3001 U4 Light Intensity (lux)', unit: 'lux' },
-      { value: 'opt_3001_u5_light_intensity', label: 'OPT3001 U5 Light Intensity (lux)', unit: 'lux' }
-    ]
-  },
-  {
-    label: 'ZTP315 Temperature Sensors',
-    options: [
-      { value: 'ztp_315_surface_temperature', label: 'ZTP315 Surface Temperature (°C)', unit: '°C' },
-      { value: 'ztp_315_ambient_temperature', label: 'ZTP315 Ambient Temperature (°C)', unit: '°C' },
-      { value: 'ztp_315_object_temperature', label: 'ZTP315 Object Temperature (°C)', unit: '°C' },
-      { value: 'ztp_315_voltage_output', label: 'ZTP315 Voltage Output', unit: 'V' },
-      { value: 'ztp_315_temperature_offset', label: 'ZTP315 Temperature Offset (°C)', unit: '°C' },
-      { value: 'ztp_315_emissivity', label: 'ZTP315 Emissivity', unit: '' },
-      { value: 'ztp_315_calibrated_temperature', label: 'ZTP315 Calibrated Temperature (°C)', unit: '°C' }
-    ]
-  },
-  {
-    label: 'IIS3DHHC Motion Sensors',
-    options: [
-      { value: 'iis3dhhc_tilt_angle', label: 'IIS3DHHC Tilt Angle', unit: '°' },
-      { value: 'iis3dhhc_y_acceleration', label: 'IIS3DHHC Y Acceleration', unit: 'g' },
-      { value: 'iis3dhhc_x_acceleration', label: 'IIS3DHHC X Acceleration', unit: 'g' },
-      { value: 'iis3dhhc_z_acceleration', label: 'IIS3DHHC Z Acceleration', unit: 'g' },
-      { value: 'iis3dhhc_yaw_angle', label: 'IIS3DHHC Yaw Angle', unit: '°' },
-      { value: 'iis3dhhc_azimuth_angle', label: 'IIS3DHHC Azimuth Angle', unit: '°' },
-      { value: 'iis3dhhc_temperature', label: 'IIS3DHHC Temperature', unit: '°C' },
-      { value: 'iis3dhhc_roll_angle', label: 'IIS3DHHC Roll Angle', unit: '°' },
-      { value: 'iis3dhhc_pitch_angle', label: 'IIS3DHHC Pitch Angle', unit: '°' }
-    ]
-  },
-  {
-    label: 'System Parameters',
-    options: [
-      { value: 'batmon_temperature', label: 'Battery Temperature (°C)', unit: '°C' },
-      { value: 'batmon_battery_voltage', label: 'Battery Voltage (V)', unit: 'V' },
-      { value: 'rssi', label: 'RSSI', unit: 'dBm' },
-      { value: 'tmp107_amb', label: 'TMP107 Ambient Temperature (°C)', unit: '°C' },
-      { value: 'tmp107_obj', label: 'TMP107 Object Temperature (°C)', unit: '°C' },
-      { value: 'barometric_temp', label: 'Barometric Temperature (°C)', unit: '°C' }
-    ]
-  }
-];
 
 // Add this after the imports and before the DataSelector component
 const generateColorFromString = (str: string): string => {
@@ -306,16 +254,6 @@ const getSensorColor = (sensorName: string): string => {
   return sensorColorCache[sensorName];
 };
 
-// Add a helper function to get parameter unit
-export const getParameterUnit = (parameter: string): string => {
-  for (const group of PARAMETER_OPTIONS) {
-    const option = group.options.find(opt => opt.value === parameter);
-    if (option) {
-      return option.unit;
-    }
-  }
-  return ''; // Return empty string if no unit found
-};
 
 /**
  * DataSelector
@@ -702,14 +640,24 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     setSelectedSensors(expandDisplayKeysToSensors(selectedDisplayKeys));
   }, [selectedDisplayKeys, expandDisplayKeysToSensors]);
 
-  // Convert availableParameters to options format for react-select.
-  const parameterOptions: ParameterOption[] = availableParameters
-    .slice()
-    .sort((a, b) => a.localeCompare(b))
-    .map(param => {
-      const unit = getParameterUnit(param);
-      return { value: param, label: param, unit };
-    });
+  const parameterOptions = React.useMemo<ParameterGroupOption[]>(() => {
+    const availableSet = new Set(availableParameters);
+    return PARAMETER_OPTIONS.map((group) => ({
+      label: group.label,
+      options: group.options
+        .filter((option) => availableSet.has(option.value))
+        .map((option) => ({
+          value: option.value,
+          label: option.label,
+          rawLabel: option.value,
+        })),
+    })).filter((group) => group.options.length > 0);
+  }, [availableParameters]);
+
+  const flatParameterOptions = React.useMemo(
+    () => parameterOptions.flatMap((group) => group.options),
+    [parameterOptions]
+  );
 
   /**
    * generateMockData
@@ -933,7 +881,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           .sort((a, b) => a.localeCompare(b))
           .map((parameter) => ({
             value: parameter,
-            label: parameter,
+            label: getParameterDisplayLabel(parameter),
             unit: getParameterUnit(parameter),
           }));
 
@@ -1270,16 +1218,65 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Parameters
           </label>
-          <Select<ParameterOption, true>
+          <Select<ParameterOption, true, GroupBase<ParameterOption>>
             isMulti
             options={parameterOptions}
-            value={parameterOptions.filter(option => selectedParameters.includes(option.value))}
+            value={flatParameterOptions.filter((option) => selectedParameters.includes(option.value))}
             onChange={handleParameterChange}
             className="basic-multi-select"
             classNamePrefix="select"
-            components={{ Option: ParameterOption }}
+            components={{ Option: ParameterOption, GroupHeading: ParameterGroupHeading }}
             closeMenuOnSelect={false}
             hideSelectedOptions={false}
+            isClearable
+            isSearchable
+            placeholder="Select parameters to visualize..."
+            noOptionsMessage={() => 'No matching parameters'}
+            formatOptionLabel={(
+              option: ParameterOption,
+              meta: FormatOptionLabelMeta<ParameterOption>
+            ) => {
+              if (meta.context === 'value') {
+                return <span>{option.label}</span>;
+              }
+              return (
+                <div className="flex flex-col">
+                  <span>{option.label}</span>
+                  <span className="text-xs text-gray-400">{option.rawLabel}</span>
+                </div>
+              );
+            }}
+            styles={{
+              valueContainer: (base) => ({
+                ...base,
+                flexWrap: 'wrap',
+                gap: '0.2rem',
+                maxHeight: '90px',
+                overflowY: 'auto',
+              }),
+              multiValue: (base) => ({
+                ...base,
+                backgroundColor: '#e6f0ee',
+                borderRadius: '999px',
+                maxWidth: '100%',
+              }),
+              multiValueLabel: (base) => ({
+                ...base,
+                color: '#355f58',
+                fontSize: 12,
+                fontWeight: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }),
+              groupHeading: (base) => ({
+                ...base,
+                background: '#f3f4f6',
+                fontWeight: 700,
+                color: '#374151',
+                paddingTop: '6px',
+                paddingBottom: '6px',
+              }),
+            }}
             theme={(theme) => ({
               ...theme,
               colors: {

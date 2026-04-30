@@ -13,6 +13,11 @@ import {
   rowMatchesParameter,
   type RowWithSensorLabel,
 } from '../../utils/labelGrouping';
+import {
+  getParameterDisplayLabel,
+  getParameterUnit as getMetadataParameterUnit,
+  getYAxisTitle,
+} from '../../constants/parameterMetadata';
 
 interface SensorData {
   timestamp: string;
@@ -264,6 +269,8 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   }
 
   let plotData: any[] = [];
+  const yAxisTitle = getYAxisTitle(limitedParameters);
+  const yAxisTwoTitle = limitedParameters.length > 1 ? getYAxisTitle(limitedParameters) : '';
   const selectedLabelGroups = normalizeIncludedLabels(includedLabels ?? []);
 
   if (groupBy === 'label' && sensorLabelMap) {
@@ -322,12 +329,13 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           y: means,
           type: 'scatter',
           mode: 'lines',
-          name: `${label}-${param.replace('SensorData_', '')}`,
+          name: `${label} - ${getParameterDisplayLabel(param)}`,
           yaxis: paramIdx === 0 ? 'y' : 'y2',
           line: {
             color: labelColor(label),
             width: 2,
           },
+          hovertemplate: `%{x}<br>${getParameterDisplayLabel(param)}: %{y}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<extra>${label}</extra>`,
         });
         // 5. If group has >3 sensors, add error shaded area
         // Only include timestamps where we have valid mean and error calculations
@@ -394,13 +402,14 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             type: 'scatter',
             mode: 'lines',
             name: selectedParameters.length > 1
-              ? `${legendSensorName}-${param.replace('SensorData_', '')}`
+              ? `${legendSensorName} - ${getParameterDisplayLabel(param)}`
               : legendSensorName,
             yaxis: paramIdx === 0 ? 'y' : 'y2',
             line: {
               color: color,
               width: 2,
             },
+            hovertemplate: `%{x}<br>${getParameterDisplayLabel(param)}: %{y}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<extra>${legendSensorName}</extra>`,
           };
         })
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -437,7 +446,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           },
           yaxis: {
             title: {
-              text: `${limitedParameters[0]?.replace('SensorData_', '') || ''} (${getParameterUnit(limitedParameters[0]?.replace('SensorData_', '') || '')})`,
+              text: yAxisTitle,
               font: { size: leftAxisConfig.textSize },
               standoff: leftAxisConfig.distanceFromPlot,
             },
@@ -452,7 +461,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
           },
           yaxis2: {
             title: {
-              text: `${limitedParameters[1]?.replace('SensorData_', '') || ''} (${getParameterUnit(limitedParameters[1]?.replace('SensorData_', '') || '')})`,
+              text: yAxisTwoTitle,
               font: { size: rightAxisConfig.textSize },
               standoff: rightAxisConfig.distanceFromPlot,
             },

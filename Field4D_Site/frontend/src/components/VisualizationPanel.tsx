@@ -16,7 +16,10 @@ import CorrelationScatter from './graph-components/CorrelationScatter';
 import LoadingSpinner from './graph-components/LoadingSpinner';
 import ANOVAResultsScatterPlot from './graph-components/ANOVAResultsScatterPlot';
 import HealthCheckButton from './analytics/HealthCheckButton';
-import { getParameterUnit } from './DataSelector';
+import {
+  getParameterDisplayLabel,
+  getParameterUnit,
+} from '../constants/parameterMetadata';
 import {
   applyOutlierFiltering,
   getCompatibleOutlierMethod,
@@ -799,8 +802,16 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
               </label>
               <Select
                 isMulti
-                options={[...allParameters.map((param) => ({ value: param, label: param }))]}
-                value={selectedParameters.map((param) => ({ value: param, label: param }))}
+                options={[
+                  ...allParameters.map((param) => ({
+                    value: param,
+                    label: getParameterDisplayLabel(param),
+                  })),
+                ]}
+                value={selectedParameters.map((param) => ({
+                  value: param,
+                  label: getParameterDisplayLabel(param),
+                }))}
                 onChange={(selected) => {
                   if (!selected) {
                     setSelectedParameters([]);
@@ -1483,8 +1494,14 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                     </label>
                     <div className="min-w-[300px]">
                       <Select
-                        options={allParameters.map(param => ({ value: param, label: param }))}
-                        value={selectedAnalyticsParameter ? { value: selectedAnalyticsParameter, label: selectedAnalyticsParameter } : null}
+                        options={allParameters.map((param) => ({
+                          value: param,
+                          label: getParameterDisplayLabel(param),
+                        }))}
+                        value={selectedAnalyticsParameter ? {
+                          value: selectedAnalyticsParameter,
+                          label: getParameterDisplayLabel(selectedAnalyticsParameter),
+                        } : null}
                         onChange={(selected) => setSelectedAnalyticsParameter(selected ? selected.value : '')}
                         classNamePrefix="select"
                         placeholder="Choose a parameter to analyze..."

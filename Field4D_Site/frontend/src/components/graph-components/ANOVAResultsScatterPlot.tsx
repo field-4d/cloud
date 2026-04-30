@@ -7,7 +7,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import ScatterPlot from './ScatterPlot';
 import LabelWarningPlaceholder from './LabelWarningPlaceholder';
-import { getParameterUnit } from '../DataSelector';
+import { getParameterUnit } from '../../constants/parameterMetadata';
 
 interface SensorData {
   timestamp: string;
