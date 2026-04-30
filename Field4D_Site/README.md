@@ -2,7 +2,7 @@
 
 > **Note:** Active development may live on a `Dev` branch and can be unstable. Prefer `main` for stable snapshots.
 
-**Last updated:** April 27, 2026
+**Last updated:** April 30, 2026
 
 Web application for visualizing and analyzing **long-format sensor data** stored in **Google BigQuery**. The **React** frontend talks to a **Python FastAPI** backend; BigQuery credentials stay on the server.
 
@@ -96,6 +96,26 @@ For deployment steps, use the guides under `Deploy_Guide/`:
 - `Deploy_Guide/FrontEnd-Update_Site.md` — full frontend update flow with rollback
 - `Deploy_Guide/BackEnd_Deploy.md` — full backend deploy/redeploy flow
 - `Deploy_Guide/FrontEnd-full_Deply.md` — full infra + deployment reference for frontend
+
+Quick frontend live-site update (PowerShell):
+
+```powershell
+cd frontend
+npm install
+npm run build
+
+$TIMESTAMP = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+gcloud storage cp --recursive "gs://field4d-frontend-site/**" "gs://field4d-frontend-site-backups/backup_$TIMESTAMP/"
+gcloud storage rsync --recursive --delete-unmatched-destination-objects .\dist gs://field4d-frontend-site
+gcloud compute url-maps invalidate-cdn-cache frontend-https --path "/*" --project=iucc-f4d
+```
+
+Production env reminders before build:
+
+```env
+VITE_API_BASE_URL=https://f4d-fastapi-backend-1000435921680.us-central1.run.app
+VITE_FIELD4D_ANALYTICS_URL=https://field4d-analytics-1000435921680.us-central1.run.app
+```
 
 Production CORS reminder:
 
