@@ -1109,10 +1109,12 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         ];
       });
 
-      // Combine header and rows
+      // Combine header and rows (same escaping as label export)
       const csvContent = [
-        ['Timestamp', ...sensors.map(sensor => sensorHeaderMap[sensor])].join(','),
-        ...rows.map(row => row.join(','))
+        ['Timestamp', ...sensors.map((sensor) => sensorHeaderMap[sensor])]
+          .map(csvCell)
+          .join(','),
+        ...rows.map((row) => row.map(csvCell).join(',')),
       ].join('\n');
 
       // Create and trigger download
