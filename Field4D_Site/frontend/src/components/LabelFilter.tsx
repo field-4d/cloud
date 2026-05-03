@@ -71,7 +71,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
 }) => {
   const [selectedIncludeLabels, setSelectedIncludeLabels] = React.useState<string[]>([]);
   const [selectedExcludeLabels, setSelectedExcludeLabels] = React.useState<string[]>([]);
-  const [isAndMode, setIsAndMode] = React.useState(false);
+  const [isAndMode, setIsAndMode] = React.useState(true);
 
   const iconSize = "w-12 h-12";
 

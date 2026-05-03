@@ -139,6 +139,31 @@ const ARTIFACT_THRESHOLDS: Record<string, number> = {
   // Add more as needed
 };
 
+/** CSV export: fixed 3-minute UTC buckets aligned to epoch. */
+const CSV_BUCKET_MS = 3 * 60 * 1000;
+
+function bucketTimestampMs(iso: string): number | null {
+  const ms = Date.parse(String(iso).trim());
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor(ms / CSV_BUCKET_MS) * CSV_BUCKET_MS;
+}
+
+function bucketIsoKey(iso: string): string | null {
+  const b = bucketTimestampMs(iso);
+  if (b === null) return null;
+  return new Date(b).toISOString();
+}
+
+function buildGridKeys(minMs: number, maxMs: number): string[] {
+  const start = Math.floor(minMs / CSV_BUCKET_MS) * CSV_BUCKET_MS;
+  const end = Math.floor(maxMs / CSV_BUCKET_MS) * CSV_BUCKET_MS;
+  const keys: string[] = [];
+  for (let t = start; t <= end; t += CSV_BUCKET_MS) {
+    keys.push(new Date(t).toISOString());
+  }
+  return keys;
+}
+
 // Custom Option components with checkbox
 const ParameterOption = (props: OptionProps<ParameterOption, true, GroupBase<ParameterOption>>) => {
   return (
@@ -933,33 +958,44 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         .replace(/[\r\n\t]+/g, ' ')
         .replace(/\s+/g, ' ');
 
+    let minBucketMs = Infinity;
+    let maxBucketMs = -Infinity;
+    for (const d of processedSensorData) {
+      const b = bucketTimestampMs(d.timestamp);
+      if (b === null) continue;
+      minBucketMs = Math.min(minBucketMs, b);
+      maxBucketMs = Math.max(maxBucketMs, b);
+    }
+    if (!Number.isFinite(minBucketMs) || !Number.isFinite(maxBucketMs)) return;
+    const gridTimestamps = buildGridKeys(minBucketMs, maxBucketMs);
+
     // Group by Label mode
     if (groupBy === 'label' && selectedIncludeLabels.length > 0) {
       const labelMap = sensorLabelMap;
       const labelsToExport = selectedIncludeLabels;
       
-      // For each parameter, build a map: timestamp -> label -> [values]
+      // For each parameter, build a map: 3-min bucket -> label -> [values]
       const byTimestamp: Record<string, Record<string, Record<string, number[]>>> = {};
       processedSensorData.forEach(d => {
         const param = d.parameter;
-        const timestamp = d.timestamp;
+        const bucketKey = bucketIsoKey(d.timestamp);
+        if (!bucketKey) return;
         const matchedLabels = getSelectedLabelMemberships(
           d as RowWithSensorLabel,
           labelMap,
           labelsToExport
         );
         matchedLabels.forEach((label) => {
-          if (!byTimestamp[timestamp]) byTimestamp[timestamp] = {};
-          if (!byTimestamp[timestamp][label]) byTimestamp[timestamp][label] = {};
-          if (!byTimestamp[timestamp][label][param]) byTimestamp[timestamp][label][param] = [];
+          if (!byTimestamp[bucketKey]) byTimestamp[bucketKey] = {};
+          if (!byTimestamp[bucketKey][label]) byTimestamp[bucketKey][label] = {};
+          if (!byTimestamp[bucketKey][label][param]) byTimestamp[bucketKey][label][param] = [];
           if (d.value !== null && d.value !== undefined && !isNaN(Number(d.value))) {
-            byTimestamp[timestamp][label][param].push(Number(d.value));
+            byTimestamp[bucketKey][label][param].push(Number(d.value));
           }
         });
       });
 
-      // Get all timestamps sorted
-      const allTimestamps = Object.keys(byTimestamp).sort();
+      const allTimestamps = gridTimestamps;
 
       // Create a separate file for each parameter
       selectedParameters.forEach(param => {
@@ -1022,37 +1058,35 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       return;
     }
 
-    // Default: Group by Sensor (current logic)
-    // Group data by parameter
-    const dataByParameter: Record<string, Record<string, Record<string, number | string>>> = {};
-    
-    // Initialize data structure for each parameter
+    // Default: Group by Sensor — 3-minute buckets, mean when multiple points fall in a bucket
+    const dataByParameter: Record<string, Record<string, Record<string, number[]>>> = {};
+
     selectedParameters.forEach(param => {
       dataByParameter[param] = {};
     });
 
-    // Group data by parameter and timestamp
     processedSensorData.forEach(curr => {
       const param = curr.parameter;
-      const timestamp = curr.timestamp;
+      const bucketKey = bucketIsoKey(curr.timestamp);
+      if (!bucketKey) return;
       const sensor = curr.sensor;
-
-      if (!dataByParameter[param][timestamp]) {
-        dataByParameter[param][timestamp] = {};
-      }
-      // Handle NaN, null, and undefined as empty cells
       const value = curr.value;
       if (value === null || value === undefined || (typeof value === 'number' && isNaN(value))) {
-        dataByParameter[param][timestamp][sensor] = '';
-      } else {
-        dataByParameter[param][timestamp][sensor] = value;
+        return;
       }
+      if (!dataByParameter[param][bucketKey]) {
+        dataByParameter[param][bucketKey] = {};
+      }
+      if (!dataByParameter[param][bucketKey][sensor]) {
+        dataByParameter[param][bucketKey][sensor] = [];
+      }
+      dataByParameter[param][bucketKey][sensor].push(Number(value));
     });
 
     // Create and download a file for each parameter
     selectedParameters.forEach(param => {
       const paramData = dataByParameter[param];
-      const timestamps = Object.keys(paramData).sort();
+      const timestamps = gridTimestamps;
       const rowsForParameter = processedSensorData.filter((row) => row.parameter === param);
       const presentSensors = Array.from(
         new Set(rowsForParameter.map((row) => String(row.sensor ?? '')))
@@ -1063,12 +1097,15 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       const sensorHeaderMap = buildReplacementNamesForParameter(rowsForParameter, sensors);
       if (sensors.length === 0) return;
 
-      // Create CSV content
       const rows = timestamps.map(timestamp => {
-        const values = paramData[timestamp];
+        const bucket = paramData[timestamp];
         return [
           formatCsvTimestamp(timestamp),
-          ...sensors.map(sensor => (values && sensor in values ? values[sensor] : ''))
+          ...sensors.map(sensor => {
+            const arr = bucket?.[sensor];
+            if (!arr || arr.length === 0) return '';
+            return arr.reduce((a, b) => a + b, 0) / arr.length;
+          })
         ];
       });
 
