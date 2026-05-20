@@ -12,7 +12,7 @@ Single-page application (**React 18**, **TypeScript**, **Vite**) for Field4D: lo
 
 ## Features
 
-- **Auth** — Login via `POST /api/auth`; response includes token + role + permissions; JWT stored for the session (see `authUtils.ts`)
+- **Auth** — Login identity via Firebase Auth; frontend sends Firebase ID token to backend; legacy `POST /api/auth` path may remain for compatibility during transition
 - **Permissions** — `GET /api/permissions` drives which owner / MAC / experiments appear in the dashboard
 - **Role-aware management** — Embedded management UI (Users/Permissions/Devices) with backend-enforced scopes
 - **Batch assignment** — Existing-user permission assignment supports multi-user/multi-experiment batch flow
@@ -160,7 +160,9 @@ npm run preview
 ```
 
 - Serves **`dist/`** locally (default **http://localhost:4173** — Vite default).
-- Use this to verify production bundles and API connectivity before deployment.
+- Uses production-style env resolution (`import.meta.env.DEV === false`), so `VITE_USE_LOCAL_BACKEND=true` is ignored here.
+- To test local FastAPI (`http://localhost:3001`), use `npm run dev` instead of preview.
+- Use preview to verify production bundles and production API connectivity before deployment.
 
 ### Lint
 
@@ -207,7 +209,8 @@ const response = await fetch(API_ENDPOINTS.FETCH_DATA, {
   body: JSON.stringify({
     owner,
     mac_address,
-    experiment: selectedExperiment,
+    experimentId: selectedExperimentId,
+    experiment: selectedExperimentName, // display/debug compatibility
     selectedSensors: sensorChunk,
     selectedParameters: selectedParameters,
     dateRange: utcRange, // { start, end } ISO timestamps
@@ -224,7 +227,7 @@ const data = await response.json();
 
 Types below match the FastAPI models. Field names are **camelCase** in JSON where the backend defines them (e.g. `experimentName`, `sensorLabelMap`).
 
-### `POST /api/auth`
+### `POST /api/auth` (legacy compatibility path)
 
 **Request:**
 
@@ -258,13 +261,15 @@ Types below match the FastAPI models. Field names are **camelCase** in JSON wher
 }
 ```
 
-Handled in **`authUtils.ts`** / **`Auth.tsx`**.
+Handled in **`authUtils.ts`** / **`Auth.tsx`** when legacy mode is enabled.
 
 ---
 
 ### `GET /api/permissions?email=...`
 
 **Query:** `email` URL-encoded.
+
+**Auth:** send `Authorization: Bearer <firebase_id_token>`.
 
 **Response:**
 
@@ -310,8 +315,8 @@ Use **`["*"]`** to request all experiments for that device (server-side).
 
 | Field | Type | Meaning |
 |-------|------|---------|
-| `experimentName` | string | Experiment id/name |
-| `experimentId` | number \| null | Numeric experiment id (`Exp_ID`) used for ordering/display |
+| `experimentName` | string | Display name (`Exp_Name`), not unique |
+| `experimentId` | number \| null | Real experiment identity (`Exp_ID`) |
 | `firstTimestamp` / `lastTimestamp` | string (ISO) \| null | Data time bounds (UTC from backend) |
 | `sensorCount` | number | Distinct LLA |
 | `rowCount` | number | Total rows |
@@ -326,7 +331,9 @@ Use **`["*"]`** to request all experiments for that device (server-side).
 Fetched when the user selects an experiment in **`Dashboard.tsx`** and passed down to **`DataSelector`** / **`VisualizationPanel`**.
 
 UI behavior in `Dashboard.tsx`:
-- Dropdown label uses `#<experimentId> - <experimentName>` when id exists.
+- Experiment identity in UI state/select value is `experimentId` (not name).
+- Duplicate `experimentName` values are supported; options remain separate by ID.
+- Dropdown label uses `(<experimentId>) — <experimentName>` when id exists.
 - Sorting priority is `experimentId` (desc), then `lastTimestamp` (desc), then legacy name fallback.
 - Active/inactive grouping uses recency: **active = lastTimestamp within last 1 hour**.
 - Date picker min/max is based on UTC calendar days derived from `firstTimestamp` and `lastTimestamp`.
@@ -341,6 +348,7 @@ UI behavior in `Dashboard.tsx`:
 {
   "owner": "owner_id",
   "mac_address": "mac_address_string",
+  "experimentId": 42,
   "experiment": "exp_1",
   "selectedSensors": ["LLA_1", "LLA_2"],
   "selectedParameters": ["temperature", "humidity"],
@@ -352,6 +360,7 @@ UI behavior in `Dashboard.tsx`:
 ```
 
 - **`selectedLabels`:** optional; **ignored by the backend**. Do not rely on it for filtering.
+- **Identity rule:** `experimentId` is the primary selector; `experiment` is legacy/debug compatibility.
 - **Chunking:** `DataSelector.tsx` splits `selectedSensors` into chunks of **20** per request to limit payload size.
 - **Date semantics:** `DataSelector.tsx` sends UTC day bounds (`00:00:00.000Z` → `23:59:59.999Z`) for selected calendar dates.
 
@@ -421,7 +430,7 @@ or in batch:
 
 ## Application Flow (for developers)
 
-1. **`Auth.tsx`** — User logs in → JWT stored (cookie / memory per `authUtils.ts`).
+1. **`Auth.tsx`** — User logs in via Firebase Auth → Firebase ID token stored for API calls.
 2. **`Dashboard.tsx`** — Sidebar defaults to **Data Viewer**; loads permissions → user picks **owner/MAC** (system) and **experiment** → calls **`POST /api/experiment-summary`** → passes `sensorLabelMap`, `sensorLocationMap`, parameters, sensors into children.
 3. **Management module** — Sidebar `Management` section renders `PermissionDashboard` in page mode:
    - `Users` page: new-user flow (system_admin only)
@@ -446,7 +455,7 @@ or in batch:
 |-------|-----------------|
 | **CORS errors** | Backend `CORS_ALLOW_ORIGINS` includes `http://localhost:5173` (or your dev URL). |
 | **Network tab shows wrong host** | `VITE_USE_LOCAL_BACKEND` / `VITE_API_BASE_URL` and rebuild after env changes. |
-| **401 on login** | Auth service URL and credentials; password hashing is server-side. |
+| **401 on `/api/permissions`** | Ensure Firebase token is attached as `Authorization: Bearer <token>` and token email matches `email` query. |
 | **Empty plots** | Date range, selected sensors/parameters, and successful `fetch-data` (check status 200 and array length). |
 
 ---

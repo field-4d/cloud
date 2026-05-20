@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Range, RangeKeyDict } from 'react-date-range';
+import { Range } from 'react-date-range';
 import Plot from 'react-plotly.js';
 import Select, {
   GroupBase,
@@ -48,6 +48,7 @@ const normalizeLocationKey = (value: string): string =>
 
 interface ExperimentSummary {
   experimentName: string;
+  experimentId?: number | null;
   firstTimestamp?: string | { value: string };
   lastTimestamp?: string | { value: string };
   sensors?: string[];
@@ -75,12 +76,11 @@ interface ParameterGroupOption {
 
 interface DataSelectorProps {
   experimentSummaries: ExperimentSummary[];
-  selectedExperiment: string;
+  selectedExperimentId: number | null;
+  selectedExperimentName: string;
   owner: string;
   mac_address: string;
-  onExperimentChange: (experiment: string) => void;
   dateRange: [Date | null, Date | null];
-  onDateChange: (item: RangeKeyDict) => void;
   dateState: Range[];
   minDate: Date | null;
   maxDate: Date | null;
@@ -285,8 +285,8 @@ const getSensorColor = (sensorName: string): string => {
  * Allows user to select experiment, date range, sensors, and parameters.
  * Fetches and transforms data for visualization.
  * @param experimentSummaries - list of experiment summary objects
- * @param selectedExperiment - currently selected experiment name
- * @param onExperimentChange - callback for experiment change
+ * @param selectedExperimentId - currently selected experiment id
+ * @param selectedExperimentName - currently selected experiment name (display/debug)
  * @param dateRange - [start, end] date tuple
  * @param onDateChange - callback for date range change
  * @param dateState - react-date-range state
@@ -295,10 +295,10 @@ const getSensorColor = (sensorName: string): string => {
  */
 const DataSelector: React.FC<DataSelectorProps> = ({ 
   experimentSummaries, 
-  selectedExperiment,
+  selectedExperimentId,
+  selectedExperimentName,
   owner,
   mac_address,
-  onExperimentChange,
   dateRange,
   dateState,
   minDate,
@@ -325,7 +325,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const [errorType, setErrorType] = useState<'STD' | 'SE'>('SE');
 
   // Get current experiment and check if it has label options
-  const currentExperiment = experimentSummaries.find(exp => exp.experimentName === selectedExperiment);
+  const currentExperiment = experimentSummaries.find(exp => exp.experimentId === selectedExperimentId);
   const hasLabelOptions = Boolean(currentExperiment?.labelOptions?.length);
 
   /** Strict include labels for grouping/export; no composite expansion. */
@@ -383,9 +383,9 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
   // Reset and update available data when experiment changes
   useEffect(() => {
-    if (selectedExperiment) {
+    if (selectedExperimentId !== null) {
       const experimentData = experimentSummaries.find(
-        exp => exp.experimentName === selectedExperiment
+        exp => exp.experimentId === selectedExperimentId
       );
       if (experimentData) {
         setAvailableSensors(experimentData.sensors || []);
@@ -425,7 +425,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       setShowVisualization(false);
       setShowLabelFilter(false);
     }
-  }, [selectedExperiment, experimentSummaries]);
+  }, [selectedExperimentId, experimentSummaries]);
 
   /**
    * handleParameterChange
@@ -500,7 +500,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     }
 
     const groupedByLocation = new Map<string, string[]>();
-    for (const sensor of presentSensors) {
+    for (const sensor of sensors) {
       const displayName = getSensorDisplayName(sensor);
       const group = groupedByLocation.get(displayName);
       if (group) {
@@ -511,6 +511,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     }
 
     const namesBySensor: Record<string, string> = {};
+    const replacedSensors = new Set<string>();
     for (const [displayName, sensorsInLocation] of groupedByLocation.entries()) {
       if (sensorsInLocation.length <= 1) {
         namesBySensor[sensorsInLocation[0]] = displayName;
@@ -539,6 +540,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           namesBySensor[sensor] = displayName;
           return;
         }
+        replacedSensors.add(sensor);
         if (ranked.length === 2) {
           namesBySensor[sensor] = `${displayName} (replaced)`;
           return;
@@ -547,7 +549,13 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       });
     }
 
-    return namesBySensor;
+    for (const sensor of sensors) {
+      if (namesBySensor[sensor] == null) {
+        namesBySensor[sensor] = getSensorDisplayName(sensor);
+      }
+    }
+
+    return { namesBySensor, replacedSensors };
   }, [getSensorDisplayName]);
 
   const formatCsvTimestamp = React.useCallback((timestamp: string) => {
@@ -819,7 +827,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
    */
   const handleFetchData = async () => {
     if (
-      selectedExperiment &&
+      selectedExperimentId !== null &&
       dateRange[0] &&
       dateRange[1] &&
       selectedSensors.length > 0 &&
@@ -847,11 +855,17 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           const requestData = {
             owner,
             mac_address,
-            experiment: selectedExperiment,
+            experimentId: selectedExperimentId,
+            experiment: selectedExperimentName,
             selectedSensors: sensorChunk,
             selectedParameters: selectedParameters,
             dateRange: utcRange,
           };
+
+          console.log('Fetch-data selected experiment:', {
+            experimentId: selectedExperimentId,
+            experimentName: selectedExperimentName,
+          });
 
           const response = await fetch(API_ENDPOINTS.FETCH_DATA, {
             method: 'POST',
@@ -1049,7 +1063,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${selectedExperiment}_${param}_labels_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `${selectedExperimentName}_${param}_labels_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1083,18 +1097,20 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       dataByParameter[param][bucketKey][sensor].push(Number(value));
     });
 
+    const sensorsWithAnyRows = new Set(
+      processedSensorData.map((row) => String(row.sensor ?? ''))
+    );
+    const allSensors = [...visualizedSensors].sort(compareSensorNames);
+    const { namesBySensor: sensorHeaderMap, replacedSensors } =
+      buildReplacementNamesForParameter(processedSensorData, allSensors);
+
     // Create and download a file for each parameter
     selectedParameters.forEach(param => {
       const paramData = dataByParameter[param];
       const timestamps = gridTimestamps;
-      const rowsForParameter = processedSensorData.filter((row) => row.parameter === param);
-      const presentSensors = Array.from(
-        new Set(rowsForParameter.map((row) => String(row.sensor ?? '')))
+      const sensors = allSensors.filter(
+        (sensor) => !replacedSensors.has(sensor) || sensorsWithAnyRows.has(sensor)
       );
-      const sensors = [...visualizedSensors]
-        .filter((sensor) => presentSensors.includes(sensor))
-        .sort(compareSensorNames);
-      const sensorHeaderMap = buildReplacementNamesForParameter(rowsForParameter, sensors);
       if (sensors.length === 0) return;
 
       const rows = timestamps.map(timestamp => {
@@ -1109,12 +1125,10 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         ];
       });
 
-      // Combine header and rows (same escaping as label export)
+      // Combine header and rows
       const csvContent = [
-        ['Timestamp', ...sensors.map((sensor) => sensorHeaderMap[sensor])]
-          .map(csvCell)
-          .join(','),
-        ...rows.map((row) => row.map(csvCell).join(',')),
+        ['Timestamp', ...sensors.map(sensor => sensorHeaderMap[sensor])].join(','),
+        ...rows.map(row => row.join(','))
       ].join('\n');
 
       // Create and trigger download
@@ -1122,7 +1136,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${selectedExperiment}_${param}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `${selectedExperimentName}_${param}_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1147,7 +1161,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const isSelectionValid = selectedSensors.length > 0 && selectedParameters.length > 0;
   const [showSelectionWarning, setShowSelectionWarning] = useState(false);
 
-  if (!selectedExperiment) return null;
+  if (selectedExperimentId === null) return null;
 
   return (
     <div className="space-y-6">
@@ -1189,7 +1203,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           {showLabelFilter && hasLabelOptions && currentExperiment && (
             <div className="mb-4">
               <LabelFilter
-                key={selectedExperiment}
+                key={String(selectedExperimentId)}
                 sensorLabelOptions={currentExperiment.labelOptions ?? []}
                 sensorLabelMap={sensorLabelMap}
                 allSensors={availableSensors}
@@ -1380,7 +1394,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             data={sensorData as any}
             selectedParameters={selectedParameters}
             selectedSensors={visualizedSensors}
-            experimentName={selectedExperiment}
+            experimentName={selectedExperimentName}
             getSensorColor={getSensorColor}
             getSensorDisplayName={getSensorDisplayName}
             outlierConfig={outlierConfig}

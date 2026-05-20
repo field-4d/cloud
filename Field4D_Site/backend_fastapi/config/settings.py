@@ -45,6 +45,10 @@ class Settings(BaseSettings):
         default="https://f4d-user-access-manager-1000435921680.europe-west1.run.app",
         validation_alias=AliasChoices("ACCESS_MANAGER_URL"),
     )
+    firebase_project_id: str | None = PydField(
+        default=None,
+        validation_alias=AliasChoices("FIREBASE_PROJECT_ID"),
+    )
     cors_allow_origins: str | None = PydField(
         default="http://localhost:5173",
         validation_alias=AliasChoices("CORS_ALLOW_ORIGINS"),
@@ -62,6 +66,7 @@ class Settings(BaseSettings):
         "analytics_url",
         "gcp_analytics_url",
         "access_manager_url",
+        "firebase_project_id",
         "cors_allow_origins",
         mode="before",
     )

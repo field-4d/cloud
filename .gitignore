@@ -7,6 +7,7 @@
 !/f4d-auth-service/
 !/f4d-bq-sync/
 !/f4d-email-sender/
+!.f4d-daily-alert-mail/
 !/F4D_Pi_V2/
 !/F4D_python/
 !/f4d-register-device/
@@ -24,6 +25,7 @@
 !/f4d-auth-service/**
 !/f4d-bq-sync/**
 !/f4d-email-sender/**
+!/f4d-daily-alert-mail/**
 !/F4D_Pi_V2/**
 !/F4D_python/**
 !/f4d-register-device/**
@@ -59,3 +61,6 @@
 fetch_google/read_BQ.json
 
 # Keep f4d-register-device ignored
+# ingnore node modules to upload
+**/node_modules/
+

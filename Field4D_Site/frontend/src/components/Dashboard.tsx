@@ -15,6 +15,7 @@ import 'react-date-range/dist/theme/default.css';
 import { API_ENDPOINTS } from '../config';
 import { apiLog, logger } from '../config/logger';
 import PermissionDashboard from './PermissionDashboard';
+import { getFirebaseToken, logoutFirebase } from '../utils/firebaseAuth';
 
 interface Permission {
   email: string;
@@ -59,6 +60,15 @@ const normalizeDashboardRole = (value: unknown): 'read' | 'admin' | 'system_admi
   const cleaned = value.trim().toLowerCase();
   if (cleaned === 'system_admin') return 'system_admin';
   if (cleaned === 'admin') return 'admin';
+  return 'read';
+};
+
+const getStrongestDashboardRole = (
+  permissions: Array<{ role: string }>
+): 'read' | 'admin' | 'system_admin' => {
+  const roles = new Set(permissions.map((permission) => normalizeDashboardRole(permission.role)));
+  if (roles.has('system_admin')) return 'system_admin';
+  if (roles.has('admin')) return 'admin';
   return 'read';
 };
 
@@ -131,7 +141,9 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const userData = JSON.parse(localStorage.getItem('userData') || '{}');
   const actorEmail = typeof userData.email === 'string' ? userData.email : '';
-  const actorRole = normalizeDashboardRole(userData.role);
+  const [actorRole, setActorRole] = useState<'read' | 'admin' | 'system_admin'>(
+    normalizeDashboardRole(userData.role)
+  );
   const canCreateUsers = actorRole === 'system_admin';
   const [activeMainModule, setActiveMainModule] = useState<MainModule>('data_viewer');
   const [activeManagementPage, setActiveManagementPage] = useState<ManagementTab>('permissions');
@@ -159,7 +171,7 @@ const Dashboard: React.FC = () => {
   const [experimentSummaries, setExperimentSummaries] = useState<ExperimentSummary[]>([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [selectedExperiment, setSelectedExperiment] = useState('');
+  const [selectedExperimentId, setSelectedExperimentId] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [minDate, setMinDate] = useState<Date | null>(null);
   const [maxDate, setMaxDate] = useState<Date | null>(null);
@@ -191,7 +203,10 @@ const Dashboard: React.FC = () => {
         throw new Error('No user email found');
       }
 
-      const response = await fetch(`${API_ENDPOINTS.PERMISSIONS}?email=${encodeURIComponent(userData.email)}`);
+      const token = await getFirebaseToken();
+      const response = await fetch(`${API_ENDPOINTS.PERMISSIONS}?email=${encodeURIComponent(userData.email)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!response.ok) {
         throw new Error('Unable to access your account permissions. Please contact your system administrator to ensure your account has been properly configured.');
       }
@@ -201,6 +216,7 @@ const Dashboard: React.FC = () => {
       }
 
       const permissionsForFront: Permission[] = Array.isArray(data.permissions) ? data.permissions : [];
+      const strongestRole = getStrongestDashboardRole(permissionsForFront);
       const uniqueOwnersForFront = Array.from(
         new Set(permissionsForFront.map((permission: Permission) => permission.owner))
       ).sort();
@@ -222,6 +238,15 @@ const Dashboard: React.FC = () => {
       });
 
       setPermissions(data.permissions);
+      setActorRole(strongestRole);
+      localStorage.setItem(
+        'userData',
+        JSON.stringify({
+          ...userData,
+          role: strongestRole,
+          timestamp: Date.now(),
+        })
+      );
       if (data.permissions.length > 0) {
         setSelectedPermission(data.permissions[0]);
         generateMockData();
@@ -302,12 +327,12 @@ const Dashboard: React.FC = () => {
         .filter((exp: ExperimentSummary) => isExperimentActive(exp))
         .slice()
         .sort(sortExperimentsDescending)
-        .map((exp: ExperimentSummary) => exp.experimentName);
+        .map((exp: ExperimentSummary) => `${exp.experimentName} — ID ${exp.experimentId ?? 'N/A'}`);
       const inactiveExperimentsForFront = data
         .filter((exp: ExperimentSummary) => !isExperimentActive(exp))
         .slice()
         .sort(sortExperimentsDescending)
-        .map((exp: ExperimentSummary) => exp.experimentName);
+        .map((exp: ExperimentSummary) => `${exp.experimentName} — ID ${exp.experimentId ?? 'N/A'}`);
 
       apiLog('[API] experiment-summary response', data);
       apiLog('[API] experiment-summary sorted for front', {
@@ -459,8 +484,10 @@ const Dashboard: React.FC = () => {
   };
 
   const getExperimentOptionLabel = (exp: ExperimentSummary): string => {
-    const idPrefix = typeof exp.experimentId === 'number' ? `#${exp.experimentId} - ` : '';
-    return `${idPrefix}${exp.experimentName}`;
+    if (typeof exp.experimentId === 'number') {
+      return `(${exp.experimentId}) — ${exp.experimentName}`;
+    }
+    return exp.experimentName;
   };
 
   /**
@@ -540,8 +567,14 @@ const Dashboard: React.FC = () => {
    * Handles user logout by clearing authentication data from localStorage
    * and redirecting the user to the login page.
    */
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
+    try {
+      await logoutFirebase();
+    } catch (error) {
+      logger.warn('Firebase logout failed, continuing with local cleanup', error);
+    }
     localStorage.removeItem('userData');
+    localStorage.removeItem('jwtToken');
     navigate('/');
   };
 
@@ -605,9 +638,9 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (selectedExperiment) {
+    if (selectedExperimentId !== null) {
       const experimentData = experimentSummaries.find(
-        exp => exp.experimentName === selectedExperiment
+        exp => exp.experimentId === selectedExperimentId
       );
       if (experimentData) {
         let startDate = utcCalendarDayStartFromSummary(experimentData.firstTimestamp);
@@ -661,7 +694,13 @@ const Dashboard: React.FC = () => {
       setMinDate(null);
       setMaxDate(null);
     }
-  }, [selectedExperiment, experimentSummaries]);
+  }, [selectedExperimentId, experimentSummaries]);
+
+  const selectedExperimentData =
+    selectedExperimentId === null
+      ? null
+      : experimentSummaries.find((exp) => exp.experimentId === selectedExperimentId) ?? null;
+  const selectedExperimentName = selectedExperimentData?.experimentName ?? '';
 
   // Helper to get unique owners
   const uniqueOwners = Array.from(new Set(permissions.map(p => p.owner))).sort();
@@ -750,7 +789,7 @@ const Dashboard: React.FC = () => {
                   onChange={(e) => {
                     setSelectedOwner(e.target.value);
                     setSelectedPermission(null);
-                    setSelectedExperiment('');
+                    setSelectedExperimentId(null);
                     setExperimentSummaries([]);
                   }}
                 >
@@ -810,9 +849,10 @@ const Dashboard: React.FC = () => {
                     return (
                       <select
                         ref={experimentSelectRef}
-                        value={selectedExperiment}
+                        value={selectedExperimentId !== null ? String(selectedExperimentId) : ''}
                         onChange={(e) => {
-                          setSelectedExperiment(e.target.value);
+                          const nextId = Number.parseInt(e.target.value, 10);
+                          setSelectedExperimentId(Number.isNaN(nextId) ? null : nextId);
                           setIsExperimentSelectOpen(false);
                           if (experimentSelectRef.current) {
                             experimentSelectRef.current.blur();
@@ -832,7 +872,7 @@ const Dashboard: React.FC = () => {
                         {activeExperiments.length > 0 && (
                           <optgroup label="Active Experiments">
                             {activeExperiments.map(exp => (
-                              <option key={exp.experimentName} value={exp.experimentName}>
+                              <option key={`exp-${String(exp.experimentId)}`} value={String(exp.experimentId)}>
                                 {getExperimentOptionLabel(exp)}
                               </option>
                             ))}
@@ -845,7 +885,7 @@ const Dashboard: React.FC = () => {
                           activeExperiments.length > 0 ? (
                             <optgroup label="Inactive Experiments">
                               {inactiveExperiments.map(exp => (
-                                <option key={exp.experimentName} value={exp.experimentName}>
+                                <option key={`exp-${String(exp.experimentId)}`} value={String(exp.experimentId)}>
                                   {getExperimentOptionLabel(exp)}
                                 </option>
                               ))}
@@ -853,7 +893,7 @@ const Dashboard: React.FC = () => {
                           ) : (
                             <>
                               {inactiveExperiments.map(exp => (
-                                <option key={exp.experimentName} value={exp.experimentName}>
+                                <option key={`exp-${String(exp.experimentId)}`} value={String(exp.experimentId)}>
                                   {getExperimentOptionLabel(exp)}
                                 </option>
                               ))}
@@ -867,7 +907,7 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {selectedExperiment && experimentSummaries.length > 0 && (
+            {selectedExperimentId !== null && experimentSummaries.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-[#8ac6bb] mb-2">
                   Select Date Range
@@ -951,8 +991,8 @@ const Dashboard: React.FC = () => {
           <div className="space-y-4">
             <DataSelector 
               experimentSummaries={experimentSummaries}
-              selectedExperiment={selectedExperiment}
-              onExperimentChange={setSelectedExperiment}
+              selectedExperimentId={selectedExperimentId}
+              selectedExperimentName={selectedExperimentName}
               dateRange={dateRange}
               onDateChange={handleDateChange}
               dateState={dateState}

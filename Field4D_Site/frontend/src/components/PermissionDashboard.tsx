@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Select, { type StylesConfig } from 'react-select';
 import { API_ENDPOINTS } from '../config';
+import { getFirebaseToken } from '../utils/firebaseAuth';
 
 type Role = 'read' | 'admin' | 'system_admin';
 type Tab = 'new_user' | 'existing_user';
@@ -283,7 +284,7 @@ const PermissionDashboard: React.FC<PermissionDashboardProps> = ({
           q: searchTerm,
           actor_email: actorEmail,
         });
-        const token = localStorage.getItem('jwtToken');
+        const token = await getFirebaseToken();
         const response = await fetch(`${API_ENDPOINTS.USERS_SEARCH}?${params.toString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -450,10 +451,15 @@ const PermissionDashboard: React.FC<PermissionDashboardProps> = ({
         setSubmitting(false);
         return;
       }
+      const token =
+        activeTab === 'new_user'
+          ? (await getFirebaseToken()) || localStorage.getItem('jwtToken')
+          : null;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(activeTab === 'new_user' && token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(body),
       });

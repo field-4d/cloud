@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { authenticateUser } from '../utils/authUtils';
+import { loginEmail, loginGoogle } from '../utils/firebaseAuth';
 import { useNavigate } from 'react-router-dom';
 import { logger } from '../config/logger';
 
@@ -28,10 +29,15 @@ interface LoginAttempt {
   email: string;
 }
 
+interface FirebaseAuthErrorLike extends Error {
+  code?: string;
+}
+
 // Configuration constants
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
 const ATTEMPT_WINDOW = 60 * 60 * 1000; // 1 hour window to count attempts
+const USE_LEGACY_AUTH = import.meta.env.VITE_USE_LEGACY_AUTH === 'true';
 
 /**
  * Auth
@@ -55,6 +61,24 @@ export default function Auth() {
   const [isLocked, setIsLocked] = useState(false);
   const [lockTimeRemaining, setLockTimeRemaining] = useState(0);
   const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>([]);
+
+  const getGoogleAuthErrorMessage = (error: unknown): string => {
+    const authError = error as FirebaseAuthErrorLike;
+    const code = authError?.code;
+
+    switch (code) {
+      case 'auth/popup-blocked':
+        return 'Google sign-in popup was blocked by your browser. Please allow popups for this site and try again.';
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+        return 'Google sign-in was cancelled before completion. Please try again.';
+      case 'auth/unauthorized-domain':
+      case 'auth/operation-not-allowed':
+        return 'Google sign-in is not allowed for this domain. Please contact support to authorize this app domain in Firebase.';
+      default:
+        return authError?.message || 'Google sign-in failed';
+    }
+  };
 
   /**
    * Load login attempts and lock state from localStorage on component mount
@@ -271,51 +295,39 @@ export default function Auth() {
 
     try {
       logger.info('Attempting authentication for:', formData.email);
-      const response = await authenticateUser({
-        email: formData.email,
-        password: formData.password
-      });
 
-      if (response.success) {
-        logger.info('Authentication successful for:', formData.email);
-        // Clear login attempts and lock state on successful login
-        setLoginAttempts([]);
-        localStorage.removeItem('loginAttempts');
-        localStorage.removeItem('lockState');
-        
-        localStorage.setItem('userData', JSON.stringify({
-          ...response.userData,
-          timestamp: Date.now()
-        }));
-        navigate('/dashboard');
-      } else {
-        logger.warn('Authentication failed for:', formData.email, response.message);
-        setAuthError(response.message);
-        
-        // Add failed attempt for login only
-        if (isLogin) {
-          const newAttempt: LoginAttempt = {
-            timestamp: Date.now(),
-            email: formData.email
-          };
-          setLoginAttempts(prev => [...prev, newAttempt]);
-          
-          // Check if this should trigger a lock
-          const recentAttempts = [...loginAttempts, newAttempt].filter(
-            attempt => Date.now() - attempt.timestamp < ATTEMPT_WINDOW
-          );
-          
-          if (recentAttempts.length >= MAX_LOGIN_ATTEMPTS) {
-            setAuthError(`Too many failed login attempts. Account locked for ${Math.ceil(LOCK_DURATION / 60000)} minutes.`);
-          } else {
-            const remainingAttempts = MAX_LOGIN_ATTEMPTS - recentAttempts.length;
-            setAuthError(`${response.message} (${remainingAttempts} attempts remaining)`);
-          }
+      if (USE_LEGACY_AUTH) {
+        const response = await authenticateUser({
+          email: formData.email,
+          password: formData.password
+        });
+
+        if (!response.success) {
+          throw new Error(response.message || 'Authentication failed');
         }
+      } else {
+        const credential = await loginEmail(formData.email, formData.password);
+        const token = await credential.user.getIdToken();
+        localStorage.setItem('jwtToken', token);
       }
+
+      logger.info('Authentication successful for:', formData.email);
+      // Clear login attempts and lock state on successful login
+      setLoginAttempts([]);
+      localStorage.removeItem('loginAttempts');
+      localStorage.removeItem('lockState');
+
+      localStorage.setItem('userData', JSON.stringify({
+        ...(USE_LEGACY_AUTH ? JSON.parse(localStorage.getItem('userData') || '{}') : {}),
+        email: formData.email,
+        name: formData.name || undefined,
+        timestamp: Date.now()
+      }));
+      navigate('/dashboard');
     } catch (err) {
       logger.error('Authentication error:', err);
-      setAuthError('An error occurred during authentication');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during authentication';
+      setAuthError(errorMessage || 'An error occurred during authentication');
       
       // Add failed attempt for login only
       if (isLogin) {
@@ -337,6 +349,32 @@ export default function Auth() {
           setAuthError(`An error occurred during authentication (${remainingAttempts} attempts remaining)`);
         }
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setAuthError('');
+    setLoading(true);
+    try {
+      const credential = await loginGoogle();
+      const token = await credential.user.getIdToken();
+      localStorage.setItem('jwtToken', token);
+
+      setLoginAttempts([]);
+      localStorage.removeItem('loginAttempts');
+      localStorage.removeItem('lockState');
+
+      localStorage.setItem('userData', JSON.stringify({
+        email: credential.user.email || '',
+        name: credential.user.displayName || '',
+        timestamp: Date.now()
+      }));
+      navigate('/dashboard');
+    } catch (err) {
+      logger.error('Google authentication error:', err);
+      setAuthError(getGoogleAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -377,7 +415,49 @@ export default function Auth() {
             {isLogin ? 'Sign in to Field4D' : 'Create your Field4F account'}
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <div className="mt-8 space-y-5">
+          {authError && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{authError}</div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="gsi-material-button w-full"
+            disabled={loading}
+          >
+            <div className="gsi-material-button-state" />
+            <div className="gsi-material-button-content-wrapper">
+              <div className="gsi-material-button-icon">
+                <svg
+                  version="1.1"
+                  xmlns="http://www.w3.org/2000/svg"
+                  xmlnsXlink="http://www.w3.org/1999/xlink"
+                  viewBox="0 0 48 48"
+                  style={{ display: 'block' }}
+                >
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                  <path fill="none" d="M0 0h48v48H0z" />
+                </svg>
+              </div>
+              <span className="gsi-material-button-contents">
+                {loading ? 'Signing in with Google...' : 'Sign in with Google'}
+              </span>
+              <span style={{ display: 'none' }}>Sign in with Google</span>
+            </div>
+          </button>
+
+          <details className="rounded-md border border-[#d7e7e3] bg-white/70">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-[#4b5f59] hover:bg-[#f4faf8]">
+              Sign in with email instead
+            </summary>
+            <div className="border-t border-[#e3efec] px-4 py-4">
+              <form className="space-y-6" onSubmit={handleSubmit}>
           {isLogin && isLocked && (
             <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
               <div className="flex">
@@ -395,11 +475,6 @@ export default function Auth() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-          {authError && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{authError}</div>
             </div>
           )}
           <div className="rounded-md shadow-sm -space-y-px">
@@ -574,27 +649,9 @@ export default function Auth() {
               </button>
             )}
           </div>
-        </form>
-
-        {/* Placeholder for future Google OAuth integration */}
-        <div className="hidden">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              </form>
             </div>
-            <div className="relative flex justify-center text-sm">
-            </div>
-          </div>
-          <div className="mt-6">
-            <button
-              type="button"
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-              disabled
-            >
-              {/* TODO: Implement Google OAuth */}
-              <span>Google (Coming Soon)</span>
-            </button>
-          </div>
+          </details>
         </div>
       </div>
     </div>

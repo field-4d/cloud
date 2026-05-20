@@ -56,6 +56,7 @@ WITH base AS (
     LLA,
     Exp_Name,
     SAFE_CAST(Exp_ID AS INT64) AS Exp_ID,
+    COALESCE(SAFE_CAST(Exp_ID AS INT64), -1) AS Exp_ID_Key,
     Label,
     Location,
     Variable
@@ -69,58 +70,71 @@ WITH base AS (
 ),
 experiment_info AS (
   SELECT
+    Exp_ID_Key AS experiment_id_key,
+    Exp_ID AS experiment_id,
     Exp_Name AS experiment_name,
-    MAX(Exp_ID) AS experiment_id,
     MIN(Timestamp) AS first_timestamp,
     MAX(Timestamp) AS last_timestamp,
     COUNT(DISTINCT LLA) AS sensor_count,
     COUNT(*) AS row_count
   FROM base
-  GROUP BY Exp_Name
+  GROUP BY Exp_ID_Key, Exp_ID, Exp_Name
 ),
 sensor_list AS (
   SELECT
+    Exp_ID_Key AS experiment_id_key,
+    Exp_ID AS experiment_id,
     Exp_Name AS experiment_name,
     ARRAY_AGG(DISTINCT LLA ORDER BY LLA) AS sensors
   FROM base
-  GROUP BY Exp_Name
+  GROUP BY Exp_ID_Key, Exp_ID, Exp_Name
 ),
 label_ranked AS (
   SELECT
+    Exp_ID_Key AS experiment_id_key,
+    Exp_ID AS experiment_id,
     Exp_Name AS experiment_name,
     LLA,
     Label AS latest_label,
-    ROW_NUMBER() OVER (PARTITION BY Exp_Name, LLA ORDER BY Timestamp DESC) AS rn
+    ROW_NUMBER() OVER (PARTITION BY Exp_ID_Key, Exp_Name, LLA ORDER BY Timestamp DESC) AS rn
   FROM base
   WHERE Label IS NOT NULL AND Label != ''
 ),
 label_list AS (
   SELECT
+    experiment_id_key,
+    experiment_id,
     experiment_name,
     ARRAY_AGG(latest_label ORDER BY latest_label) AS label_options
   FROM (
-    SELECT DISTINCT experiment_name, latest_label
+    SELECT DISTINCT experiment_id_key, experiment_id, experiment_name, latest_label
     FROM label_ranked
     WHERE rn = 1
   )
-  GROUP BY experiment_name
+  GROUP BY experiment_id_key, experiment_id, experiment_name
 ),
 location_list AS (
   SELECT
+    Exp_ID_Key AS experiment_id_key,
+    Exp_ID AS experiment_id,
     Exp_Name AS experiment_name,
     ARRAY_AGG(DISTINCT Location IGNORE NULLS ORDER BY Location) AS location_options
   FROM base
-  GROUP BY Exp_Name
+  GROUP BY Exp_ID_Key, Exp_ID, Exp_Name
 ),
 parameter_list AS (
   SELECT
+    Exp_ID_Key AS experiment_id_key,
+    Exp_ID AS experiment_id,
     Exp_Name AS experiment_name,
     ARRAY_AGG(DISTINCT Variable ORDER BY Variable) AS parameters
   FROM base
-  GROUP BY Exp_Name
+  GROUP BY Exp_ID_Key, Exp_ID, Exp_Name
 ),
 per_sensor_labels AS (
   SELECT
+    experiment_id_key,
+    experiment_id,
     experiment_name,
     LLA,
     ARRAY[latest_label] AS sensor_labels
@@ -129,24 +143,30 @@ per_sensor_labels AS (
 ),
 sensor_label_map_agg AS (
   SELECT
+    experiment_id_key,
+    experiment_id,
     experiment_name,
     ARRAY_AGG(
       STRUCT(LLA AS sensor_id, sensor_labels AS labels) ORDER BY LLA
     ) AS sensor_label_entries
   FROM per_sensor_labels
-  GROUP BY experiment_name
+  GROUP BY experiment_id_key, experiment_id, experiment_name
 ),
 location_ranked AS (
   SELECT
+    Exp_ID_Key AS experiment_id_key,
+    Exp_ID AS experiment_id,
     Exp_Name AS experiment_name,
     LLA,
     Location AS latest_location,
-    ROW_NUMBER() OVER (PARTITION BY Exp_Name, LLA ORDER BY Timestamp DESC) AS rn
+    ROW_NUMBER() OVER (PARTITION BY Exp_ID_Key, Exp_Name, LLA ORDER BY Timestamp DESC) AS rn
   FROM base
   WHERE Location IS NOT NULL AND TRIM(CAST(Location AS STRING)) != ''
 ),
 per_sensor_locations AS (
   SELECT
+    experiment_id_key,
+    experiment_id,
     experiment_name,
     LLA,
     latest_location
@@ -155,14 +175,17 @@ per_sensor_locations AS (
 ),
 sensor_location_map_agg AS (
   SELECT
+    experiment_id_key,
+    experiment_id,
     experiment_name,
     ARRAY_AGG(
       STRUCT(LLA AS sensor_id, latest_location AS location) ORDER BY LLA
     ) AS sensor_location_entries
   FROM per_sensor_locations
-  GROUP BY experiment_name
+  GROUP BY experiment_id_key, experiment_id, experiment_name
 )
 SELECT
+  e.experiment_id_key,
   e.experiment_name,
   e.experiment_id,
   e.first_timestamp,
@@ -176,12 +199,18 @@ SELECT
   slm.sensor_label_entries,
   sloc.sensor_location_entries
 FROM experiment_info e
-LEFT JOIN sensor_list s ON e.experiment_name = s.experiment_name
-LEFT JOIN label_list l ON e.experiment_name = l.experiment_name
-LEFT JOIN location_list loc ON e.experiment_name = loc.experiment_name
-LEFT JOIN parameter_list p ON e.experiment_name = p.experiment_name
-LEFT JOIN sensor_label_map_agg slm ON e.experiment_name = slm.experiment_name
-LEFT JOIN sensor_location_map_agg sloc ON e.experiment_name = sloc.experiment_name
+LEFT JOIN sensor_list s
+  ON e.experiment_id_key = s.experiment_id_key AND e.experiment_name = s.experiment_name
+LEFT JOIN label_list l
+  ON e.experiment_id_key = l.experiment_id_key AND e.experiment_name = l.experiment_name
+LEFT JOIN location_list loc
+  ON e.experiment_id_key = loc.experiment_id_key AND e.experiment_name = loc.experiment_name
+LEFT JOIN parameter_list p
+  ON e.experiment_id_key = p.experiment_id_key AND e.experiment_name = p.experiment_name
+LEFT JOIN sensor_label_map_agg slm
+  ON e.experiment_id_key = slm.experiment_id_key AND e.experiment_name = slm.experiment_name
+LEFT JOIN sensor_location_map_agg sloc
+  ON e.experiment_id_key = sloc.experiment_id_key AND e.experiment_name = sloc.experiment_name
 ORDER BY e.last_timestamp DESC;
 """
 

@@ -4,11 +4,13 @@ import string
 from typing import Literal
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from firebase_admin import auth as firebase_admin_auth
 from google.cloud import bigquery
 from pydantic import BaseModel
 
 from config.settings import get_settings
+from dependencies.firebase_auth import verify_firebase_user
 from services.bigquery_client import run_query
 
 
@@ -461,8 +463,16 @@ def add_permission_with_role_validation(payload: AddPermissionRequest) -> AddPer
 
 
 @router.post("/permissions/manage/new-user", response_model=AddPermissionResponse)
-def create_user_and_add_permission(payload: NewUserPermissionRequest) -> AddPermissionResponse:
-    actor_email = clean_email(payload.actor_email)
+def create_user_and_add_permission(
+    payload: NewUserPermissionRequest,
+    firebase_user: dict[str, str] = Depends(verify_firebase_user),
+) -> AddPermissionResponse:
+    token_actor_email = clean_email(firebase_user["email"])
+    payload_actor_email = clean_email(payload.actor_email)
+    if payload_actor_email and payload_actor_email != token_actor_email:
+        raise HTTPException(status_code=403, detail="actor_email does not match authenticated Firebase user")
+
+    actor_email = token_actor_email
     target_email = clean_email(payload.user_mail)
     actor_rows = load_actor_permissions(actor_email)
     actor_role = actor_role_from_rows(actor_rows)
@@ -481,15 +491,45 @@ def create_user_and_add_permission(payload: NewUserPermissionRequest) -> AddPerm
     if payload.auto_generate_password or not password:
         password = random_password()
 
-    create_data = call_access_manager(
-        {
-            "action": "create_user",
-            "user_mail": target_email,
-            "first_name": payload.first_name.strip(),
-            "password": password,
-            "send_email": payload.send_email,
-        }
-    )
+    firebase_create_status = "created"
+    firebase_uid: str | None = None
+    try:
+        firebase_user_record = firebase_admin_auth.create_user(
+            email=target_email,
+            password=password,
+            display_name=payload.first_name.strip() or None,
+        )
+        firebase_uid = firebase_user_record.uid
+    except firebase_admin_auth.EmailAlreadyExistsError:
+        firebase_create_status = "already_exists"
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to create Firebase user: {exc}") from exc
+
+    create_user_payload = {
+        "action": "create_user",
+        "user_mail": target_email,
+        "first_name": payload.first_name.strip(),
+        "password": password,
+        "send_email": payload.send_email,
+    }
+    create_success, create_status_code, create_message = call_access_manager_soft(create_user_payload)
+    create_message_lower = create_message.lower()
+    create_already_exists = create_status_code == 409 and "already exists" in create_message_lower
+    if not create_success and not create_already_exists:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Partial failure: Firebase user was created/exists, but registry sync failed in Access Manager; "
+                "permission assignment not completed."
+            ),
+        )
+    create_data = {
+        "success": create_success or create_already_exists,
+        "status_code": create_status_code,
+        "message": create_message,
+        "already_exists": create_already_exists,
+    }
+
     exp_names: list[str] = [payload.exp_name.strip()]
     add_data: dict = {}
     for exp_name in exp_names:
@@ -509,7 +549,15 @@ def create_user_and_add_permission(payload: NewUserPermissionRequest) -> AddPerm
         success=bool(add_data.get("success", True)),
         message=add_data.get("message", "User created and permission added"),
         actor_role=actor_role,
-        forwarded_response={"create_user": create_data, "add_permission": add_data},
+        forwarded_response={
+            "firebase_user": {
+                "status": firebase_create_status,
+                "uid": firebase_uid,
+                "email": target_email,
+            },
+            "create_user": create_data,
+            "add_permission": add_data,
+        },
     )
 
 

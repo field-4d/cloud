@@ -5,7 +5,7 @@ Provides shared business logic for canonical and compatibility endpoints.
 import asyncio
 import logging
 import time
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from google.api_core.exceptions import GoogleAPICallError, RetryError
 from google.cloud import bigquery
@@ -38,17 +38,39 @@ class PermissionsServiceError(Exception):
 def _query_permissions_rows(email: str) -> List[bigquery.table.Row]:
     """
     Run the BigQuery query and return all rows for the given email.
+    Enriches from F4D_mac_to_device on (owner, mac_address); one device row per key.
     """
     client = get_bigquery_client()
     query = f"""
+        WITH device_dedup AS (
+            SELECT
+                Owner,
+                Mac_Address,
+                Device_Name,
+                Description,
+                IP_Addresses,
+                Created_At,
+                Updated_At,
+                Source
+            FROM `{MAC_TO_DEVICE_TABLE}`
+            QUALIFY ROW_NUMBER() OVER (
+                PARTITION BY Owner, Mac_Address
+                ORDER BY Updated_At DESC NULLS LAST, Created_At DESC NULLS LAST
+            ) = 1
+        )
         SELECT
             p.owner AS owner,
             p.mac_address AS mac_address,
-            d.device_name AS device_name,
-            d.description AS description
+            d.Device_Name AS device_name,
+            d.Description AS description,
+            d.IP_Addresses AS ip_addresses,
+            d.Created_At AS created_at,
+            d.Updated_At AS updated_at,
+            d.Source AS source
         FROM `{PERMISSIONS_TABLE}` AS p
-        LEFT JOIN `{MAC_TO_DEVICE_TABLE}` AS d
-            ON LOWER(TRIM(p.mac_address)) = LOWER(TRIM(d.mac_address))
+        LEFT JOIN device_dedup AS d
+            ON LOWER(TRIM(p.owner)) = LOWER(TRIM(d.Owner))
+            AND LOWER(TRIM(p.mac_address)) = LOWER(TRIM(d.Mac_Address))
         WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(@email))
     """
     job_config = bigquery.QueryJobConfig(
@@ -57,11 +79,53 @@ def _query_permissions_rows(email: str) -> List[bigquery.table.Row]:
     return list(client.query(query, job_config=job_config).result())
 
 
+def _normalize_optional_str(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if isinstance(val, str):
+        s = val.strip()
+        return s if s else None
+    return str(val).strip() or None
+
+
+def _serialize_timestamp(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if hasattr(val, "isoformat"):
+        try:
+            return val.isoformat()
+        except Exception:
+            return str(val)
+    return str(val) if val else None
+
+
+def _normalize_ip_addresses(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    if isinstance(val, list):
+        parts = [str(x).strip() for x in val if x is not None and str(x).strip()]
+        return ", ".join(parts) if parts else None
+    return _normalize_optional_str(val)
+
+
+def _device_payload_for_row(row: bigquery.table.Row, mac_address: str) -> Dict[str, Any]:
+    get = row.get if hasattr(row, "get") else lambda k: None
+    return {
+        "mac_address": mac_address,
+        "device_name": _normalize_optional_str(get("device_name")),
+        "description": _normalize_optional_str(get("description")),
+        "ip_addresses": _normalize_ip_addresses(get("ip_addresses")),
+        "created_at": _serialize_timestamp(get("created_at")),
+        "updated_at": _serialize_timestamp(get("updated_at")),
+        "source": _normalize_optional_str(get("source")),
+    }
+
+
 def _group_rows_by_owner(email: str, rows: List[bigquery.table.Row]) -> Dict:
     """
-    Group query rows by owner with unique MAC addresses.
+    Group query rows by owner with unique MAC addresses and matching device enrichment.
     """
-    owners_dict: Dict[str, Dict[str, List[str]]] = {}
+    owners_dict: Dict[str, Dict[str, Any]] = {}
 
     for row in rows:
         owner = (row.get("owner") or "").strip() if hasattr(row, "get") else ""
@@ -76,10 +140,15 @@ def _group_rows_by_owner(email: str, rows: List[bigquery.table.Row]) -> Dict:
             continue
 
         if owner not in owners_dict:
-            owners_dict[owner] = {"owner": owner, "mac_addresses": []}
+            owners_dict[owner] = {
+                "owner": owner,
+                "mac_addresses": [],
+                "devices": [],
+            }
 
         if mac_address not in owners_dict[owner]["mac_addresses"]:
             owners_dict[owner]["mac_addresses"].append(mac_address)
+            owners_dict[owner]["devices"].append(_device_payload_for_row(row, mac_address))
 
     owners = list(owners_dict.values())
     if not owners:

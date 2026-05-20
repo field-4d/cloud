@@ -258,7 +258,7 @@ def sync_sensor_metadata_to_duckdb(
         mac_address=mac_address,
         exp_name=exp_name
     )
-    print(f"Firestore metadata response: {json.dumps(response_payload, indent=2, default=str)}")
+    # print(f"Firestore metadata response: {json.dumps(response_payload, indent=2, default=str)}")
 
     if not response_payload.get("ok"):
         return {

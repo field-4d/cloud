@@ -6,7 +6,8 @@ Full API payloads and responses: **[README.md](README.md)**.
 - `GCP_PROJECT_ID`
 - `GCP_CLIENT_EMAIL`
 - `GCP_PRIVATE_KEY`
-- `GCP_AUTH_URL` (used by `POST /api/auth`)
+- `FIREBASE_PROJECT_ID` (optional but recommended, for Firebase token audience validation)
+- `GCP_AUTH_URL` (used by legacy `POST /api/auth` path)
 - `GCP_ANALYTICS_URL` (used by `GET /api/analytics-health`)
 
 Optional:
@@ -30,3 +31,10 @@ Health:
   - `/api/experiment-summary`
   - `/api/fetch-data`
   - `/api/analytics-health`
+
+### Current auth + permissions model
+- Identity/login: Firebase Auth
+- FastAPI: verifies Firebase bearer token and extracts email
+- Permissions source of truth: BigQuery `F4D_permissions`
+- Permission writes: existing Access Manager / BigQuery flow
+- Firestore is not used for permissions in this phase

@@ -36,11 +36,19 @@ A legacy **Node/Express** backend may exist in older branches or folders; the ma
 
 ## Architecture (summary)
 
-1. User signs in via **`POST /api/auth`** (FastAPI forwards to external GCP auth service).
-2. **`GET /api/permissions`** loads allowed `(owner, mac_address, experiment)` rows.
-3. **`POST /api/experiment-summary`** returns experiment metadata: `experimentId` (`Exp_ID`), sensors, parameters, **latest label per sensor (LLA)**, locations, counts.
-4. **`POST /api/fetch-data`** returns long-format rows for selected sensors/parameters/date range; each row includes the **current label assignment** for that sensor (see backend README). Date windows are handled as UTC timestamps.
-5. **Management routes** (FastAPI) proxy to the access-manager service and normalize responses for frontend JSON usage (Cloud Function responses are plain text).
+1. User signs in with **Firebase Auth** (frontend identity provider).
+2. Frontend sends Firebase ID token as `Authorization: Bearer <token>`.
+3. FastAPI verifies the token, extracts email, and checks permissions in **BigQuery `F4D_permissions`**.
+4. **`GET /api/permissions`** loads allowed `(owner, mac_address, experiment)` rows from BigQuery.
+5. **`POST /api/experiment-summary`** returns experiment metadata keyed by real identity: `experimentId` (`Exp_ID`) + display `experimentName` (`Exp_Name`), with sensors, parameters, **latest label per sensor (LLA)**, locations, counts.
+6. **`POST /api/fetch-data`** returns long-format rows for selected sensors/parameters/date range; each row includes the **current label assignment** for that sensor (see backend README). Filtering prefers `experimentId` and falls back to name only for legacy clients.
+7. **Management routes** (FastAPI) proxy to the access-manager service and normalize responses for frontend JSON usage (Cloud Function responses are plain text). Permission writes continue through the existing Access Manager / BigQuery write flow.
+
+**Current decision:** Permissions are **not** moved to Firestore in this phase.  
+- Identity/login: Firebase Auth  
+- Permission source of truth: BigQuery `F4D_permissions`  
+- Optional legacy registry/audit: BigQuery `F4D_user_table`  
+- Legacy `POST /api/auth` may remain available for backward compatibility during transition
 
 **Sensor labels** are **assignment-based** (latest non-empty `Label` per experiment + LLA in BigQuery), not “whatever text was on that row at that timestamp.” Grouping and filtering follow that model.
 
@@ -80,6 +88,9 @@ VITE_USE_LOCAL_BACKEND=true
 
 Alternatively set `VITE_API_BASE_URL` to your deployed API origin.
 
+Important: `VITE_USE_LOCAL_BACKEND=true` only applies in `npm run dev` (`import.meta.env.DEV` mode).  
+`npm run preview` uses production-style env resolution and will call `VITE_API_BASE_URL`.
+
 ---
 
 ## Deployment (GCP)
@@ -96,6 +107,9 @@ For deployment steps, use the guides under `Deploy_Guide/`:
 - `Deploy_Guide/FrontEnd-Update_Site.md` — full frontend update flow with rollback
 - `Deploy_Guide/BackEnd_Deploy.md` — full backend deploy/redeploy flow
 - `Deploy_Guide/FrontEnd-full_Deply.md` — full infra + deployment reference for frontend
+
+Cloud Run note: after backend deploy, confirm the new revision has traffic (100% for single-revision rollout).  
+If traffic remains on an older revision, production API behavior will not reflect latest code.
 
 Quick frontend live-site update (PowerShell):
 
@@ -149,8 +163,8 @@ Abbreviated index:
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Liveness |
-| POST | `/api/auth` | Login → JWT |
-| GET | `/api/permissions` | Permissions for `email` |
+| POST | `/api/auth` | Legacy login path (kept for compatibility during transition) |
+| GET | `/api/permissions` | Firebase-authenticated permission lookup in BigQuery |
 | POST | `/api/experiment-summary` | Per-experiment `experimentId`, sensors, parameters, **sensorLabelMap**, locations |
 | POST | `/api/fetch-data` | Long-format sensor rows |
 | GET | `/api/analytics-health` | Analytics service health proxy |

@@ -128,8 +128,7 @@ gcloud run deploy apisync `
 - **Swagger UI**: `http://localhost:8000/docs`
 - **Health Check**: `http://localhost:8000/health`
 - **WebSocket Endpoint**: `ws://localhost:8000/ws/ping`
-- **Permissions Resolve (Compatibility Alias)**: `GET http://localhost:8000/GCP-FS/permissions/resolve?email=<email>`
-- **Permissions Resolve (Canonical)**: `GET http://localhost:8000/api/permissions/resolve?email=<email>`
+- **Permissions Resolve**: `GET http://localhost:8000/GCP-FS/permissions/resolve?email=<email>`
 - **Firestore Metadata (Active Sensor)**: `GET http://localhost:8000/GCP-FS/metadata/active?owner=<owner>&mac_address=<mac>&lla=<lla>`
 - **Verified Example Tuple (works together)**: `owner=f4dv2`, `mac_address=d83adde260d1`, `lla=fd002124b001204bd42`
 - **All Sensors Metadata**: `GET http://localhost:8000/GCP-FS/metadata/sensors?owner=<owner>&mac_address=<mac>&exp_name=<exp_name>`
@@ -151,7 +150,6 @@ Current tag groups are intentionally organized for user flow:
    - `GET /`
 2. **permissions**
    - `GET /GCP-FS/permissions/resolve`
-   - `GET /api/permissions/resolve` (when enabled)
 3. **metadata**
    - `GET /GCP-FS/metadata/active`
    - `GET /GCP-FS/metadata/sensors`
@@ -519,7 +517,7 @@ GET /GCP-FS/last-package?owner=Icore_Pi&mac_address=2ccf6730ab5f&exp_name=Image_
 
 #### `GET /GCP-FS/metadata/experiments`
 
-Get all experiment names with statistics (total sensors, active count, inactive count) for a given owner and MAC address.
+Get all experiment names with statistics (including `exp_status`, total sensors, active count, inactive count) for a given owner and MAC address.
 
 **Query Parameters:**
 - `owner` (required): Owner identifier (e.g., "Icore_Pi", "developerroom")
@@ -542,18 +540,21 @@ GET /GCP-FS/metadata/experiments?owner=Icore_Pi&mac_address=2ccf6730ab5f
   "experiments": [
     {
       "exp_name": "Image_V2",
+      "exp_status": "in_progress",
       "total_sensors": 5,
       "active_count": 3,
       "inactive_count": 2
     },
     {
       "exp_name": "Test_Experiment",
+      "exp_status": null,
       "total_sensors": 2,
       "active_count": 1,
       "inactive_count": 1
     },
     {
       "exp_name": "",
+      "exp_status": null,
       "total_sensors": 1,
       "active_count": 0,
       "inactive_count": 1
@@ -564,11 +565,12 @@ GET /GCP-FS/metadata/experiments?owner=Icore_Pi&mac_address=2ccf6730ab5f
 
 **Notes:**
 - Returns all unique experiment names for the given owner/MAC combination
+- `exp_status` is included per experiment; if missing in Firestore, it is returned as `null`
 - Includes statistics: total sensors, active count (active_exp == True), inactive count (active_exp == False)
 - Empty string `""` represents "Unnamed" experiments
 - Useful for filtering experiments by active status in the frontend
 
-#### `GET /api/permissions/resolve` (Canonical)
+#### `GET /GCP-FS/permissions/resolve`
 
 Resolve all owner and MAC address combinations from user email using internal BigQuery tables.
 
@@ -577,7 +579,7 @@ Resolve all owner and MAC address combinations from user email using internal Bi
 
 **Example:**
 ```
-GET /api/permissions/resolve?email=user@mail.com
+GET /GCP-FS/permissions/resolve?email=user@mail.com
 ```
 
 **Success Response:**
@@ -612,10 +614,6 @@ GET /api/permissions/resolve?email=user@mail.com
 - Returns all owner/MAC combinations the user has access to
 - Used by frontend to populate owner and MAC address dropdowns for experiment filtering
 - Table names are hardcoded internally and are not part of the request contract
-
-#### `GET /GCP-FS/permissions/resolve` (Compatibility Alias)
-
-Backward-compatible alias for legacy clients. This route delegates to the same internal implementation as `/api/permissions/resolve`.
 
 ### WebSocket Endpoints
 
@@ -864,7 +862,7 @@ The frontend dashboard (`http://localhost:8000/`) provides:
 
 4. **Experiment Management**: Stable owner/device selection and experiment browsing
    - **Selection Context**: One compact section for email, owner, device, and experiment selection
-   - **Resolve Permissions**: Calls `/api/permissions/resolve` to get owner/MAC combinations by email
+   - **Resolve Permissions**: Calls `/GCP-FS/permissions/resolve` to get owner/MAC combinations by email
    - **Owner Selection**: Dropdown shows owners with per-owner device counts
    - **Device Selection**: Dropdown shows MAC addresses for the chosen owner
    - **Live Discovery**: WebSocket payloads can add owner/MAC combinations to the dropdowns without forcing the current selection to refresh on every payload
@@ -1104,7 +1102,7 @@ curl "http://localhost:8000/GCP-FS/metadata/experiments?owner=Icore_Pi&mac_addre
 
 **Resolve Permissions:**
 ```bash
-curl "http://localhost:8000/api/permissions/resolve?email=user@mail.com"
+curl "http://localhost:8000/GCP-FS/permissions/resolve?email=user@mail.com"
 ```
 
 ### Manual Testing

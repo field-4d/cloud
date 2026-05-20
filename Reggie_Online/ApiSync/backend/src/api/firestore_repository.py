@@ -630,6 +630,7 @@ async def get_experiment_names(
             - count (int): Number of unique experiments
             - experiments (list): List of experiment objects with:
                 - exp_name (str): Experiment name
+                - exp_status (str | null): Experiment status, null if missing
                 - total_sensors (int): Total number of sensors in this experiment
                 - active_count (int): Number of sensors with active_exp == True
                 - inactive_count (int): Number of sensors with active_exp == False
@@ -672,11 +673,16 @@ async def get_experiment_names(
             if exp_name not in experiments_dict:
                 experiments_dict[exp_name] = {
                     "exp_name": exp_name,
+                    "exp_status": None,
                     "total_sensors": 0,
                     "active_count": 0,
                     "inactive_count": 0
                 }
             
+            # Keep first non-null exp_status found for this experiment
+            if experiments_dict[exp_name]["exp_status"] is None:
+                experiments_dict[exp_name]["exp_status"] = doc_data.get("exp_status", None)
+
             # Update statistics
             experiments_dict[exp_name]["total_sensors"] += 1
             active_exp = doc_data.get("active_exp", False)

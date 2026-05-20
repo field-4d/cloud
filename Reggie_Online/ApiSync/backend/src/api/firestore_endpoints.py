@@ -54,10 +54,22 @@ class SensorMetadataUpdateRequest(BaseModel):
     sensors: Optional[List[dict]] = None  # For batch updates
 
 
+class DeviceResolveInfo(BaseModel):
+    """Per-MAC enrichment from F4D_mac_to_device (additive API field)."""
+    mac_address: str
+    device_name: Optional[str] = None
+    description: Optional[str] = None
+    ip_addresses: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    source: Optional[str] = None
+
+
 class OwnerMacGroup(BaseModel):
     """Model for owner with MAC addresses."""
     owner: str
     mac_addresses: List[str]
+    devices: List[DeviceResolveInfo]
 
 
 class PermissionsResolveResponse(BaseModel):
@@ -770,6 +782,7 @@ async def get_experiment_names_endpoint(
             - count (int): Number of unique experiments
             - experiments (list): List of experiment objects with:
                 - exp_name (str): Experiment name
+                - exp_status (str | null): Experiment status, null if missing
                 - total_sensors (int): Total number of sensors in this experiment
                 - active_count (int): Number of sensors with active_exp == True
                 - inactive_count (int): Number of sensors with active_exp == False
@@ -831,14 +844,15 @@ async def resolve_permissions_endpoint(email: str = Query(..., description="User
         email (required): User's email address
         
     Returns:
-        PermissionsResolveResponse: Response with owners array, each containing owner and mac_addresses list
+        PermissionsResolveResponse: Response with owners array, each containing owner, mac_addresses,
+        and devices (per-MAC enrichment from BigQuery F4D_mac_to_device).
         
     Raises:
         HTTPException 404: If no permissions found for the email
         HTTPException 500: If response format is invalid
         HTTPException 502/503: If BigQuery service is unavailable
     """
-    logger.info(f"[ENDPOINT] GET /GCP-FS/permissions/resolve | Email: {email}")
+    logger.info(f"[ENDPOINT] GET permissions/resolve | Email: {email}")
     operation_start = time.time()
     
     try:

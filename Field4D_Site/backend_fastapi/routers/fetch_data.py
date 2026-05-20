@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 
 from fastapi import APIRouter, HTTPException
 from google.cloud import bigquery
@@ -9,6 +10,7 @@ from services.bigquery_client import run_query
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class DateRange(BaseModel):
@@ -19,7 +21,9 @@ class DateRange(BaseModel):
 class FetchDataRequest(BaseModel):
     owner: str
     mac_address: str
-    experiment: str
+    experiment: str = ""
+    experimentId: int | None = None
+    exp_id: int | None = None
     selectedSensors: list[str] = Field(default_factory=list)
     selectedParameters: list[str] = Field(default_factory=list)
     # Deprecated: kept for older clients. Label filter is sensor-driven; rows use latest Label per LLA from BQ.
@@ -41,12 +45,16 @@ class FetchDataRow(BaseModel):
 
 @router.post("/fetch-data", response_model=list[FetchDataRow])
 def post_fetch_data(payload: FetchDataRequest) -> list[FetchDataRow]:
+    experiment_id = payload.experimentId if payload.experimentId is not None else payload.exp_id
+    experiment_name = payload.experiment.strip()
+
     if (
         not payload.owner.strip()
         or not payload.mac_address.strip()
-        or not payload.experiment.strip()
     ):
-        raise HTTPException(status_code=400, detail="owner, mac_address, and experiment are required")
+        raise HTTPException(status_code=400, detail="owner and mac_address are required")
+    if experiment_id is None and not experiment_name:
+        raise HTTPException(status_code=400, detail="experimentId or experiment is required")
 
     if not payload.selectedSensors or not payload.selectedParameters:
         raise HTTPException(
@@ -78,7 +86,10 @@ WITH all_rows AS (
   FROM `{settings.sensors_data_table}`
   WHERE Owner = @owner
     AND Mac_Address = @mac_address
-    AND Exp_Name = @experiment
+    AND (
+      (@use_experiment_id = TRUE AND SAFE_CAST(Exp_ID AS INT64) = @experiment_id)
+      OR (@use_experiment_id = FALSE AND @use_experiment_name = TRUE AND Exp_Name = @experiment)
+    )
 ),
 label_ranked AS (
   SELECT
@@ -128,12 +139,25 @@ ORDER BY timestamp ASC, sensor ASC, parameter ASC;
     query_parameters = [
         bigquery.ScalarQueryParameter("owner", "STRING", payload.owner),
         bigquery.ScalarQueryParameter("mac_address", "STRING", payload.mac_address),
-        bigquery.ScalarQueryParameter("experiment", "STRING", payload.experiment),
+        bigquery.ScalarQueryParameter("use_experiment_id", "BOOL", experiment_id is not None),
+        bigquery.ScalarQueryParameter("use_experiment_name", "BOOL", bool(experiment_name)),
+        bigquery.ScalarQueryParameter("experiment_id", "INT64", experiment_id),
+        bigquery.ScalarQueryParameter("experiment", "STRING", experiment_name),
         bigquery.ScalarQueryParameter("startDate", "TIMESTAMP", payload.dateRange.start),
         bigquery.ScalarQueryParameter("endExclusive", "TIMESTAMP", end_exclusive),
         bigquery.ArrayQueryParameter("selectedSensors", "STRING", payload.selectedSensors),
         bigquery.ArrayQueryParameter("selectedParameters", "STRING", payload.selectedParameters),
     ]
+
+    logger.info(
+        {
+            "fetch_data_filter_mode": "experiment_id"
+            if experiment_id is not None
+            else "experiment_name_fallback",
+            "fetch_data_experiment_id": experiment_id,
+            "fetch_data_experiment_name": experiment_name,
+        }
+    )
 
     rows = run_query(query=query, query_parameters=query_parameters)
 
