@@ -16,7 +16,7 @@ import {
 import {
   getParameterDisplayLabel,
   getParameterUnit as getMetadataParameterUnit,
-  getYAxisTitle,
+  formatAxisTitle,
 } from '../../constants/parameterMetadata';
 
 // Axis configuration interface
@@ -98,8 +98,6 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   sensorLabelMap = {},
   includedLabels = [],
 }) => {
-  const yAxisTitle = getYAxisTitle(selectedParameters.slice(0, 2));
-
   // Check for parameter limit and notify if exceeded
   useEffect(() => {
     if (selectedParameters.length > 2) {
@@ -120,6 +118,11 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
 
   // Always limit to maximum of 2 parameters
   const limitedParameters = selectedParameters.slice(0, 2);
+  const yAxisTitle = formatAxisTitle(limitedParameters[0] ?? selectedParameters[0]);
+  const yAxisTwoTitle =
+    limitedParameters.length > 1
+      ? formatAxisTitle(limitedParameters[1] ?? selectedParameters[1])
+      : '';
 
   // Helper: Extract date from timestamp (YYYY-MM-DD format)
   const extractDate = (timestamp: string): string => {
@@ -356,7 +359,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     },
     yaxis2: {
       title: {
-        text: limitedParameters.length > 1 ? yAxisTitle : '',
+        text: yAxisTwoTitle,
         font: { size: axisConfig.textSize },
         standoff: axisConfig.distanceFromPlot,
       },

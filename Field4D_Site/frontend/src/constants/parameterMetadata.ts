@@ -1,3 +1,5 @@
+export type ParameterValueType = 'numeric' | 'status';
+
 export type ParameterMetadata = {
   value: string;
   label: string;
@@ -6,6 +8,7 @@ export type ParameterMetadata = {
   category: string;
   sensorFamily?: string;
   channel?: string;
+  valueType?: ParameterValueType;
 };
 
 const BASE_PARAMETER_METADATA: Omit<ParameterMetadata, 'displayLabel'>[] = [
@@ -215,6 +218,35 @@ const BASE_PARAMETER_METADATA: Omit<ParameterMetadata, 'displayLabel'>[] = [
     unit: 'n',
     category: 'Advanced Environmental',
   },
+  {
+    value: 'thermocouple_temperature_c',
+    label: 'Thermocouple Temperature',
+    unit: '°C',
+    category: 'Freezer Thermocouple Sensors',
+    sensorFamily: 'Freezer Thermocouple',
+  },
+  {
+    value: 'thermocouple_board_temperature_c',
+    label: 'Board Temperature',
+    unit: '°C',
+    category: 'Freezer Thermocouple Sensors',
+    sensorFamily: 'Freezer Thermocouple',
+  },
+  {
+    value: 'thermocouple_delta_c',
+    label: 'Thermocouple Delta',
+    unit: '°C',
+    category: 'Freezer Thermocouple Sensors',
+    sensorFamily: 'Freezer Thermocouple',
+  },
+  {
+    value: 'freezer_reader_ok',
+    label: 'Reader Status',
+    unit: '',
+    category: 'Freezer Thermocouple Sensors',
+    sensorFamily: 'Freezer Thermocouple',
+    valueType: 'status',
+  },
 ];
 
 export const PARAMETER_METADATA: ParameterMetadata[] = BASE_PARAMETER_METADATA.map((param) => ({
@@ -231,10 +263,29 @@ export const getParameterUnit = (value: string) =>
 export const getParameterLabel = (value: string) =>
   getParameterMeta(value)?.label || value.replaceAll('_', ' ');
 
-export const getParameterDisplayLabel = (value: string) => {
+/** Y-axis title for one parameter: "Label (unit)" or "Label" when unit is empty. */
+export const formatAxisTitle = (parameter: string | null | undefined): string => {
+  if (parameter == null || String(parameter).trim() === '') return 'Value';
+  const value = String(parameter);
   const meta = getParameterMeta(value);
   if (!meta) return value.replaceAll('_', ' ');
   return meta.unit ? `${meta.label} (${meta.unit})` : meta.label;
+};
+
+export const getParameterDisplayLabel = (value: string) => formatAxisTitle(value);
+
+/** Format a parameter value for display; status params map 1 → OK, else Problem. */
+export const formatParameterValue = (
+  parameter: string,
+  value: number | null | undefined
+): string => {
+  const meta = getParameterMeta(parameter);
+  if (meta?.valueType !== 'status') {
+    if (value == null || Number.isNaN(Number(value))) return '';
+    return String(value);
+  }
+  if (value === 1) return 'OK';
+  return 'Problem / no reading';
 };
 
 const BASIC_ENV_ORDER: Record<string, number> = {
@@ -256,6 +307,14 @@ const CATEGORY_ORDER: Record<string, number> = {
   'Basic Environmental': 1,
   'OPT3001 Light Sensors': 2,
   'HDC2010 Sensors': 3,
+  'Freezer Thermocouple Sensors': 4,
+};
+
+const FREEZER_THERMO_ORDER: Record<string, number> = {
+  thermocouple_temperature_c: 1,
+  thermocouple_board_temperature_c: 2,
+  thermocouple_delta_c: 3,
+  freezer_reader_ok: 4,
 };
 
 export const PARAMETER_OPTIONS = Object.values(
@@ -278,21 +337,33 @@ export const PARAMETER_OPTIONS = Object.values(
   }, {})
 )
   .map((group) => {
-    if (group.label !== 'Basic Environmental') {
+    if (group.label === 'Basic Environmental') {
       return {
         ...group,
-        options: group.options.slice().sort((left, right) => left.label.localeCompare(right.label)),
+        options: group.options.slice().sort((left, right) => {
+          const leftPriority = BASIC_ENV_ORDER[left.value] ?? 999;
+          const rightPriority = BASIC_ENV_ORDER[right.value] ?? 999;
+          if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+          return left.label.localeCompare(right.label);
+        }),
+      };
+    }
+
+    if (group.label === 'Freezer Thermocouple Sensors') {
+      return {
+        ...group,
+        options: group.options.slice().sort((left, right) => {
+          const leftPriority = FREEZER_THERMO_ORDER[left.value] ?? 999;
+          const rightPriority = FREEZER_THERMO_ORDER[right.value] ?? 999;
+          if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+          return left.label.localeCompare(right.label);
+        }),
       };
     }
 
     return {
       ...group,
-      options: group.options.slice().sort((left, right) => {
-        const leftPriority = BASIC_ENV_ORDER[left.value] ?? 999;
-        const rightPriority = BASIC_ENV_ORDER[right.value] ?? 999;
-        if (leftPriority !== rightPriority) return leftPriority - rightPriority;
-        return left.label.localeCompare(right.label);
-      }),
+      options: group.options.slice().sort((left, right) => left.label.localeCompare(right.label)),
     };
   })
   .sort((left, right) => {
@@ -304,10 +375,5 @@ export const PARAMETER_OPTIONS = Object.values(
 
 export const getYAxisTitle = (parameterValues: string[]): string => {
   if (parameterValues.length === 0) return 'Value';
-  if (parameterValues.length === 1) return getParameterDisplayLabel(parameterValues[0]);
-  const units = Array.from(
-    new Set(parameterValues.map((value) => getParameterUnit(value)).filter(Boolean))
-  );
-  if (units.length === 1) return `Value (${units[0]})`;
-  return 'Value';
+  return formatAxisTitle(parameterValues[0]);
 };

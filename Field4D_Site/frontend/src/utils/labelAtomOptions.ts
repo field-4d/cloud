@@ -3,6 +3,12 @@ import {
   tokenSetsIntersect,
 } from './labelTokenUtils';
 
+/** False when labelOptions are empty or only parse to empty arrays (e.g. `["[]"]`). */
+export function hasMeaningfulLabelOptions(labelOptions?: string[]): boolean {
+  if (!labelOptions?.length) return false;
+  return collectAtomicLabelsFromComposites(labelOptions).length > 0;
+}
+
 /** Sorted unique atomic tokens from all composite label strings in experiment `labelOptions`. */
 export function collectAtomicLabelsFromComposites(labelOptions: string[]): string[] {
   const set = new Set<string>();

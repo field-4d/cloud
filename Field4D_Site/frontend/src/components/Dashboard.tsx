@@ -490,6 +490,18 @@ const Dashboard: React.FC = () => {
     return exp.experimentName;
   };
 
+  const getExperimentReactKey = (exp: ExperimentSummary): string => {
+    const first =
+      typeof exp.firstTimestamp === 'string'
+        ? exp.firstTimestamp
+        : exp.firstTimestamp?.value ?? '';
+    const last =
+      typeof exp.lastTimestamp === 'string'
+        ? exp.lastTimestamp
+        : exp.lastTimestamp?.value ?? '';
+    return `${String(exp.experimentId ?? 'na')}-${exp.experimentName}-${first}-${last}`;
+  };
+
   /**
    * sortExperimentsDescending
    * Sorts experiments by backend id first, then recency, then name fallback.
@@ -872,7 +884,7 @@ const Dashboard: React.FC = () => {
                         {activeExperiments.length > 0 && (
                           <optgroup label="Active Experiments">
                             {activeExperiments.map(exp => (
-                              <option key={`exp-${String(exp.experimentId)}`} value={String(exp.experimentId)}>
+                              <option key={getExperimentReactKey(exp)} value={String(exp.experimentId)}>
                                 {getExperimentOptionLabel(exp)}
                               </option>
                             ))}
@@ -885,7 +897,7 @@ const Dashboard: React.FC = () => {
                           activeExperiments.length > 0 ? (
                             <optgroup label="Inactive Experiments">
                               {inactiveExperiments.map(exp => (
-                                <option key={`exp-${String(exp.experimentId)}`} value={String(exp.experimentId)}>
+                                <option key={getExperimentReactKey(exp)} value={String(exp.experimentId)}>
                                   {getExperimentOptionLabel(exp)}
                                 </option>
                               ))}
@@ -893,7 +905,7 @@ const Dashboard: React.FC = () => {
                           ) : (
                             <>
                               {inactiveExperiments.map(exp => (
-                                <option key={`exp-${String(exp.experimentId)}`} value={String(exp.experimentId)}>
+                                <option key={getExperimentReactKey(exp)} value={String(exp.experimentId)}>
                                   {getExperimentOptionLabel(exp)}
                                 </option>
                               ))}

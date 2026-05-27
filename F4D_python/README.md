@@ -2,6 +2,8 @@
 
 This project reads messages from a serial-connected device, parses structured payloads, forwards live events to ApiSync over WebSocket, writes aggregated sensor values to DuckDB on a timed flush cycle, and uploads new rows to BigQuery (automatically after each successful flush, or on demand via CLI / `run_sync`).
 
+Optionally, a Pi-attached **virtual freezer sensor** (MAX31855 thermocouple over SPI) can inject temperature packets into the same flash-buffer and WebSocket flow, with configurable email alerts when the freezer is too warm.
+
 ## What This App Does
 
 - Opens serial port `/dev/ttyACM0` at `115200` baud (with optional auto-recovery if the port is held by `screen`; see `helpers/serial_helpers.py`).
@@ -17,8 +19,12 @@ This project reads messages from a serial-connected device, parses structured pa
 - Uploads DuckDB `sensors_data` and `packet_events` to BigQuery through the `f4d-bq-sync` HTTP service:
   - **Automatic:** after a successful timed flush, `services/flush_service.py` calls `DB.run_sync()` for all experiments marked active in `sensors_metadata`.
   - **Manual:** `python3 -m DB.f4d_bq_sync` or `run_sync(...)` in Python (single experiment or all active experiments).
+- **Optional virtual freezer sensor** (`sensors/freezer_reader.py` + `services/virtual_sensor_service.py`):
+  - Reads a local MAX31855 thermocouple on a configurable interval.
+  - Builds a normal sensor packet keyed by a configured LLA/`ipv6` and injects it through `update_flash_memory` and `enqueue_last_package`.
+  - Can send Pi-side HTML email alerts when temperature rises above a threshold (see `config/freezer_sensor.json`).
 
-Entry point: `main.py`
+Entry point: `main.py` (wire in the virtual sensor thread when enabled; see [Virtual Freezer Sensor](#virtual-freezer-sensor)).
 
 ## System Scheme
 
@@ -33,6 +39,10 @@ flowchart TD
 
   F --> G[sync.enqueue_last_package]
   G --> H[ApiSync WebSocket /ws/ping]
+
+  VF[sensors.freezer_reader] -->|optional| VS[services.virtual_sensor_service]
+  VS --> F
+  VS --> G
 
   I[services.start_flush_thread] --> J[3-minute boundary]
   J --> K[DB.pop_flash_memory_snapshot]
@@ -53,6 +63,8 @@ flowchart TD
 
 ```text
 F4D/
+├── config/
+│   └── freezer_sensor.json
 ├── DB/
 │   ├── __init__.py
 │   ├── duckdb_client.py
@@ -70,13 +82,18 @@ F4D/
 ├── parser/
 │   ├── __init__.py
 │   └── json_parser.py
+├── sensors/
+│   ├── __init__.py
+│   ├── freezer_reader.py
+│   └── test_thermocouple.py
 ├── serial_comm/
 │   ├── __init__.py
 │   └── port.py
 ├── services/
 │   ├── __init__.py
 │   ├── flush_service.py
-│   └── metadata_service.py
+│   ├── metadata_service.py
+│   └── virtual_sensor_service.py
 ├── sync/
 │   ├── __init__.py
 │   └── ApiSync_client.py
@@ -99,8 +116,8 @@ This is the exact flow when a sensor package is received:
 2. Parse stage:
 `parse_serial_line(raw)` classifies the message as `PING`, `antenna_log`, or `sensor_data`.
 
-3. For `sensor_data` in `main.py`:
-- Remove parser-only field `type`.
+3. For `sensor_data` in `main.py` (or injected virtual-sensor packets):
+- Remove parser-only field `type` (virtual packets are already plain dicts).
 - Validate `ipv6` presence.
 - Call `update_flash_memory(packet_for_buffer)`.
 
@@ -138,6 +155,7 @@ New packets continue accumulating in a fresh interval buffer until the next boun
 ```mermaid
 sequenceDiagram
   participant S as Sensor
+  participant VF as Freezer Reader
   participant P as Parser
   participant M as main.py
   participant F as Flash Buffer
@@ -149,6 +167,13 @@ sequenceDiagram
   P->>M: packet(type=sensor_data, ipv6, vars)
   M->>F: update_flash_memory(packet without type)
   M->>A: last_package(live snapshot)
+
+  opt Virtual freezer sensor enabled
+    VF->>M: read_packet() on interval
+    M->>F: update_flash_memory(freezer packet)
+    M->>A: last_package(freezer snapshot)
+  end
+
   T->>T: wait to next 3-minute boundary
   T->>F: pop_flash_memory_snapshot()
   T->>D: write_flash_buffer_to_sensors_data(snapshot)
@@ -159,6 +184,7 @@ sequenceDiagram
 
 - `main.py`
   - Starts timed flush worker thread and the Last_Package sender thread.
+  - Optionally starts the virtual freezer sensor thread (see [Virtual Freezer Sensor](#virtual-freezer-sensor)).
   - Opens the serial port via `open_serial_with_auto_recovery` (Linux: can detach `screen` holding `/dev/ttyACM0`).
   - Reads serial data continuously.
   - Routes parsed messages by type.
@@ -216,6 +242,89 @@ sequenceDiagram
   - **`exp_name` set:** syncs that single experiment only.
   - CLI: `--table sensors_data|packet_events|both`; `--exp` optional (omit for active mode).
   - Optional `--limit`, `--batch-size`, `--owner`, `--mac`, `--sync-url`, `--dry-run`.
+
+- `sensors/freezer_reader.py`
+  - Loads `config/freezer_sensor.json` (default path on device: `/home/pi/F4D/config/freezer_sensor.json`).
+  - When `enabled: true`, initializes a MAX31855 thermocouple reader over SPI.
+  - `read_packet()` returns a dict compatible with the normal ingest path (`ipv6` = configured LLA, plus temperature variables).
+  - Runnable standalone: `python3 -m sensors.freezer_reader`.
+
+- `sensors/test_thermocouple.py`
+  - Low-level hardware smoke test for MAX31855 wiring (prints thermocouple, board, and delta temperatures every 2 seconds).
+
+- `services/virtual_sensor_service.py`
+  - `start_virtual_freezer_sensor_thread(update_flash_memory_fn, enqueue_last_package_fn)` runs a daemon loop that reads the freezer sensor and injects packets into flash memory and the Last_Package queue.
+  - Optional email alerts when temperature exceeds `alerts.alert_above_c`; re-arms when temperature falls to `alerts.reset_below_c` or lower.
+
+- `config/freezer_sensor.json`
+  - Feature toggle, LLA, sensor type, SPI chip-select pin, variable name mapping, read interval, and alert/email settings.
+
+## Virtual Freezer Sensor
+
+Use this when a Raspberry Pi hosts a local MAX31855 thermocouple amplifier and should report as a normal Field4D sensor.
+
+### Hardware wiring (default config)
+
+| MAX31855 | Raspberry Pi |
+|---|---|
+| VCC | Pin 1 (3.3V) |
+| GND | Pin 6 (GND) |
+| SCK | Pin 23 (GPIO11, SPI SCLK) |
+| SO | Pin 21 (GPIO9, SPI MISO) |
+| CS | Pin 22 (GPIO25, configurable via `pins.cs`) |
+
+Enable SPI on the Pi (`raspi-config` → Interface Options → SPI) before testing.
+
+### Configuration
+
+Edit `config/freezer_sensor.json`:
+
+| Key | Description |
+|---|---|
+| `enabled` | Set `true` to activate the virtual sensor |
+| `lla` | Sensor identifier used as packet `ipv6` (must match an active metadata row) |
+| `sensor_type` | Currently `max31855` |
+| `read_interval_seconds` | Poll interval for the background thread (default `40`) |
+| `pins.cs` | Board pin name for chip select (default `D25`) |
+| `variables.*` | Maps logical fields to packet keys written to DuckDB |
+| `alerts.enabled` | Send email when temperature is too warm |
+| `alerts.email_endpoint` | HTTP POST endpoint for the email sender service |
+| `alerts.recipients` | List of recipient email addresses |
+| `alerts.alert_above_c` | Trigger alert when thermocouple temperature exceeds this value (°C) |
+| `alerts.reset_below_c` | Clear alert state when temperature falls to this value or lower |
+| `alerts.max_emails_per_activation` | Cap emails per warm event |
+| `alerts.email_interval_seconds` | Minimum spacing between alert emails |
+
+Alert emails are sent directly from the Pi (not through ApiSync). Each activation sends at most `max_emails_per_activation` messages, spaced by `email_interval_seconds`, until the temperature recovers.
+
+### Enable in `main.py`
+
+After starting the flush and Last_Package threads, wire in the virtual sensor:
+
+```python
+from services.virtual_sensor_service import start_virtual_freezer_sensor_thread
+
+start_virtual_freezer_sensor_thread(
+    update_flash_memory_fn=update_flash_memory,
+    enqueue_last_package_fn=enqueue_last_package,
+)
+```
+
+When `enabled` is `false` in config, the thread exits immediately with `[FREEZER] Virtual freezer sensor disabled.`
+
+### Standalone tests
+
+Raw thermocouple wiring check:
+
+```bash
+python3 sensors/test_thermocouple.py
+```
+
+Config-driven packet builder:
+
+```bash
+python3 -m sensors.freezer_reader
+```
 
 ## Data Tables (DuckDB)
 
@@ -428,6 +537,10 @@ From `requirements.txt`:
 - `duckdb`
 - `google-cloud-firestore`
 - `google-cloud-bigquery`
+- `adafruit-blinka` (GPIO/SPI for Pi-attached sensors)
+- `adafruit-circuitpython-max31855` (MAX31855 thermocouple reader)
+
+Email alerts in `virtual_sensor_service.py` also use `requests` (already used by `initializer/env_initializer.py`).
 
 ## Setup
 
@@ -496,7 +609,23 @@ Check required environment keys:
 grep -E '^(HOSTNAME|MAC_ADDRESS|API_SYNC_URL|F4D_BQ_SYNC_URL)=' /home/pi/F4D/.env
 ```
 
-### 1) Parser smoke tests (no serial device required)
+### 1) Freezer thermocouple smoke tests (optional hardware)
+
+Enable SPI, then verify wiring with the low-level script:
+
+```bash
+python3 sensors/test_thermocouple.py
+```
+
+With `config/freezer_sensor.json` set to `"enabled": true`, verify packet shape:
+
+```bash
+python3 -m sensors.freezer_reader
+```
+
+Expected packet keys include `ipv6` (configured LLA), `thermocouple_temperature_c`, `thermocouple_board_temperature_c`, `thermocouple_delta_c`, and `freezer_reader_ok`.
+
+### 2) Parser smoke tests (no serial device required)
 
 ```bash
 python3 - <<'PY'
@@ -517,7 +646,7 @@ Expected:
 - JSON block returns a dict with `type = sensor_data`.
 - Antenna sequence returns a dict with `type = antenna_log` when completed.
 
-### 2) Metadata sync validation
+### 3) Metadata sync validation
 
 Run metadata sync directly:
 
@@ -545,7 +674,7 @@ print(con.execute('''
 PY
 ```
 
-### 3) Live ingest + timed flush validation
+### 4) Live ingest + timed flush validation
 
 Start the service and watch logs:
 
@@ -562,8 +691,9 @@ What to look for in logs:
 - Metadata refresh: `[METADATA] Starting metadata refresh before interval write...`
 - Write summary: `[WRITE:sensors_data] ...` and `[WRITE:packet_events] ...`
 - After a successful write: `[BQ SYNC] - Starting Automatic BigQuery sync for active experiments...` then `[BQ SYNC RESULT] ...` or `[BQ SYNC ERROR] ...`
+- With virtual freezer sensor enabled: `[FREEZER] Virtual freezer sensor started...`, periodic `[FREEZER] Packet injected: ...`, and `[FREEZER ALERT] ...` when alerts fire
 
-### 4) Post-flush database checks
+### 5) Post-flush database checks
 
 After at least one 3-minute boundary passes:
 
@@ -595,7 +725,7 @@ for row in con.execute('''
 PY
 ```
 
-### 5) WebSocket/API quick checks
+### 6) WebSocket/API quick checks
 
 Validate ApiSync URL format in `.env` (must start with `http://` or `https://`):
 
@@ -607,7 +737,7 @@ If Last_Package sends are failing, monitor for:
 - `[Web-Socket] Failed to send LastPackage: ...`
 - `[Web-Socket] Queue full, dropping packet ...`
 
-### 6) DuckDB to BigQuery sync (CLI and code)
+### 7) DuckDB to BigQuery sync (CLI and code)
 
 **Active experiments (recommended default):** omit `--exp` so every distinct `Exp_Name` with `Active_Exp = true` in `sensors_metadata` is synced.
 
@@ -656,7 +786,7 @@ What the sync does:
 - Uploads to `F4D_sensors_data` and/or `F4D_packet_events`.
 - CLI exit code `0` when status is `ok` or `no_active_experiments`; `1` when status is `partial_error` or on fatal errors.
 
-### 7) Common validation outcomes
+### 8) Common validation outcomes
 
 - Parser OK, no DB writes:
   - usually means no active metadata row for that sensor LLA.
@@ -716,6 +846,16 @@ Recognized lines include:
   - Automatic sync only runs after a **successful** `sensors_data` / `packet_events` write; fix any write/DB permission issues first.
   - Confirm `F4D_BQ_SYNC_URL` and network reachability; check `[BQ SYNC ERROR]` logs.
   - With `--exp` omitted, ensure at least one row in `sensors_metadata` has `Active_Exp = true` and a non-empty `Exp_Name`.
+
+- Virtual freezer sensor not reporting:
+  - Confirm `config/freezer_sensor.json` has `"enabled": true` and `main.py` calls `start_virtual_freezer_sensor_thread`.
+  - Ensure SPI is enabled and CS/SCK/SO wiring matches the config (`pins.cs`, default `D25`).
+  - The configured `lla` must have an active row in `sensors_metadata` (same requirement as serial sensors).
+
+- Freezer alert emails not sent:
+  - Check `alerts.enabled`, `email_endpoint`, and `recipients` in `config/freezer_sensor.json`.
+  - Verify temperature is above `alert_above_c` and that `max_emails_per_activation` has not been exhausted for the current activation.
+  - Look for `[FREEZER ALERT] Email failed` or `Email error` in logs.
 
 ## Related repo: device registry in BigQuery
 

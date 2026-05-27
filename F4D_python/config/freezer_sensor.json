@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "lla": "f4dv2_freezer_thermo_001",
+  "sensor_type": "max31855",
+  "read_interval_seconds": 40,
+  "pins": {
+    "cs": "D25"
+  },
+  "variables": {
+    "thermocouple_temperature": "thermocouple_temperature_c",
+    "board_temperature": "thermocouple_board_temperature_c",
+    "delta_temperature": "thermocouple_delta_c",
+    "reader_ok": "freezer_reader_ok"
+  },
+  "alerts": {
+    "enabled": false,
+    "email_endpoint": "https://f4d-email-sender-1000435921680.europe-west1.run.app",
+    "recipients": [
+      "nir.averbuch@mail.huji.ac.il", "eyal.erez1@mail.huji.ac.il", "menachem.moshelion@mail.huji.ac.il", "assaf.hurwitz@mail.huji.ac.il","passy.atuganyira@mail.huji.ac.il"
+    ],
+    "alert_above_c": -80,
+    "reset_below_c": -80,
+    "max_emails_per_activation": 3,
+    "email_interval_seconds": 180,
+    "request_timeout_seconds": 20
+  }
+}

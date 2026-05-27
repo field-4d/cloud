@@ -35,6 +35,8 @@ import {
   getParameterDisplayLabel,
   getParameterUnit,
 } from '../constants/parameterMetadata';
+import { hasMeaningfulLabelOptions } from '../utils/labelAtomOptions';
+import { getSensorTypeSubtitle } from '../utils/sensorMetadata';
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -107,6 +109,7 @@ interface SensorData {
 interface SensorOption {
   value: string;
   label: string;
+  subtitle?: string;
 }
 
 interface SensorDisplayOption {
@@ -207,7 +210,12 @@ const SensorOption = (props: OptionProps<SensorOption, true>) => {
             onChange={() => null}
             className="rounded text-[#8ac6bb] focus:ring-[#8ac6bb] cursor-pointer"
           />
-          <span>{props.label}</span>
+          <div className="flex flex-col leading-tight">
+            <span>{props.label}</span>
+            {props.data.subtitle ? (
+              <span className="text-xs text-gray-400">{props.data.subtitle}</span>
+            ) : null}
+          </div>
         </div>
       </components.Option>
     </div>
@@ -324,9 +332,11 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const [groupBy, setGroupBy] = useState<'sensor' | 'label'>('sensor');
   const [errorType, setErrorType] = useState<'STD' | 'SE'>('SE');
 
-  // Get current experiment and check if it has label options
   const currentExperiment = experimentSummaries.find(exp => exp.experimentId === selectedExperimentId);
-  const hasLabelOptions = Boolean(currentExperiment?.labelOptions?.length);
+  /** Show Label Filter section when experiment-summary includes labelOptions (including `["[]"]`). */
+  const hasLabelFilterSection = Boolean(currentExperiment?.labelOptions?.length);
+  /** True when labelOptions contain real atomic tokens (clay, sand, etc.), not only empty `[]`. */
+  const hasMeaningfulLabels = hasMeaningfulLabelOptions(currentExperiment?.labelOptions);
 
   /** Strict include labels for grouping/export; no composite expansion. */
   const selectedIncludeLabels = React.useMemo(
@@ -637,6 +647,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       sensorOptions: dedupedOptions.map((option) => ({
         value: option.displayKey,
         label: option.displayLabel,
+        subtitle: getSensorTypeSubtitle(option.llaIds),
       })),
     };
   }, [sensorSelectionPool, sensorLocationMap]);
@@ -1169,7 +1180,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         {/* Sensor Selection */}
         <div className="mb-6">
           <div className="flex items-center mb-2">
-            {hasLabelOptions && (
+            {hasLabelFilterSection && (
               <button
                 onClick={() => setShowLabelFilter(!showLabelFilter)}
                 className="text-sm text-[#8ac6bb] hover:text-[#7ab6ab] flex items-center"
@@ -1200,13 +1211,14 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             </label>
           </div>
 
-          {showLabelFilter && hasLabelOptions && currentExperiment && (
+          {showLabelFilter && hasLabelFilterSection && currentExperiment && (
             <div className="mb-4">
               <LabelFilter
                 key={String(selectedExperimentId)}
                 sensorLabelOptions={currentExperiment.labelOptions ?? []}
                 sensorLabelMap={sensorLabelMap}
                 allSensors={availableSensors}
+                disabled={!hasMeaningfulLabels}
                 onFilterChange={(filteredSensors, includeLabels, excludeLabels) => {
                   setSensorsAfterLabelFilter(filteredSensors);
                   setIncludedLabels(includeLabels);

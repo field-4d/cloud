@@ -16,7 +16,7 @@ import {
 import {
   getParameterDisplayLabel,
   getParameterUnit as getMetadataParameterUnit,
-  getYAxisTitle,
+  formatAxisTitle,
 } from '../../constants/parameterMetadata';
 
 interface SensorData {
@@ -269,8 +269,11 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   }
 
   let plotData: any[] = [];
-  const yAxisTitle = getYAxisTitle(limitedParameters);
-  const yAxisTwoTitle = limitedParameters.length > 1 ? getYAxisTitle(limitedParameters) : '';
+  const yAxisTitle = formatAxisTitle(limitedParameters[0] ?? selectedParameters[0]);
+  const yAxisTwoTitle =
+    limitedParameters.length > 1
+      ? formatAxisTitle(limitedParameters[1] ?? selectedParameters[1])
+      : '';
   const selectedLabelGroups = normalizeIncludedLabels(includedLabels ?? []);
 
   if (groupBy === 'label' && sensorLabelMap) {

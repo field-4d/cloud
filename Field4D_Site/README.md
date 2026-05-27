@@ -2,7 +2,7 @@
 
 > **Note:** Active development may live on a `Dev` branch and can be unstable. Prefer `main` for stable snapshots.
 
-**Last updated:** April 30, 2026
+**Last updated:** May 27, 2026
 
 Web application for visualizing and analyzing **long-format sensor data** stored in **Google BigQuery**. The **React** frontend talks to a **Python FastAPI** backend; BigQuery credentials stay on the server.
 
@@ -11,7 +11,7 @@ Web application for visualizing and analyzing **long-format sensor data** stored
 ## Repository layout
 
 ```
-Field4D Site- FastAPI (Long)/
+Field4D_Site/
 ├── backend_fastapi/          # Python FastAPI + BigQuery (primary API)
 │   ├── main.py
 │   ├── routers/              # auth, permissions, experiment-summary, fetch-data, analytics-health
@@ -51,6 +51,8 @@ A legacy **Node/Express** backend may exist in older branches or folders; the ma
 - Legacy `POST /api/auth` may remain available for backward compatibility during transition
 
 **Sensor labels** are **assignment-based** (latest non-empty `Label` per experiment + LLA in BigQuery), not “whatever text was on that row at that timestamp.” Grouping and filtering follow that model.
+
+**Virtual freezer thermocouple sensors** (LLA contains `_freezer_thermo_`) are recognized in the UI: sensor pickers show a secondary subtitle (`Freezer Thermocouple · {lla}`), and their parameters appear under **Freezer Thermocouple Sensors** in the parameter selector (`thermocouple_temperature_c`, board/delta temperatures, and `freezer_reader_ok` status).
 
 ---
 
@@ -142,13 +144,16 @@ Production CORS reminder:
 | Path | Role |
 |------|------|
 | `src/components/Auth.tsx` | Login; brute-force lockout UX (see constants in file). |
-| `src/components/Dashboard.tsx` | Sidebar module navigation (**Data Viewer** + **Management**), collapsible sections, Data Viewer controls, management page routing. |
+| `src/components/Dashboard.tsx` | Sidebar module navigation (**Data Viewer** + **Management**), collapsible sections, Data Viewer controls, management page routing. Stable React keys for experiment dropdown entries that share the same `experimentId` across active/inactive runs. |
 | `src/components/PermissionDashboard.tsx` | Embedded/modal management UI with `permissionMode` (`new_user` or `permission_assignment`), role-aware restrictions, searchable selectors, batch assignment UX. |
-| `src/components/DataSelector.tsx` | Sensors, parameters, date range, chunked **`POST /api/fetch-data`** (chunk size 20 sensors per request). |
-| `src/components/LabelFilter.tsx` | Include/exclude labels (atomic tokens), drives which sensors stay selected. |
+| `src/components/DataSelector.tsx` | Sensors (with optional type subtitle), parameters, date range, chunked **`POST /api/fetch-data`** (chunk size 20 sensors per request). Label Filter panel visibility vs. meaningful label tokens. |
+| `src/components/LabelFilter.tsx` | Include/exclude labels (atomic tokens), drives which sensors stay selected. Disabled state when experiment has no meaningful labels (for example `labelOptions: ["[]"]`). |
 | `src/components/VisualizationPanel.tsx` | Plotly charts, CSV export, hour-range filter for box plots. |
-| `src/components/graph-components/*` | Scatter, histogram, box, correlation plots. |
+| `src/components/graph-components/*` | Scatter, histogram, box, correlation plots. Dual-axis scatter/box plots use **per-parameter** axis titles via `formatAxisTitle`. |
+| `src/constants/parameterMetadata.ts` | Parameter catalog, display labels, units, categories (including **Freezer Thermocouple Sensors**), `formatAxisTitle`, and `formatParameterValue` for status parameters (`1` → OK). |
 | `src/utils/labelGrouping.ts` | `getEffectiveLabel`, `collectLabelsFromRows` for label-grouped analytics. |
+| `src/utils/labelAtomOptions.ts` | `hasMeaningfulLabelOptions`, atomic token helpers for label filter options. |
+| `src/utils/sensorMetadata.ts` | Detects virtual freezer thermocouple LLAs and builds sensor dropdown subtitles. |
 
 ---
 
@@ -218,6 +223,31 @@ Password hashing for the external auth service matches SHA-256 → Base64 of the
 
 ---
 
+## Label filter behavior (frontend)
+
+The Label Filter panel appears when `experiment-summary` returns a non-empty `labelOptions` array, including placeholder values like `["[]"]`.
+
+- **`hasMeaningfulLabelOptions`** (`labelAtomOptions.ts`) distinguishes real atomic tokens (clay, sand, etc.) from empty composite placeholders.
+- When only empty placeholders exist, the panel stays visible but **`LabelFilter` is disabled**, shows “No labels available for this experiment”, and all sensors remain selectable.
+- When meaningful tokens exist, include/exclude filters work as before (atomic tokens, AND/OR mode).
+
+---
+
+## Parameter metadata and sensor types (frontend)
+
+Parameter display names, units, and picker grouping live in `frontend/src/constants/parameterMetadata.ts`.
+
+- **`formatAxisTitle(parameter)`** — single-parameter Y-axis title (`Label (unit)` or `Label` when unit is empty). Used by scatter and box plots for each axis independently when two parameters are selected.
+- **`formatParameterValue(parameter, value)`** — for parameters with `valueType: 'status'` (for example `freezer_reader_ok`), maps `1` → `OK` and other values → `Problem / no reading`.
+- **Freezer thermocouple category** — `thermocouple_temperature_c`, `thermocouple_board_temperature_c`, `thermocouple_delta_c`, `freezer_reader_ok`.
+
+Sensor type hints for virtual hardware are in `frontend/src/utils/sensorMetadata.ts`:
+
+- LLAs containing `_freezer_thermo_` are treated as **Freezer Thermocouple** sensors.
+- `getSensorTypeSubtitle()` adds a secondary line in the sensor multi-select dropdown.
+
+---
+
 ## Data processing (frontend)
 
 `DataSelector.tsx` loads selected sensors in chunks of **20** per `POST /api/fetch-data` request (`CHUNK_SIZE` in that file). Adjust there if your gateway limits differ.
@@ -232,7 +262,11 @@ Password hashing for the external auth service matches SHA-256 → Base64 of the
 
 ## Graph / plot tuning
 
-Layout and grouping options live in the respective files under `frontend/src/components/graph-components/` and `VisualizationPanel.tsx` (e.g. box plot hour filter, hierarchical date → label grouping). See **[frontend/README.md](frontend/README.md)** for the full file map.
+Layout and grouping options live in the respective files under `frontend/src/components/graph-components/` and `VisualizationPanel.tsx` (e.g. box plot hour filter, hierarchical date → label grouping).
+
+Dual-parameter scatter and box plots assign **separate Y-axis titles** per selected parameter (first parameter → primary axis, second → `yaxis2`) instead of a single combined title. See `formatAxisTitle` in `parameterMetadata.ts`.
+
+See **[frontend/README.md](frontend/README.md)** for the full file map.
 
 ---
 

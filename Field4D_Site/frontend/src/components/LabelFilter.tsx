@@ -18,6 +18,8 @@ interface LabelFilterProps {
   /** Experiment sensor list (e.g. from experiment-summary); used when sensorLabelMap is not yet available. */
   allSensors: string[];
   onFilterChange: (filteredSensors: string[], includeLabels: string[], excludeLabels: string[]) => void;
+  /** When true, controls are disabled and all sensors remain available (e.g. labelOptions is only `["[]"]`). */
+  disabled?: boolean;
 }
 
 /** Include/exclude option values are atomic tokens; counts from sensorLabelMap. */
@@ -67,7 +69,8 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
   sensorLabelOptions,
   sensorLabelMap,
   allSensors = [],
-  onFilterChange
+  onFilterChange,
+  disabled = false,
 }) => {
   const [selectedIncludeLabels, setSelectedIncludeLabels] = React.useState<string[]>([]);
   const [selectedExcludeLabels, setSelectedExcludeLabels] = React.useState<string[]>([]);
@@ -139,21 +142,30 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
   }, [sensorLabelMap, allSensors, onFilterChange, sensorLabelOptions]);
 
   const handleIncludeLabelsChange = (selected: readonly LabelOption[] | null) => {
+    if (disabled) return;
     const newIncludeLabels = (selected ?? []).map((option) => option.value);
     setSelectedIncludeLabels(newIncludeLabels);
     filterSensors(newIncludeLabels, selectedExcludeLabels, isAndMode);
   };
 
   const handleExcludeLabelsChange = (selected: readonly LabelOption[] | null) => {
+    if (disabled) return;
     const newExcludeLabels = (selected ?? []).map((option) => option.value);
     setSelectedExcludeLabels(newExcludeLabels);
     filterSensors(selectedIncludeLabels, newExcludeLabels, isAndMode);
   };
 
   const handleLogicModeChange = (newMode: boolean) => {
+    if (disabled) return;
     setIsAndMode(newMode);
     filterSensors(selectedIncludeLabels, selectedExcludeLabels, newMode);
   };
+
+  React.useEffect(() => {
+    if (!disabled) return;
+    setSelectedIncludeLabels([]);
+    setSelectedExcludeLabels([]);
+  }, [disabled]);
 
   return (
     <div className="space-y-4 p-4 bg-white rounded-lg shadow">
@@ -161,18 +173,30 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         <h3 className="text-sm font-medium text-gray-700">Label Filter</h3>
         <div className="flex items-center space-x-2">
           <button
+            type="button"
             onClick={() => handleLogicModeChange(false)}
+            disabled={disabled}
             className={`p-2 rounded-full transition-colors ${
-              !isAndMode ? 'bg-[#8ac6bb] text-white' : 'bg-gray-100 text-gray-600'
+              disabled
+                ? 'cursor-not-allowed opacity-50 bg-gray-100 text-gray-400'
+                : !isAndMode
+                  ? 'bg-[#8ac6bb] text-white'
+                  : 'bg-gray-100 text-gray-600'
             }`}
             title="OR Mode"
           >
             <img src="/OR_Large.png" alt="OR Mode" className={`${iconSize} object-contain p-1 bg-white rounded-full border border-gray-300`} />
           </button>
           <button
+            type="button"
             onClick={() => handleLogicModeChange(true)}
+            disabled={disabled}
             className={`p-2 rounded-full transition-colors ${
-              isAndMode ? 'bg-[#8ac6bb] text-white' : 'bg-gray-100 text-gray-600'
+              disabled
+                ? 'cursor-not-allowed opacity-50 bg-gray-100 text-gray-400'
+                : isAndMode
+                  ? 'bg-[#8ac6bb] text-white'
+                  : 'bg-gray-100 text-gray-600'
             }`}
             title="AND Mode"
           >
@@ -181,12 +205,17 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         </div>
       </div>
 
+      {disabled ? (
+        <p className="text-xs text-gray-500">No labels available for this experiment</p>
+      ) : null}
+
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           Include Labels
         </label>
         <Select
           isMulti
+          isDisabled={disabled}
           options={labelOptions}
           value={labelOptions.filter(option => selectedIncludeLabels.includes(option.value))}
           onChange={handleIncludeLabelsChange}
@@ -195,7 +224,9 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
           classNamePrefix="select"
           closeMenuOnSelect={false}
           hideSelectedOptions={false}
-          placeholder="Select labels to include..."
+          placeholder={
+            disabled ? 'No labels available for this experiment' : 'Select labels to include...'
+          }
           theme={(theme) => ({
             ...theme,
             colors: {
@@ -215,6 +246,7 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
         </label>
         <Select
           isMulti
+          isDisabled={disabled}
           options={labelOptions}
           value={labelOptions.filter(option => selectedExcludeLabels.includes(option.value))}
           onChange={handleExcludeLabelsChange}
@@ -223,7 +255,9 @@ const LabelFilter: React.FC<LabelFilterProps> = ({
           classNamePrefix="select"
           closeMenuOnSelect={false}
           hideSelectedOptions={false}
-          placeholder="Select labels to exclude..."
+          placeholder={
+            disabled ? 'No labels available for this experiment' : 'Select labels to exclude...'
+          }
           theme={(theme) => ({
             ...theme,
             colors: {
