@@ -16,7 +16,7 @@ def start_virtual_freezer_sensor_thread(
     and optionally sends temporary Pi-side email alerts.
 
     Alert behavior:
-    - Sends alert when thermocouple temperature is above alert_above_c.
+    - Sends alert when thermocouple temperature is at or above alert_above_c.
     - Sends maximum N emails per activation.
     - Waits email_interval_seconds between emails.
     - Resets only when temperature goes back to reset_below_c or lower.
@@ -39,7 +39,7 @@ def start_virtual_freezer_sensor_thread(
         alert_enabled = bool(alerts.get("enabled", False))
 
         alert_above_c = float(alerts.get("alert_above_c", -70))
-        reset_below_c = float(alerts.get("reset_below_c", alert_above_c))
+        reset_below_c = float(alerts.get("reset_below_c", alert_above_c - 5))
         max_emails = int(alerts.get("max_emails_per_activation", 3))
         email_interval_seconds = int(alerts.get("email_interval_seconds", 180))
         request_timeout_seconds = int(alerts.get("request_timeout_seconds", 20))
@@ -63,10 +63,17 @@ def start_virtual_freezer_sensor_thread(
         )
 
         if alert_enabled:
+            if reset_below_c >= alert_above_c:
+                reset_below_c = alert_above_c - 5.0
+                logger(
+                    "[FREEZER ALERT] reset_below_c must be colder (lower) than "
+                    f"alert_above_c; using reset_below_c={reset_below_c:.2f} °C."
+                )
+
             logger(
                 f"[FREEZER ALERT] Enabled. "
-                f"alert_above_c={alert_above_c}, "
-                f"reset_below_c={reset_below_c}, "
+                f"alert_at_or_above_c={alert_above_c}, "
+                f"reset_at_or_below_c={reset_below_c}, "
                 f"max_emails={max_emails}, "
                 f"email_interval_seconds={email_interval_seconds}"
             )
@@ -100,15 +107,15 @@ def start_virtual_freezer_sensor_thread(
                             emails_sent = 0
                             last_email_ts = 0
 
-                        # Alert if freezer is too warm.
-                        elif temp_c > alert_above_c:
+                        # Alert if freezer is too warm (-80 °C unit: warn at -70 °C or higher).
+                        elif temp_c >= alert_above_c:
                             if not alert_active:
                                 alert_active = True
                                 emails_sent = 0
                                 last_email_ts = 0
                                 logger(
                                     f"[FREEZER ALERT] Activated. "
-                                    f"temp={temp_c:.2f} °C > {alert_above_c:.2f} °C"
+                                    f"temp={temp_c:.2f} °C >= {alert_above_c:.2f} °C"
                                 )
 
                             enough_time_passed = (
@@ -174,7 +181,7 @@ def start_virtual_freezer_sensor_thread(
                                     </tr>
                                     <tr>
                                         <td style="padding: 10px; border: 1px solid #ddd;"><b>Alert threshold</b></td>
-                                        <td style="padding: 10px; border: 1px solid #ddd;">Above {alert_above_c:.2f} °C</td>
+                                        <td style="padding: 10px; border: 1px solid #ddd;">At or above {alert_above_c:.2f} °C</td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 10px; border: 1px solid #ddd;"><b>Reset threshold</b></td>

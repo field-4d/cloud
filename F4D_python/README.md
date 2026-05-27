@@ -290,8 +290,8 @@ Edit `config/freezer_sensor.json`:
 | `alerts.enabled` | Send email when temperature is too warm |
 | `alerts.email_endpoint` | HTTP POST endpoint for the email sender service |
 | `alerts.recipients` | List of recipient email addresses |
-| `alerts.alert_above_c` | Trigger alert when thermocouple temperature exceeds this value (°C) |
-| `alerts.reset_below_c` | Clear alert state when temperature falls to this value or lower |
+| `alerts.alert_above_c` | Trigger alert when thermocouple temperature is at or above this value (°C). For a -80 °C lab freezer, use `-70` (warn when 10 °C too warm). |
+| `alerts.reset_below_c` | Clear alert state when temperature falls to this value or lower. Must be **colder** (numerically lower) than `alert_above_c`; for example `-75` with `alert_above_c: -70`. |
 | `alerts.max_emails_per_activation` | Cap emails per warm event |
 | `alerts.email_interval_seconds` | Minimum spacing between alert emails |
 
