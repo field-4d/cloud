@@ -18,6 +18,9 @@ import {
   validateReplacePreconditions,
 } from "../utils/replaceSensor";
 import { postSensorDelete } from "../api/metadata";
+import { resolvePermissions, type PermissionsResponse } from "../api/permissions";
+import { DEFAULT_EMAIL } from "../constants/defaultEmail";
+import { getDeviceDisplayLabel } from "../utils/deviceDisplayLabel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 const REPLACE_SUCCESS_MESSAGE =
@@ -109,6 +112,7 @@ function DashboardPage() {
   const [searchParams] = useSearchParams();
   const selectedOwner = (searchParams.get("owner") ?? "").trim();
   const selectedMac = (searchParams.get("mac") ?? "").trim();
+  const [permissionOwners, setPermissionOwners] = useState<PermissionsResponse["owners"]>([]);
   const [nowTs, setNowTs] = useState(Date.now());
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingUploadPayload, setPendingUploadPayload] = useState<MetadataBatchPayload | null>(null);
@@ -148,6 +152,24 @@ function DashboardPage() {
     const skipPrompt = (localStorage.getItem(LS_SKIP_DEVICE_PROMPT) ?? "").toLowerCase() === "true";
     const hasPreferred = Boolean(preferredOwner && preferredMac);
     if (!hasPreferred && !skipPrompt) setShowPreferredPrompt(true);
+  }, [selectedOwner, selectedMac]);
+
+  useEffect(() => {
+    if (!selectedOwner || !selectedMac) {
+      setPermissionOwners([]);
+      return;
+    }
+    let cancelled = false;
+    resolvePermissions(DEFAULT_EMAIL)
+      .then((data) => {
+        if (!cancelled) setPermissionOwners(data.owners ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setPermissionOwners([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedOwner, selectedMac]);
 
   const sensorsRef = useRef<DashboardSensor[]>([]);
@@ -296,6 +318,11 @@ function DashboardPage() {
   }, [selectedExperiment, groupedSortedSensors, sortedSensors]);
 
   const hasValidContext = Boolean(selectedOwner && selectedMac);
+
+  const deviceDisplayLabel = useMemo(
+    () => getDeviceDisplayLabel(selectedOwner, selectedMac, permissionOwners),
+    [selectedOwner, selectedMac, permissionOwners]
+  );
 
   const activeSummary = useMemo(() => {
     const total = experimentScopedSensors.length;
@@ -1076,6 +1103,7 @@ function DashboardPage() {
         )}
         <DashboardTopBar
           selectedMac={selectedMac}
+          deviceDisplayLabel={deviceDisplayLabel}
           selectedExperiment={selectedExperiment}
           experimentOptions={experimentOptions}
           sortMode={sortMode}

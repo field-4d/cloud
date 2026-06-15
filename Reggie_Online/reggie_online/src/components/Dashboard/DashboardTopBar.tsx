@@ -9,6 +9,8 @@ type ExperimentHeaderStatus = "running" | "prepared" | "idle";
 
 type DashboardTopBarProps = {
   selectedMac: string;
+  /** Friendly label from permissions resolve; falls back to MAC when absent */
+  deviceDisplayLabel?: string;
   selectedExperiment: string;
   experimentOptions: string[];
   sortMode: SortMode;
@@ -36,6 +38,7 @@ type DashboardTopBarProps = {
 
 function DashboardTopBar({
   selectedMac,
+  deviceDisplayLabel,
   selectedExperiment,
   experimentOptions,
   sortMode,
@@ -276,7 +279,9 @@ function DashboardTopBar({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs xl:justify-center">
-          <span className="text-slate-600">Device: {selectedMac || "-"}</span>
+          <span className="text-slate-600" title={selectedMac ? `MAC: ${selectedMac}` : undefined}>
+            Device: {(deviceDisplayLabel || selectedMac) || "-"}
+          </span>
           {selectedExperiment === UNASSIGNED_EXPERIMENT ? (
             <>
               <span className="text-slate-400">|</span>

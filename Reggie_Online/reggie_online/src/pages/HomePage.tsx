@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header/Header";
 import { resolvePermissions, type PermissionsResponse } from "../api/permissions";
-
-const DEFAULT_EMAIL = "nir.averbuch@mail.huji.ac.il";
+import { DEFAULT_EMAIL } from "../constants/defaultEmail";
+import { getDeviceDisplayLabel } from "../utils/deviceDisplayLabel";
 const LS_LAST_OWNER = "f4d_last_owner";
 const LS_LAST_MAC = "f4d_last_mac";
 const LS_PREFERRED_OWNER = "f4d_preferred_owner";
@@ -104,15 +104,15 @@ function HomePage() {
             </label>
 
             <label className="flex flex-col text-sm text-slate-700">
-              MAC Address
+              Device
               <select
                 className="mt-1 rounded-md border border-slate-300 px-2 py-2"
                 value={selectedMac}
                 onChange={(event) => setSelectedMac(event.target.value)}
               >
                 {macOptions.map((mac) => (
-                  <option key={mac} value={mac}>
-                    {mac}
+                  <option key={mac} value={mac} title={mac}>
+                    {getDeviceDisplayLabel(selectedOwner, mac, permissions)}
                   </option>
                 ))}
               </select>
