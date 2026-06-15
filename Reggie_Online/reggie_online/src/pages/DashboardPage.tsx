@@ -155,10 +155,6 @@ function DashboardPage() {
   }, [selectedOwner, selectedMac]);
 
   useEffect(() => {
-    if (!selectedOwner || !selectedMac) {
-      setPermissionOwners([]);
-      return;
-    }
     let cancelled = false;
     resolvePermissions(DEFAULT_EMAIL)
       .then((data) => {
@@ -170,7 +166,7 @@ function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedOwner, selectedMac]);
+  }, []);
 
   const sensorsRef = useRef<DashboardSensor[]>([]);
   const cardRefsRef = useRef<Map<string, HTMLElement>>(new Map());
