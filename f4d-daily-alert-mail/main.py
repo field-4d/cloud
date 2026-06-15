@@ -183,7 +183,7 @@ def send_daily_reports(request):
     df['Is_Active'] = df['Is_Active'].replace({'YES': '✓', 'NO': 'X'})
     battery_map = {'OK': 'OK', 'REPLACE': 'REPLACE BATTERY', 'WARNING': 'POSSIBLE BATTERY ISSUE'}
     df['Battery_Status'] = df['Battery_Status'].map(battery_map).fillna('OK')
-    df['Last_Seen_dt'] = pd.to_datetime(df['Last_Seen'])
+    df['Last_Seen_dt'] = pd.to_datetime(df['Last_Seen'], utc=True)
     df['Live_Time_dt'] = pd.to_datetime(df['Live_Time'])
     df['Last_Seen'] = df['Last_Seen_dt'].dt.strftime('%Y-%m-%d %H:%M:%S')
     
@@ -358,7 +358,7 @@ def send_daily_reports(request):
                             table_df = problem_df[['Location', 'Device_Name', 'Last_Seen', 'Is Active [1]', 'Battery Status [2]', 'Packet Loss (%) [3]']]
                             html_body += generate_inline_html_table(table_df)
 
-    html_body += """
+        html_body += """
         <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #85c1ad; font-size: 13px; color: #444; line-height: 1.6;">
           <strong>Metrics Explanation:</strong><br>
           <strong>[1] Is Active:</strong> Evaluates to '✓' if the database has successfully received a data packet from the sensor within the last 15 minutes. Otherwise 'X'.<br>
@@ -371,21 +371,21 @@ def send_daily_reports(request):
     </html>
     """
 
-    payload = {
-        "to": target_email, 
-        "subject": "Field 4D: System Admin Network Status Report",
-        "body": html_body,
-        "is_html": True
-    }
+        payload = {
+            "to": target_email, 
+            "subject": "Field 4D: System Admin Network Status Report",
+            "body": html_body,
+            "is_html": True
+        }
 
-    try:
-        response = requests.post(API_URL_EMAIL, json=payload, timeout=30)
-        response.raise_for_status()
-        print(f"[INFO] Successfully transmitted report to {target_email}")
-        success_count += 1
-    except Exception as e:
-        print(f"[ERROR] Failed email dispatch for {target_email}: {e}")
-        fail_count += 1
+        try:
+            response = requests.post(API_URL_EMAIL, json=payload, timeout=30)
+            response.raise_for_status()
+            print(f"[INFO] Successfully transmitted report to {target_email}")
+            success_count += 1
+        except Exception as e:
+            print(f"[ERROR] Failed email dispatch for {target_email}: {e}")
+            fail_count += 1
         
     print(f"[INFO] Execution completed. Success: {success_count}, Failed: {fail_count}")
     if fail_count == 0:
