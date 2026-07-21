@@ -541,23 +541,26 @@ GET /GCP-FS/metadata/experiments?owner=Icore_Pi&mac_address=2ccf6730ab5f
     {
       "exp_name": "Image_V2",
       "exp_status": "in_progress",
+      "exp_started_at": "2026-05-06T15:26:46",
       "total_sensors": 5,
       "active_count": 3,
-      "inactive_count": 2
+      "replaced_count": 2
     },
     {
       "exp_name": "Test_Experiment",
       "exp_status": null,
+      "exp_started_at": null,
       "total_sensors": 2,
       "active_count": 1,
-      "inactive_count": 1
+      "replaced_count": 1
     },
     {
       "exp_name": "",
       "exp_status": null,
+      "exp_started_at": null,
       "total_sensors": 1,
       "active_count": 0,
-      "inactive_count": 1
+      "replaced_count": 1
     }
   ]
 }
@@ -566,7 +569,8 @@ GET /GCP-FS/metadata/experiments?owner=Icore_Pi&mac_address=2ccf6730ab5f
 **Notes:**
 - Returns all unique experiment names for the given owner/MAC combination
 - `exp_status` is included per experiment; if missing in Firestore, it is returned as `null`
-- Includes statistics: total sensors, active count (active_exp == True), inactive count (active_exp == False)
+- `exp_started_at` is the most common sensor `Exp_Started_At` (earliest on ties); `null` if none
+- Includes statistics: total sensors, active count (active_exp == True), replaced count (active_exp == False)
 - Empty string `""` represents "Unnamed" experiments
 - Useful for filtering experiments by active status in the frontend
 

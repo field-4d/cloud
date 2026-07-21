@@ -65,13 +65,14 @@ docker push gcr.io/iucc-f4d/apisync:latest
 Mount the secret and set `ENV_FILE_PATH` so the app loads credentials at runtime:
 
 ```bash
-gcloud run deploy apisync \
-  --image gcr.io/iucc-f4d/apisync:latest \
-  --region us-central1 \
-  --set-secrets=/secrets/auth/.env=apisync-env:latest \
-  --set-env-vars="ENV_FILE_PATH=/secrets/auth/.env" \
-  --allow-unauthenticated \
+gcloud run deploy apisync `
+  --image gcr.io/iucc-f4d/apisync:latest `
+  --region us-central1 `
+  --set-secrets=/secrets/auth/.env=apisync-env:latest `
+  --set-env-vars="ENV_FILE_PATH=/secrets/auth/.env" `
+  --allow-unauthenticated `
   --project iucc-f4d
+
 ```
 
 ### minimal-deploy (PowerShell)

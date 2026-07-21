@@ -613,6 +613,32 @@ async def get_last_package_metadata(
     return await get_all_sensors_metadata(owner, mac_address, exp_name)
 
 
+def _normalize_exp_started_at(value: Any) -> Optional[str]:
+    """Normalize Firestore exp_started_at to an ISO string, or None if missing."""
+    from datetime import datetime
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    text = str(value).strip()
+    return text if text else None
+
+
+def _resolve_exp_started_at(values: List[str]) -> Optional[str]:
+    """
+    Pick the most common exp_started_at; on a frequency tie, pick the earliest.
+    """
+    if not values:
+        return None
+    from collections import Counter
+
+    counts = Counter(values)
+    max_count = max(counts.values())
+    tied = [value for value, count in counts.items() if count == max_count]
+    return min(tied)
+
+
 async def get_experiment_names(
     owner: str,
     mac_address: str
@@ -631,9 +657,12 @@ async def get_experiment_names(
             - experiments (list): List of experiment objects with:
                 - exp_name (str): Experiment name
                 - exp_status (str | null): Experiment status, null if missing
+                - exp_started_at (str | null): Most common Exp_Started_At among
+                  sensors (earliest on ties); null if none present
                 - total_sensors (int): Total number of sensors in this experiment
                 - active_count (int): Number of sensors with active_exp == True
-                - inactive_count (int): Number of sensors with active_exp == False
+                - replaced_count (int): Number of sensors with active_exp == False
+                  (replaced sensors)
             - project, dataset, table: For backward compatibility
     
     Raises:
@@ -665,6 +694,7 @@ async def get_experiment_names(
         
         # Group by exp_name and collect statistics
         experiments_dict = {}
+        started_at_values: Dict[str, List[str]] = {}
         for doc in doc_list:
             doc_data = doc.to_dict()
             exp_name = doc_data.get("exp_name", "") or ""  # Handle None/empty
@@ -674,14 +704,20 @@ async def get_experiment_names(
                 experiments_dict[exp_name] = {
                     "exp_name": exp_name,
                     "exp_status": None,
+                    "exp_started_at": None,
                     "total_sensors": 0,
                     "active_count": 0,
-                    "inactive_count": 0
+                    "replaced_count": 0
                 }
+                started_at_values[exp_name] = []
             
             # Keep first non-null exp_status found for this experiment
             if experiments_dict[exp_name]["exp_status"] is None:
                 experiments_dict[exp_name]["exp_status"] = doc_data.get("exp_status", None)
+
+            normalized_started = _normalize_exp_started_at(doc_data.get("exp_started_at"))
+            if normalized_started is not None:
+                started_at_values[exp_name].append(normalized_started)
 
             # Update statistics
             experiments_dict[exp_name]["total_sensors"] += 1
@@ -689,7 +725,10 @@ async def get_experiment_names(
             if active_exp:
                 experiments_dict[exp_name]["active_count"] += 1
             else:
-                experiments_dict[exp_name]["inactive_count"] += 1
+                experiments_dict[exp_name]["replaced_count"] += 1
+
+        for exp_name, entry in experiments_dict.items():
+            entry["exp_started_at"] = _resolve_exp_started_at(started_at_values.get(exp_name, []))
         
         # Convert to list
         experiments_list = list(experiments_dict.values())

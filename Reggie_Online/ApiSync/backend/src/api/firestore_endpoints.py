@@ -783,9 +783,12 @@ async def get_experiment_names_endpoint(
             - experiments (list): List of experiment objects with:
                 - exp_name (str): Experiment name
                 - exp_status (str | null): Experiment status, null if missing
+                - exp_started_at (str | null): Most common Exp_Started_At among
+                  sensors (earliest on ties); null if none present
                 - total_sensors (int): Total number of sensors in this experiment
                 - active_count (int): Number of sensors with active_exp == True
-                - inactive_count (int): Number of sensors with active_exp == False
+                - replaced_count (int): Number of sensors with active_exp == False
+                  (replaced sensors)
     
     Raises:
         HTTPException 500: If Firestore error occurs

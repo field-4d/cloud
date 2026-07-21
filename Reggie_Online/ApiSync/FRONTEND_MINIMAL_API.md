@@ -182,9 +182,11 @@ None.
   "experiments": [
     {
       "exp_name": "Demo",
+      "exp_status": null,
+      "exp_started_at": "2026-05-06T15:26:46",
       "total_sensors": 4,
       "active_count": 1,
-      "inactive_count": 3
+      "replaced_count": 3
     }
   ]
 }
@@ -193,6 +195,9 @@ None.
 ### Notes
 
 - Empty `exp_name` strings are grouped as their own bucket in the backend (`get_experiment_names`).
+- `exp_status` is returned per experiment; if the field is missing in Firestore, the API returns `null`.
+- `exp_started_at` is the most common sensor `Exp_Started_At` for that experiment (earliest on ties); `null` if none.
+- `replaced_count` is the number of sensors with `active_exp == false` (replaced).
 
 ---
 

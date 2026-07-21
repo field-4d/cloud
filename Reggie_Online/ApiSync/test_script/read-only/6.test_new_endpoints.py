@@ -181,11 +181,14 @@ def test_get_experiments(owner, mac_address):
                         exp_name = exp.get("exp_name", "N/A")
                         total = exp.get("total_sensors", 0)
                         active = exp.get("active_count", 0)
-                        inactive = exp.get("inactive_count", 0)
+                        replace = exp.get("replaced_count", 0)
                         
                         print(f"\n  [{i}] {exp_name}", flush=True)
                         print(f"      Total Sensors: {total}", flush=True)
-                        print(f"      Active: {active} | Inactive: {inactive}", flush=True)
+                        print(f"      Active: {active} | Replaced: {replace}", flush=True)
+                        started = exp.get("exp_started_at")
+                        if started:
+                            print(f"      Started At: {started}", flush=True)
                 else:
                     print(f"⚠️  No experiments found for the given criteria", flush=True)
                 
