@@ -1,3 +1,16 @@
+"""Compact Firestore-first Field4D Cloud Function.
+
+Entrypoint: send_daily_reports
+
+- Checks every Owner + MAC in F4D_mac_to_device.
+- Builds the complete system state before applying email permissions.
+- Sends all system_admin users the full report.
+- Sends Ori and Sara only the scopes allowed by F4D_permissions.
+- Displays every sensor where Is_Active=True and Is_Valid=True.
+"""
+
+from __future__ import annotations
+
 import html
 import re
 from typing import Any
@@ -6,44 +19,89 @@ import pandas as pd
 import requests
 from google.cloud import bigquery
 
-LOW_BATTERY_MV = 2700.0
-PACKET_INTERVAL_MINUTES = 3
-FULL_DAY_EXPECTED_PACKETS = 480
-BQ_SCAN_HOURS = 25
-CALCULATION_HOURS = 24
-ACTIVE_MINUTES = 15
-DEFAULT_TIMEZONE = "Asia/Jerusalem"
+PROJECT_ID = "iucc-f4d"
+DEVICE_TABLE = "`iucc-f4d.Field4D.F4D_mac_to_device`"
+PERMISSIONS_TABLE = "`iucc-f4d.Field4D.F4D_permissions`"
+SENSOR_TABLE = "`iucc-f4d.Field4D.F4D_sensors_data`"
 
-FS_EXPERIMENTS_API = "https://apisync-1000435921680.us-central1.run.app/GCP-FS/metadata/experiments"
-FS_SENSORS_API = "https://apisync-1000435921680.us-central1.run.app/GCP-FS/last-package"
+FS_EXPERIMENTS_API = (
+    "https://apisync-1000435921680.us-central1.run.app/"
+    "GCP-FS/metadata/experiments"
+)
+FS_LAST_PACKAGE_API = (
+    "https://apisync-1000435921680.us-central1.run.app/"
+    "GCP-FS/last-package"
+)
 EMAIL_API_URL = "https://f4d-email-sender-1000435921680.europe-west1.run.app"
 
-DISPLAY_COLUMNS = [
-    "Location", "Device_Name", "Last_Seen", "Is Active [1]",
-    "Battery Status [2]", "Packet Loss (%) [3]",
+FIXED_RECIPIENTS = {
+    "ori1409@gmail.com",
+    "sara.post@mail.huji.ac.il",
+}
+
+TZ = "Asia/Jerusalem"
+LOW_BATTERY_MV = 2700.0
+PACKET_MINUTES = 3
+FULL_DAY_PACKETS = 480
+BQ_HOURS = 25
+CALC_HOURS = 24
+ACTIVE_MINUTES = 15
+HTTP_TIMEOUT = 30
+
+RESULT_COLUMNS = [
+    "Owner", "Mac_Address", "Device_Name", "Exp_Name",
+    "Firestore_Active_Count", "Location", "LLA", "Last_Seen",
+    "Is_Transmitting_Now", "Expected_Packets", "Actual_Packets",
+    "Packet_Loss_Percentage", "Battery_Measurement_Count",
+    "Low_Battery_Count", "Low_Battery_Percentage", "Battery_Status",
+    "Sensor_Window_Start", "Experiment_Status",
 ]
 
 
-def natural_sort_key(value):
-    return [int(x) if x.isdigit() else x.lower() for x in re.split(r"(\d+)", str(value))]
+def txt(value: Any) -> str:
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return str(value).strip()
 
 
-def text(value):
-    return "" if value is None else str(value).strip()
+def pick(record: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    return next(
+        (record[key] for key in keys if key in record and record[key] is not None),
+        default,
+    )
 
 
-def get(record, *keys, default=None):
-    for key in keys:
-        if key in record and record[key] is not None:
-            return record[key]
-    return default
+def truthy(value: Any) -> bool:
+    return value is True or txt(value).lower() == "true"
 
 
-def as_bool(value):
-    return value is True or text(value).lower() == "true"
+def as_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
-def extract_list(payload, key):
+def natural_key(value: Any) -> list[Any]:
+    return [
+        int(part) if part.isdigit() else part.lower()
+        for part in re.split(r"(\d+)", str(value))
+    ]
+
+
+def sql_list(values: set[str] | list[str]) -> str:
+    return ", ".join(
+        "'" + txt(value).replace("'", "''") + "'"
+        for value in sorted(values)
+    )
+
+
+def extract_list(payload: Any, key: str) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
     value = payload.get(key)
@@ -52,522 +110,748 @@ def extract_list(payload, key):
     return value if isinstance(value, list) else []
 
 
-def fs_lla(sensor):
-    return text(get(sensor, "LLA", "lla"))
+def exp_name(sensor: dict[str, Any]) -> str:
+    return txt(pick(sensor, "Exp_Name", "exp_name", "Experiment", "experiment"))
 
 
-def fs_location(sensor):
-    return text(get(sensor, "Location", "location"))
+def same_experiment(sensor: dict[str, Any], name: str) -> bool:
+    sensor_exp = exp_name(sensor)
+    return not sensor_exp or sensor_exp == name
 
 
-def fs_exp_name(sensor):
-    return text(get(sensor, "Exp_Name", "exp_name", "Experiment", "experiment"))
+def fs_battery(sensor: dict[str, Any]) -> Any:
+    package = pick(sensor, "Last_Package", "last_package", default={})
+    return pick(package, "battery", "Battery") if isinstance(package, dict) else None
 
 
-def fs_active(sensor):
-    return as_bool(get(sensor, "Is_Active", "is_active", default=False))
+def device_label(name: Any, mac: Any) -> str:
+    name, mac = txt(name), txt(mac).lower()
+    if not name:
+        return mac
+    return name if mac and mac in name.lower() else f"{name} ({mac})"
 
 
-def fs_active_exp(sensor):
-    return as_bool(get(sensor, "Active_Exp", "active_exp", default=False))
-
-
-def fs_timezone(sensor):
-    return text(get(sensor, "Time_Zone", "time_zone", "timezone")) or DEFAULT_TIMEZONE
-
-
-def fs_last_seen(sensor):
-    return get(sensor, "Last_Seen", "last_seen")
-
-
-def fs_battery(sensor):
-    package = get(sensor, "Last_Package", "last_package", default={})
-    if not isinstance(package, dict):
-        return None
-    return get(package, "battery", "Battery")
-
-
-def same_experiment(sensor, exp_name):
-    sensor_exp = fs_exp_name(sensor)
-    return not sensor_exp or sensor_exp == exp_name
-
-
-def parse_time(value, timezone=DEFAULT_TIMEZONE, naive_timezone=None):
+def parse_wall(value: Any) -> pd.Timestamp | None:
+    """Remove a timezone label without changing the displayed clock value."""
     if value is None or value == "":
         return None
-    timestamp = pd.to_datetime(value, errors="coerce")
-    if pd.isna(timestamp):
+    value = pd.to_datetime(value, errors="coerce")
+    if pd.isna(value):
         return None
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.tz_localize(naive_timezone or timezone)
-    return timestamp
+    value = pd.Timestamp(value)
+    return value.tz_localize(None) if value.tzinfo is not None else value
 
 
-def format_time(value, timezone=DEFAULT_TIMEZONE, naive_timezone=None):
-    timestamp = parse_time(value, timezone, naive_timezone)
-    if timestamp is None:
-        return "Unknown"
-    return timestamp.tz_convert(timezone).strftime("%Y-%m-%d %H:%M:%S")
+def parse_fs(value: Any) -> pd.Timestamp | None:
+    """Interpret Firestore time as UTC, then convert to Israel local time."""
+    if value is None or value == "":
+        return None
+    value = pd.to_datetime(value, errors="coerce")
+    if pd.isna(value):
+        return None
+    value = pd.Timestamp(value)
+    if value.tzinfo is None:
+        value = value.tz_localize("UTC")
+    return value.tz_convert(TZ).tz_localize(None)
 
 
-def format_battery(value):
+def wall_series(series: pd.Series) -> pd.Series:
+    parsed = pd.to_datetime(series, errors="coerce")
+    if isinstance(parsed.dtype, pd.DatetimeTZDtype):
+        parsed = parsed.dt.tz_localize(None)
+    return parsed
+
+
+def fmt_time(value: Any) -> str:
+    value = parse_wall(value)
+    return "Unknown" if value is None else value.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def fmt_battery(value: Any) -> str:
     try:
-        number = float(value)
+        value = float(value)
     except (TypeError, ValueError):
-        return "UNAVAILABLE"
-    return f"{int(number)} mV" if number.is_integer() else f"{number:.1f} mV"
+        return "Unavailable"
+    return f"{int(value)} mV" if value.is_integer() else f"{value:.1f} mV"
 
 
-def packet_times(value):
-    if value is None:
-        return []
-    if hasattr(value, "tolist"):
-        value = value.tolist()
-    if not isinstance(value, (list, tuple)):
-        value = [value]
-    parsed = [pd.to_datetime(x, utc=True, errors="coerce") for x in value]
-    return sorted({x for x in parsed if pd.notna(x)})
+def load_devices(client: bigquery.Client) -> pd.DataFrame:
+    query = f"""
+    SELECT TRIM(Owner) Owner, LOWER(TRIM(Mac_Address)) Mac_Address,
+           ARRAY_AGG(NULLIF(TRIM(Device_Name), '') IGNORE NULLS LIMIT 1)
+             [SAFE_OFFSET(0)] Device_Name
+    FROM {DEVICE_TABLE}
+    WHERE NULLIF(TRIM(Owner), '') IS NOT NULL
+      AND NULLIF(TRIM(Mac_Address), '') IS NOT NULL
+    GROUP BY Owner, Mac_Address
+    ORDER BY Owner, Mac_Address
+    """
+    df = client.query(query).to_dataframe()
+    if df.empty:
+        return pd.DataFrame(columns=["Owner", "Mac_Address", "Device_Name"])
+    for column in ["Owner", "Mac_Address", "Device_Name"]:
+        df[column] = df[column].map(txt)
+    df["Mac_Address"] = df["Mac_Address"].str.lower()
+    return df.drop_duplicates(["Owner", "Mac_Address"]).reset_index(drop=True)
 
 
-def experiment_start(sensors, exp_name):
-    starts = []
+def load_access(
+    client: bigquery.Client,
+) -> tuple[pd.DataFrame, set[str], list[str]]:
+    """Return active permission rows, system admins, and final recipients."""
+    fixed_sql = sql_list(FIXED_RECIPIENTS)
+    query = f"""
+    SELECT DISTINCT
+      LOWER(TRIM(Email)) Email,
+      TRIM(Owner) Owner,
+      LOWER(TRIM(Mac_Address)) Mac_Address,
+      TRIM(Experiment) Experiment,
+      LOWER(TRIM(Role)) Role
+    FROM {PERMISSIONS_TABLE}
+    WHERE Email IS NOT NULL
+      AND (
+        LOWER(TRIM(Role)) = 'system_admin'
+        OR LOWER(TRIM(Email)) IN ({fixed_sql})
+      )
+      AND (Valid_From IS NULL OR CAST(Valid_From AS TIMESTAMP) <= CURRENT_TIMESTAMP())
+      AND (Valid_Until IS NULL OR CAST(Valid_Until AS TIMESTAMP) >= CURRENT_TIMESTAMP())
+    """
+    df = client.query(query).to_dataframe()
+    columns = ["Email", "Owner", "Mac_Address", "Experiment", "Role"]
+    if df.empty:
+        return pd.DataFrame(columns=columns), set(), []
+
+    for column in columns:
+        df[column] = df[column].map(txt)
+    df["Email"] = df["Email"].str.lower()
+    df["Mac_Address"] = df["Mac_Address"].str.lower()
+    df["Role"] = df["Role"].str.lower()
+
+    system_admins = set(df.loc[df["Role"] == "system_admin", "Email"])
+    fixed_with_permissions = FIXED_RECIPIENTS & set(df["Email"])
+    recipients = sorted(system_admins | fixed_with_permissions)
+    return df.drop_duplicates().reset_index(drop=True), system_admins, recipients
+
+
+def api_get(url: str, params: dict[str, str], key: str) -> list[dict[str, Any]]:
+    response = requests.get(url, params=params, timeout=HTTP_TIMEOUT)
+    response.raise_for_status()
+    return extract_list(response.json(), key)
+
+
+def fetch_experiments(owner: str, mac: str) -> list[dict[str, Any]]:
+    return api_get(
+        FS_EXPERIMENTS_API,
+        {"owner": owner, "mac_address": mac},
+        "experiments",
+    )
+
+
+def fetch_sensors(owner: str, mac: str, experiment: str) -> list[dict[str, Any]]:
+    return api_get(
+        FS_LAST_PACKAGE_API,
+        {"owner": owner, "mac_address": mac, "exp_name": experiment},
+        "data",
+    )
+
+
+def discover_experiments(devices: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    print("[INFO] Checking every Owner + MAC in Firestore...")
+
+    for device in devices.to_dict("records"):
+        owner = txt(device["Owner"])
+        mac = txt(device["Mac_Address"]).lower()
+        name = txt(device["Device_Name"]) or mac
+        try:
+            experiments = fetch_experiments(owner, mac)
+        except Exception as exc:
+            print(f"[ERROR] Experiments failed for {owner}/{mac}: {exc}")
+            continue
+
+        active = 0
+        for experiment in experiments:
+            name_exp = txt(pick(experiment, "exp_name", "Exp_Name"))
+            count = as_int(pick(experiment, "active_count", "Active_Count"))
+            if not name_exp or count <= 0:
+                continue
+            active += 1
+            rows.append({
+                "Owner": owner,
+                "Mac_Address": mac,
+                "Device_Name": name,
+                "Exp_Name": name_exp,
+                "Active_Count": count,
+                "Replaced_Count": as_int(
+                    pick(experiment, "replaced_count", "Replaced_Count")
+                ),
+                "Exp_Started_At": pick(
+                    experiment, "exp_started_at", "Exp_Started_At"
+                ),
+            })
+        print(f"[INFO] {device_label(name, mac)}: {active} active experiment(s)")
+
+    columns = [
+        "Owner", "Mac_Address", "Device_Name", "Exp_Name",
+        "Active_Count", "Replaced_Count", "Exp_Started_At",
+    ]
+    if not rows:
+        return pd.DataFrame(columns=columns)
+    return pd.DataFrame(rows, columns=columns).drop_duplicates(
+        ["Owner", "Mac_Address", "Exp_Name"]
+    ).reset_index(drop=True)
+
+
+def replacement_map(
+    sensors: list[dict[str, Any]],
+    experiment: str,
+    replaced_count: int,
+) -> dict[str, pd.Timestamp]:
+    if replaced_count <= 0:
+        return {}
+    result: dict[str, pd.Timestamp] = {}
     for sensor in sensors:
-        if not same_experiment(sensor, exp_name):
+        if not same_experiment(sensor, experiment):
             continue
-        raw = get(sensor, "Exp_Started_At", "exp_started_at")
-        if not raw:
-            continue
-        timezone = fs_timezone(sensor)
-        parsed = parse_time(raw, timezone, timezone)
-        if parsed is not None:
-            starts.append(parsed.ceil("3min"))
-    if not starts:
-        print(f"[WARNING] No Exp_Started_At for {exp_name}")
-        return None
-    unique = sorted({x.isoformat() for x in starts})
-    if len(unique) > 1:
-        print(f"[WARNING] Multiple Exp_Started_At values for {exp_name}: {unique}")
-    return min(starts)
-
-
-def replacement_times(sensors, exp_name):
-    result = {}
-    for sensor in sensors:
-        if not same_experiment(sensor, exp_name):
-            continue
-        location = fs_location(sensor)
+        location = txt(pick(sensor, "Location", "location"))
         if not location.endswith("-replaced"):
             continue
-        raw = get(sensor, "Updated_At", "updated_at")
-        parsed = parse_time(raw, fs_timezone(sensor), "UTC") if raw else None
-        if parsed is None:
+        updated = parse_fs(pick(sensor, "Updated_At", "updated_at"))
+        if updated is None:
             continue
-        base_location = location[:-len("-replaced")]
-        parsed = parsed.ceil("3min")
-        if base_location not in result or parsed > result[base_location]:
-            result[base_location] = parsed
+        location = location[:-len("-replaced")]
+        updated = updated.ceil(f"{PACKET_MINUTES}min")
+        if location not in result or updated > result[location]:
+            result[location] = updated
     return result
 
 
-def expected_window(now_utc, exp_start, replacement):
-    rolling_start = now_utc - pd.Timedelta(hours=24)
-    starts = [rolling_start]
-    if exp_start is not None and exp_start.tz_convert("UTC") > rolling_start:
-        starts.append(exp_start.tz_convert("UTC"))
-    if replacement is not None and replacement.tz_convert("UTC") > rolling_start:
-        starts.append(replacement.tz_convert("UTC"))
-    start = max(starts)
-    if start == rolling_start:
-        return start, FULL_DAY_EXPECTED_PACKETS
-    elapsed = (now_utc - start).total_seconds()
-    if elapsed < 0:
-        return start, 0
-    expected = int(elapsed // (PACKET_INTERVAL_MINUTES * 60)) + 1
-    return start, min(expected, FULL_DAY_EXPECTED_PACKETS)
+def expected_window(
+    now: pd.Timestamp,
+    started_at: Any,
+    replaced_at: pd.Timestamp | None,
+) -> tuple[pd.Timestamp, int]:
+    rolling = now - pd.Timedelta(hours=CALC_HOURS)
+    started = parse_wall(started_at)
+    start = started.ceil(f"{PACKET_MINUTES}min") if started and started > rolling else rolling
+    if replaced_at is not None and replaced_at > rolling:
+        start = max(start, replaced_at.ceil(f"{PACKET_MINUTES}min"))
+    if start <= rolling:
+        return rolling, FULL_DAY_PACKETS
+    elapsed = max(0.0, (now - start).total_seconds())
+    expected = int(elapsed // (PACKET_MINUTES * 60)) + 1
+    return start, min(expected, FULL_DAY_PACKETS)
 
 
-def packet_loss(actual, expected):
+def prepare_sensors(experiments: pd.DataFrame, now: pd.Timestamp) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    print("[INFO] Reading Firestore sensors...")
+
+    for experiment in experiments.to_dict("records"):
+        owner, mac = experiment["Owner"], experiment["Mac_Address"]
+        name_exp = experiment["Exp_Name"]
+        try:
+            all_sensors = fetch_sensors(owner, mac, name_exp)
+        except Exception as exc:
+            print(f"[ERROR] Sensors failed for {owner}/{mac}/{name_exp}: {exc}")
+            continue
+
+        relevant = [s for s in all_sensors if same_experiment(s, name_exp)]
+        replacements = replacement_map(
+            relevant, name_exp, as_int(experiment["Replaced_Count"])
+        )
+        current = [
+            sensor for sensor in relevant
+            if truthy(pick(sensor, "Is_Active", "is_active", default=False))
+            and truthy(pick(sensor, "Is_Valid", "is_valid", default=False))
+        ]
+        print(
+            f"[INFO] {device_label(experiment['Device_Name'], mac)} / {name_exp}: "
+            f"{len(current)} displayed; endpoint active_count={experiment['Active_Count']}"
+        )
+
+        for sensor in current:
+            location = txt(pick(sensor, "Location", "location"))
+            start, expected = expected_window(
+                now, experiment["Exp_Started_At"], replacements.get(location)
+            )
+            rows.append({
+                **experiment,
+                "LLA": txt(pick(sensor, "LLA", "lla")),
+                "Location": location,
+                "FS_Last_Seen": parse_fs(pick(sensor, "Last_Seen", "last_seen")),
+                "FS_Last_Battery": fs_battery(sensor),
+                "Sensor_Window_Start": start,
+                "Expected_Packets": expected,
+            })
+
+    columns = [
+        "Owner", "Mac_Address", "Device_Name", "Exp_Name", "Active_Count",
+        "Replaced_Count", "Exp_Started_At", "LLA", "Location",
+        "FS_Last_Seen", "FS_Last_Battery", "Sensor_Window_Start",
+        "Expected_Packets",
+    ]
+    return pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
+
+
+def query_battery(client: bigquery.Client, now: pd.Timestamp) -> pd.DataFrame:
+    now_sql = now.strftime("%Y-%m-%d %H:%M:%S")
+    query = f"""
+    WITH Inventory AS (
+      SELECT TRIM(Owner) Owner, LOWER(TRIM(Mac_Address)) Mac_Address,
+             ARRAY_AGG(NULLIF(TRIM(Device_Name), '') IGNORE NULLS LIMIT 1)
+               [SAFE_OFFSET(0)] Device_Name
+      FROM {DEVICE_TABLE}
+      WHERE NULLIF(TRIM(Owner), '') IS NOT NULL
+        AND NULLIF(TRIM(Mac_Address), '') IS NOT NULL
+      GROUP BY Owner, Mac_Address
+    )
+    SELECT i.Owner, i.Mac_Address,
+           IFNULL(i.Device_Name, i.Mac_Address) Device_Name,
+           d.Exp_Name, d.LLA, d.Location, d.Timestamp,
+           SAFE_CAST(d.Value AS FLOAT64) Value,
+           IFNULL(d.Time_Zone, '{TZ}') Time_Zone
+    FROM {SENSOR_TABLE} d
+    JOIN Inventory i
+      ON d.Owner = i.Owner AND LOWER(d.Mac_Address) = i.Mac_Address
+    WHERE NULLIF(TRIM(d.Exp_Name), '') IS NOT NULL
+      AND d.Variable = 'battery'
+      AND d.Timestamp BETWEEN
+          TIMESTAMP_SUB(TIMESTAMP('{now_sql}+00'), INTERVAL {BQ_HOURS} HOUR)
+          AND TIMESTAMP('{now_sql}+00')
+    ORDER BY i.Owner, i.Mac_Address, d.Exp_Name, d.LLA, d.Timestamp
+    """
+    print("[INFO] Reading one 25-hour BigQuery battery dataset...")
+    df = client.query(query).to_dataframe()
+    columns = [
+        "Owner", "Mac_Address", "Device_Name", "Exp_Name", "LLA",
+        "Location", "Timestamp", "Value", "Time_Zone",
+    ]
+    if df.empty:
+        return pd.DataFrame(columns=columns)
+    for column in [
+        "Owner", "Mac_Address", "Device_Name", "Exp_Name",
+        "LLA", "Location", "Time_Zone",
+    ]:
+        df[column] = df[column].map(txt)
+    df["Mac_Address"] = df["Mac_Address"].str.lower()
+    df["Timestamp"] = wall_series(df["Timestamp"])
+    df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
+    return df.dropna(subset=["Timestamp", "Owner", "Mac_Address", "Exp_Name", "LLA"])
+
+
+def detect_stopped(
+    active_experiments: pd.DataFrame,
+    battery: pd.DataFrame,
+    now: pd.Timestamp,
+) -> pd.DataFrame:
+    columns = [
+        "Owner", "Mac_Address", "Device_Name", "Exp_Name",
+        "Last_BQ_Timestamp", "Experiment_Status",
+    ]
+    if battery.empty:
+        return pd.DataFrame(columns=columns)
+
+    active = {
+        (row.Owner, row.Mac_Address, row.Exp_Name)
+        for row in active_experiments.itertuples(index=False)
+    }
+    last = battery.groupby(
+        ["Owner", "Mac_Address", "Device_Name", "Exp_Name"], as_index=False
+    )["Timestamp"].max().rename(columns={"Timestamp": "Last_BQ_Timestamp"})
+    cutoff = now - pd.Timedelta(hours=CALC_HOURS)
+    rows = []
+    for row in last.to_dict("records"):
+        key = (row["Owner"], row["Mac_Address"], row["Exp_Name"])
+        timestamp = parse_wall(row["Last_BQ_Timestamp"])
+        if key not in active and timestamp is not None and timestamp >= cutoff:
+            rows.append({**row, "Last_BQ_Timestamp": timestamp, "Experiment_Status": "STOPPED"})
+    return pd.DataFrame(rows, columns=columns)
+
+
+def battery_status(rows: pd.DataFrame) -> dict[str, Any]:
+    values = pd.to_numeric(
+        rows.sort_values("Timestamp", ascending=False).head(20)["Value"],
+        errors="coerce",
+    ).dropna()
+    count = len(values)
+    low = int((values < LOW_BATTERY_MV).sum())
+    ratio = low / count if count else 0.0
+
+    if count <= 3:
+        status = "POSSIBLE BATTERY ISSUE" if low >= 2 else "INSUFFICIENT BATTERY DATA"
+    elif count <= 9:
+        status = (
+            "REPLACE BATTERY" if ratio >= 0.60
+            else "POSSIBLE BATTERY ISSUE" if low >= 2
+            else "LIMITED BATTERY DATA"
+        )
+    elif count <= 19:
+        status = (
+            "REPLACE BATTERY" if ratio >= 0.50
+            else "POSSIBLE BATTERY ISSUE" if ratio >= 0.10
+            else "LIMITED BATTERY DATA"
+        )
+    else:
+        status = (
+            "REPLACE BATTERY" if ratio > 0.20
+            else "POSSIBLE BATTERY ISSUE" if low >= 3
+            else "OK"
+        )
+
+    return {
+        "Battery_Status": status,
+        "Battery_Measurement_Count": int(count),
+        "Low_Battery_Count": low,
+        "Low_Battery_Percentage": round(ratio * 100, 3),
+    }
+
+
+def packet_loss(actual: int, expected: int) -> float:
     if expected <= 0:
         return 0.0
-    value = ((expected - actual) / expected) * 100
-    return round(max(0.0, min(100.0, value)), 2)
+    return round(max(0.0, min(100.0, (expected - actual) / expected * 100)), 3)
 
 
-def requires_attention(row):
-    if row.get("Is Active [1]") == "X":
+def calculate_results(sensors: pd.DataFrame, battery: pd.DataFrame, now: pd.Timestamp) -> pd.DataFrame:
+    if sensors.empty:
+        return pd.DataFrame(columns=RESULT_COLUMNS)
+
+    day_start = now - pd.Timedelta(hours=CALC_HOURS)
+    active_cutoff = now - pd.Timedelta(minutes=ACTIVE_MINUTES)
+    rows = []
+
+    grouped = {
+        key: group
+        for key, group in battery.groupby(["Owner", "Mac_Address", "Exp_Name", "LLA"])
+    } if not battery.empty else {}
+
+    for sensor in sensors.to_dict("records"):
+        key = (
+            sensor["Owner"], sensor["Mac_Address"],
+            sensor["Exp_Name"], sensor["LLA"],
+        )
+        matching = grouped.get(key, pd.DataFrame(columns=battery.columns))
+        expected = as_int(sensor["Expected_Packets"])
+        start = pd.Timestamp(sensor["Sensor_Window_Start"])
+        packet_rows = matching[
+            (matching["Timestamp"] >= start) & (matching["Timestamp"] <= now)
+        ]
+        day_rows = matching[
+            (matching["Timestamp"] >= day_start) & (matching["Timestamp"] <= now)
+        ]
+
+        if day_rows.empty:
+            battery_result = {
+                "Battery_Status": (
+                    "No data in last 24H, Last_Battery: "
+                    f"{fmt_battery(sensor['FS_Last_Battery'])}"
+                ),
+                "Battery_Measurement_Count": 0,
+                "Low_Battery_Count": None,
+                "Low_Battery_Percentage": None,
+            }
+        else:
+            battery_result = battery_status(day_rows)
+
+        last_seen = parse_wall(sensor["FS_Last_Seen"])
+        rows.append({
+            "Owner": sensor["Owner"],
+            "Mac_Address": sensor["Mac_Address"],
+            "Device_Name": sensor["Device_Name"] or sensor["Mac_Address"],
+            "Exp_Name": sensor["Exp_Name"],
+            "Firestore_Active_Count": as_int(sensor["Active_Count"]),
+            "Location": sensor["Location"] or "Unknown",
+            "LLA": sensor["LLA"] or "Unknown",
+            "Last_Seen": last_seen,
+            "Is_Transmitting_Now": last_seen is not None and last_seen >= active_cutoff,
+            "Expected_Packets": expected,
+            "Actual_Packets": len(packet_rows),
+            "Packet_Loss_Percentage": packet_loss(len(packet_rows), expected),
+            **battery_result,
+            "Sensor_Window_Start": start,
+            "Experiment_Status": "ACTIVE",
+        })
+    return pd.DataFrame(rows, columns=RESULT_COLUMNS)
+
+
+def total_lookup(experiments: pd.DataFrame) -> dict[tuple[str, str, str], int]:
+    return {
+        (row.Owner, row.Mac_Address, row.Exp_Name): as_int(row.Active_Count)
+        for row in experiments.itertuples(index=False)
+    }
+
+
+def permitted(
+    active: pd.DataFrame,
+    stopped: pd.DataFrame,
+    permissions: pd.DataFrame,
+    recipient: str,
+    system_admins: set[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if recipient in system_admins:
+        return active.copy(), stopped.copy()
+
+    scope = permissions[permissions["Email"] == recipient]
+    wildcard = {
+        (row.Owner, row.Mac_Address)
+        for row in scope.itertuples(index=False)
+        if row.Experiment == "*"
+    }
+    exact = {
+        (row.Owner, row.Mac_Address, row.Experiment)
+        for row in scope.itertuples(index=False)
+        if row.Experiment != "*"
+    }
+
+    def filter_df(df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df.copy()
+        mask = [
+            (row.Owner, row.Mac_Address) in wildcard
+            or (row.Owner, row.Mac_Address, row.Exp_Name) in exact
+            for row in df.itertuples(index=False)
+        ]
+        return df.loc[mask].copy()
+
+    return filter_df(active), filter_df(stopped)
+
+
+def attention(row: pd.Series) -> bool:
+    if not bool(row.get("Is_Transmitting_Now", False)):
         return True
-    if row.get("Battery Status [2]") in {"REPLACE BATTERY", "POSSIBLE BATTERY ISSUE"}:
+    if row.get("Battery_Status") in {"REPLACE BATTERY", "POSSIBLE BATTERY ISSUE"}:
         return True
     try:
-        return float(row.get("Packet Loss (%) [3]", 0)) > 5
+        return float(row.get("Packet_Loss_Percentage", 0)) > 5
     except (TypeError, ValueError):
         return False
 
 
-def activity_style(last_seen, now_utc):
-    if last_seen is None:
-        return "background:#f8d7da;color:#721c24;font-weight:bold;"
-    age = now_utc - last_seen.tz_convert("UTC")
-    if age > pd.Timedelta(hours=24):
-        return "background:#f8d7da;color:#721c24;font-weight:bold;"
-    if age > pd.Timedelta(minutes=15):
-        return "background:#ffe6e6;color:#cc0000;font-weight:bold;"
-    return ""
-
-
-def html_table(dataframe, now_utc):
-    if dataframe.empty:
-        return ""
-    df = dataframe.copy()
-    df["_sort"] = df["Location"].apply(natural_sort_key)
-    df = df.sort_values("_sort").drop(columns="_sort")
-    out = '<div style="overflow-x:auto;"><table style="border-collapse:collapse;width:100%;margin-bottom:30px;font-size:13px;"><tr>'
-    for column in DISPLAY_COLUMNS:
-        out += f'<th style="border:1px solid #ddd;text-align:center;padding:10px;background:#85c1ad;color:#fff;font-weight:bold;">{html.escape(column)}</th>'
-    out += "</tr>"
-    for _, row in df.iterrows():
-        out += "<tr>"
-        last_seen = row.get("Last_Seen_dt")
-        if pd.isna(last_seen):
-            last_seen = None
-        for column in DISPLAY_COLUMNS:
-            value = row.get(column, "-")
-            if pd.isna(value):
-                value = "-"
-            style = "border:1px solid #ddd;text-align:center;padding:10px;"
-            if column in {"Last_Seen", "Is Active [1]"}:
-                style += activity_style(last_seen, now_utc)
-            elif column == "Battery Status [2]":
-                if value == "OK":
-                    style += "background:#e8f5e9;color:#2e7d32;font-weight:bold;"
-                elif value == "REPLACE BATTERY":
-                    style += "background:#f8d7da;color:#721c24;font-weight:bold;"
-                else:
-                    style += "background:#fff3cd;color:#8a6500;font-weight:bold;"
-            elif column == "Packet Loss (%) [3]":
-                try:
-                    loss = float(value)
-                    if loss > 90:
-                        style += "background:#f8d7da;color:#721c24;font-weight:bold;"
-                    elif loss > 5:
-                        style += "background:#fff3cd;color:#8a6500;font-weight:bold;"
-                except (TypeError, ValueError):
-                    pass
-            out += f'<td style="{style}">{html.escape(str(value))}</td>'
-        out += "</tr>"
-    return out + "</table></div>"
-
-
-def run_bigquery(client):
-    query = f"""
-    WITH Permissions_Raw AS (
-      SELECT DISTINCT Email, Mac_Address, Experiment AS Allowed_Exp
-      FROM `iucc-f4d.Field4D.F4D_permissions`
-      WHERE Role = 'system_admin'
-         OR Email IN ('ori1409@gmail.com', 'sara.post@mail.huji.ac.il')
-    ),
-    Permissions AS (
-      SELECT Email, Mac_Address,
-             LOGICAL_OR(Allowed_Exp = '*') AS Allow_All,
-             ARRAY_AGG(DISTINCT Allowed_Exp IGNORE NULLS) AS Allowed_Exps
-      FROM Permissions_Raw
-      GROUP BY Email, Mac_Address
-    ),
-    Base_Data AS (
-      SELECT p.Email, d.Owner, d.Mac_Address, d.Exp_Name, d.LLA,
-             d.Location, SAFE_CAST(d.Value AS FLOAT64) AS Value,
-             d.Timestamp, IFNULL(d.Time_Zone, '{DEFAULT_TIMEZONE}') AS Tz
-      FROM `iucc-f4d.Field4D.F4D_sensors_data` d
-      JOIN Permissions p
-        ON d.Mac_Address = p.Mac_Address
-       AND (p.Allow_All OR d.Exp_Name IN UNNEST(p.Allowed_Exps))
-      WHERE d.Exp_Name IS NOT NULL
-        AND d.Variable = 'battery'
-        AND d.Timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {BQ_SCAN_HOURS} HOUR)
-    ),
-    Recent_24h AS (
-      SELECT * FROM Base_Data
-      WHERE Timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {CALCULATION_HOURS} HOUR)
-    ),
-    Ranked_Battery AS (
-      SELECT Email, Owner, Mac_Address, Exp_Name, LLA, Value, Timestamp,
-             ROW_NUMBER() OVER (
-               PARTITION BY Email, Owner, Mac_Address, Exp_Name, LLA
-               ORDER BY Timestamp DESC
-             ) AS rn
-      FROM Recent_24h
-    ),
-    Battery_Summary AS (
-      SELECT Email, Owner, Mac_Address, Exp_Name, LLA,
-             COUNTIF(rn <= 20 AND Value IS NOT NULL) AS Battery_Count,
-             COUNTIF(rn <= 20 AND Value < {LOW_BATTERY_MV}) AS Low_Count
-      FROM Ranked_Battery
-      GROUP BY Email, Owner, Mac_Address, Exp_Name, LLA
-    ),
-    Battery_Logic AS (
-      SELECT *,
-        CASE
-          WHEN Battery_Count <= 3 THEN
-            IF(Low_Count >= 2, 'POSSIBLE BATTERY ISSUE', 'INSUFFICIENT BATTERY DATA')
-          WHEN Battery_Count <= 9 THEN
-            CASE
-              WHEN SAFE_DIVIDE(Low_Count, Battery_Count) >= 0.60 THEN 'REPLACE BATTERY'
-              WHEN Low_Count >= 2 THEN 'POSSIBLE BATTERY ISSUE'
-              ELSE 'LIMITED BATTERY DATA'
-            END
-          WHEN Battery_Count <= 19 THEN
-            CASE
-              WHEN SAFE_DIVIDE(Low_Count, Battery_Count) >= 0.50 THEN 'REPLACE BATTERY'
-              WHEN SAFE_DIVIDE(Low_Count, Battery_Count) >= 0.10 THEN 'POSSIBLE BATTERY ISSUE'
-              ELSE 'LIMITED BATTERY DATA'
-            END
-          ELSE
-            CASE
-              WHEN SAFE_DIVIDE(Low_Count, Battery_Count) > 0.20 THEN 'REPLACE BATTERY'
-              WHEN Low_Count >= 3 THEN 'POSSIBLE BATTERY ISSUE'
-              ELSE 'OK'
-            END
-        END AS Battery_Status
-      FROM Battery_Summary
-    ),
-    Distinct_Packets AS (
-      SELECT DISTINCT Email, Owner, Mac_Address, Exp_Name, LLA, Timestamp
-      FROM Recent_24h
-    ),
-    Packet_Summary AS (
-      SELECT Email, Owner, Mac_Address, Exp_Name, LLA,
-             COUNT(*) AS Actual_24h,
-             ARRAY_AGG(Timestamp ORDER BY Timestamp) AS Packet_Timestamps_24h
-      FROM Distinct_Packets
-      GROUP BY Email, Owner, Mac_Address, Exp_Name, LLA
-    ),
-    Sensor_Metrics AS (
-      SELECT Email, Owner, Mac_Address, Exp_Name, LLA,
-             ARRAY_AGG(Location IGNORE NULLS ORDER BY Timestamp DESC LIMIT 1)[SAFE_OFFSET(0)] AS Location,
-             ARRAY_AGG(Tz ORDER BY Timestamp DESC LIMIT 1)[SAFE_OFFSET(0)] AS Tz,
-             MAX(Timestamp) AS Last_Seen
-      FROM Base_Data
-      GROUP BY Email, Owner, Mac_Address, Exp_Name, LLA
-    ),
-    Device_Mapping AS (
-      SELECT Mac_Address, ANY_VALUE(Device_Name) AS Device_Name
-      FROM `iucc-f4d.Field4D.F4D_mac_to_device`
-      WHERE Device_Name IS NOT NULL
-      GROUP BY Mac_Address
-    )
-    SELECT s.Email, s.Owner, IFNULL(d.Device_Name, s.Mac_Address) AS Device_Name,
-           s.Mac_Address, s.Exp_Name, s.Location, s.LLA, s.Tz, s.Last_Seen,
-           IFNULL(p.Actual_24h, 0) AS Actual_24h,
-           COALESCE(p.Packet_Timestamps_24h, CAST([] AS ARRAY<TIMESTAMP>)) AS Packet_Timestamps_24h,
-           IFNULL(b.Battery_Count, 0) AS Battery_Count,
-           IFNULL(b.Low_Count, 0) AS Low_Count,
-           IFNULL(b.Battery_Status, 'INSUFFICIENT BATTERY DATA') AS Battery_Status
-    FROM Sensor_Metrics s
-    LEFT JOIN Packet_Summary p USING (Email, Owner, Mac_Address, Exp_Name, LLA)
-    LEFT JOIN Battery_Logic b USING (Email, Owner, Mac_Address, Exp_Name, LLA)
-    LEFT JOIN Device_Mapping d ON s.Mac_Address = d.Mac_Address
-    ORDER BY s.Email, s.Owner, s.Mac_Address, s.Exp_Name, s.Location
-    """
-    df = client.query(query).to_dataframe()
-    if not df.empty:
-        df["Last_Seen"] = pd.to_datetime(df["Last_Seen"], utc=True, errors="coerce")
-    return df
-
-
-def fetch_firestore(owner, mac, exp_name):
-    params = {"owner": owner, "mac_address": mac, "exp_name": exp_name}
+def number(value: Any, decimals: int = 3) -> str:
+    if value is None or pd.isna(value):
+        return "-"
     try:
-        exp_response = requests.get(FS_EXPERIMENTS_API, params=params, timeout=20)
-        exp_response.raise_for_status()
-        sensor_response = requests.get(FS_SENSORS_API, params=params, timeout=20)
-        sensor_response.raise_for_status()
-        return {
-            "experiments": extract_list(exp_response.json(), "experiments"),
-            "sensors": extract_list(sensor_response.json(), "data"),
-            "fetch_ok": True,
-        }
-    except (requests.RequestException, ValueError) as exc:
-        print(f"[ERROR] Firestore request failed for {owner}/{mac}/{exp_name}: {exc}")
-        return {"experiments": [], "sensors": [], "fetch_ok": False}
+        return f"{float(value):.{decimals}f}"
+    except (TypeError, ValueError):
+        return str(value)
 
 
-def build_sensor_rows(exp_bq, sensors, exp_name, device_name, now_utc, fetch_ok):
-    relevant = [s for s in sensors if same_experiment(s, exp_name)]
-    active = [s for s in relevant if fs_active(s) and not fs_location(s).endswith("-replaced")]
+def sensor_table(df: pd.DataFrame) -> str:
+    if df.empty:
+        return '<p style="padding:10px;background:#f2f4f4;">No active and valid sensors.</p>'
 
-    if not active and not fetch_ok:
-        for _, row in exp_bq.iterrows():
-            active.append({
-                "LLA": row.get("LLA"), "Location": row.get("Location"),
-                "Is_Active": True, "Active_Exp": True,
-                "Time_Zone": row.get("Tz", DEFAULT_TIMEZONE),
-            })
+    df = df.copy()
+    df["_sort"] = df["Location"].map(natural_key)
+    df = df.sort_values("_sort").drop(columns="_sort")
+    columns = [
+        ("Location", "Location"), ("LLA", "LLA"),
+        ("Last Seen", "Last_Seen"), ("Is Active [1]", "Is_Transmitting_Now"),
+        ("Battery Status [2]", "Battery_Status"),
+        ("Battery N", "Battery_Measurement_Count"),
+        ("Low N", "Low_Battery_Count"), ("Low (%)", "Low_Battery_Percentage"),
+        ("Expected", "Expected_Packets"), ("Actual", "Actual_Packets"),
+        ("Packet Loss (%) [3]", "Packet_Loss_Percentage"),
+    ]
 
-    exp_start = experiment_start(relevant, exp_name)
-    replacements = replacement_times(relevant, exp_name)
-    bq_by_lla = {text(row["LLA"]): row for _, row in exp_bq.iterrows()}
-    rows = []
+    out = ['<div style="overflow-x:auto"><table><tr>']
+    for title, _ in columns:
+        out.append(f"<th>{html.escape(title)}</th>")
+    out.append("</tr>")
 
-    for sensor in active:
-        lla = fs_lla(sensor)
-        location = fs_location(sensor) or "Unknown"
-        timezone = fs_timezone(sensor)
-        bq_row = bq_by_lla.get(lla)
-        start, expected = expected_window(now_utc, exp_start, replacements.get(location))
-
-        if bq_row is None:
-            last_seen = parse_time(fs_last_seen(sensor), timezone, timezone)
-            battery_status = f"FS LAST: {format_battery(fs_battery(sensor))} - NO BQ DATA IN 24H"
-            loss = 100.0
-        else:
-            times = packet_times(bq_row.get("Packet_Timestamps_24h"))
-            last_seen = bq_row.get("Last_Seen")
-            if pd.isna(last_seen):
-                last_seen = None
-            if times:
-                actual = sum(1 for timestamp in times if start <= timestamp <= now_utc)
-                battery_status = text(bq_row.get("Battery_Status")) or "INSUFFICIENT BATTERY DATA"
-                loss = packet_loss(actual, expected)
+    for _, row in df.iterrows():
+        out.append("<tr>")
+        for _, field in columns:
+            raw = row.get(field)
+            if field == "Last_Seen":
+                value = fmt_time(raw)
+            elif field == "Is_Transmitting_Now":
+                value = "✓" if bool(raw) else "X"
+            elif field in {"Low_Battery_Percentage", "Packet_Loss_Percentage"}:
+                value = number(raw)
             else:
-                battery_status = f"FS LAST: {format_battery(fs_battery(sensor))} - NO BQ DATA IN 24H"
-                loss = 100.0
+                value = "-" if raw is None or pd.isna(raw) else str(raw)
 
-        if last_seen is None:
-            last_seen_display = "Unknown"
-            active_now = False
-        else:
-            last_seen_display = last_seen.tz_convert(timezone).strftime("%Y-%m-%d %H:%M:%S")
-            active_now = now_utc - last_seen.tz_convert("UTC") <= pd.Timedelta(minutes=ACTIVE_MINUTES)
-
-        rows.append({
-            "Location": location,
-            "Device_Name": device_name,
-            "Last_Seen": last_seen_display,
-            "Last_Seen_dt": last_seen,
-            "Is Active [1]": "✓" if active_now else "X",
-            "Battery Status [2]": battery_status,
-            "Packet Loss (%) [3]": loss,
-        })
-
-    return pd.DataFrame(rows)
+            css = ""
+            if field in {"Last_Seen", "Is_Transmitting_Now"} and not bool(row["Is_Transmitting_Now"]):
+                css = "bad"
+            elif field == "Battery_Status":
+                css = (
+                    "ok" if raw == "OK"
+                    else "bad" if raw == "REPLACE BATTERY"
+                    else "warn" if raw == "POSSIBLE BATTERY ISSUE"
+                    else "neutral"
+                )
+            elif field == "Packet_Loss_Percentage":
+                loss = float(raw)
+                css = "bad" if loss > 90 else "warn" if loss > 5 else ""
+            out.append(f'<td class="{css}">{html.escape(value)}</td>')
+        out.append("</tr>")
+    out.append("</table></div>")
+    return "".join(out)
 
 
-def build_email(recipient, recipient_df, firestore_data, now_utc):
-    body = f"""
-    <html><head><style>
-      body {{ font-family:Arial,sans-serif;color:#333;direction:ltr; }}
-      .owner-header {{ background:#2c3e50;color:white;padding:12px;margin-top:40px;border-radius:4px; }}
-      .mac-header {{ background:#ecf0f1;border-left:5px solid #2980b9;padding:8px 12px;margin-top:20px;color:#2c3e50; }}
-      .exp-box {{ background:#f9f9f9;border-left:6px solid #a8ab58;padding:10px 15px;border-radius:4px;margin:15px 0 10px; }}
-      .stopped-exp-box {{ background:#f2f4f4;border-left:6px solid #7f8c8d;padding:10px 15px;border-radius:4px;margin:15px 0 10px; }}
-      h2 {{ margin:0;font-size:20px; }} h3 {{ margin:0;font-size:16px; }}
-      h4 {{ margin:0;color:#333;display:flex;justify-content:space-between;align-items:center;font-size:15px; }}
-      .badge {{ font-size:13px;font-weight:bold;padding:5px 10px;border-radius:12px; }}
-      .badge-issue {{ background:#f1f3f4;color:#5f6368; }}
-      .badge-good {{ background:#e8f5e9;color:#2e7d32; }}
-      .badge-neutral {{ background:#bdc3c7;color:#2c3e50; }}
-      .completion-notice {{ background:#e8f5e9;color:#2e7d32;padding:12px;border-radius:4px;border:1px solid #c8e6c9;margin-bottom:30px;font-weight:bold;text-align:center; }}
-    </style></head><body>
-      <h1 style="color:#85c1ad;">Field 4D - System Administration Sensor Status Report</h1>
-      <p>Ground-Truth Sync with Firestore. Target Administrator: <b>{html.escape(recipient)}</b>.</p><hr>
-    """
+CSS = """
+<style>
+body{font-family:Arial,sans-serif;color:#333;direction:ltr}
+.owner{background:#2c3e50;color:#fff;padding:12px;margin-top:34px;border-radius:4px}
+.device{background:#ecf0f1;border-left:5px solid #2980b9;padding:9px 12px;margin-top:18px}
+.exp,.stopped{background:#f9f9f9;border-left:6px solid #a8ab58;padding:10px 15px;margin:15px 0 10px}
+.stopped{background:#f2f4f4;border-color:#7f8c8d}
+.badge{display:inline-block;font-size:13px;font-weight:bold;padding:5px 10px;border-radius:12px;margin-left:10px}
+.issue,.neutral{background:#f1f3f4;color:#5f6368}.good,.ok{background:#e8f5e9;color:#2e7d32}
+table{border-collapse:collapse;width:100%;margin-bottom:28px;font-size:12px}
+th,td{border:1px solid #ddd;text-align:center;padding:8px}th{background:#85c1ad;color:#fff}
+td.bad{background:#f8d7da;color:#721c24;font-weight:bold}
+td.warn{background:#fff3cd;color:#8a6500;font-weight:bold}
+td.neutral{background:#f1f3f4;color:#555;font-weight:bold}
+</style>
+"""
 
-    for owner in sorted(recipient_df["Owner"].dropna().astype(str).unique(), key=natural_sort_key):
-        body += f'<div class="owner-header"><h2>Owner: {html.escape(owner)}</h2></div>'
-        owner_df = recipient_df[recipient_df["Owner"].astype(str) == owner]
 
-        for mac in sorted(owner_df["Mac_Address"].dropna().astype(str).unique(), key=natural_sort_key):
-            mac_df = owner_df[owner_df["Mac_Address"].astype(str) == mac]
-            device_name = text(mac_df["Device_Name"].iloc[0]) or mac
-            device_display = device_name if mac in device_name else f"{device_name} (MAC: {mac})"
-            body += f'<div class="mac-header"><h3>Device: {html.escape(device_display)}</h3></div>'
+def build_email(
+    recipient: str,
+    active: pd.DataFrame,
+    stopped: pd.DataFrame,
+    now: pd.Timestamp,
+    totals: dict[tuple[str, str, str], int],
+) -> str:
+    parts = [
+        "<html><head>", CSS, "</head><body>",
+        '<h1 style="color:#85c1ad">Field 4D - Sensor Status Report</h1>',
+        f"<p>Recipient: <b>{html.escape(recipient)}</b><br>",
+        f"Report time: <b>{html.escape(fmt_time(now))}</b><br>",
+        "BigQuery battery scan: 25 hours.<br>",
+        "Packet Loss and battery calculations: defined 24-hour windows.</p><hr>",
+    ]
 
-            for exp_name in sorted(mac_df["Exp_Name"].dropna().astype(str).unique(), key=natural_sort_key):
-                scope = firestore_data.get((owner, mac, exp_name), {"experiments": [], "sensors": [], "fetch_ok": False})
-                experiments, sensors, fetch_ok = scope["experiments"], scope["sensors"], scope["fetch_ok"]
-                exp_bq = mac_df[mac_df["Exp_Name"].astype(str) == exp_name].copy()
-                relevant = [s for s in sensors if same_experiment(s, exp_name)]
-                returned_names = {text(get(x, "exp_name", "Exp_Name")) for x in experiments}
-                active_exp = exp_name in returned_names or any(fs_active_exp(s) and fs_active(s) for s in relevant)
-                last_bq = exp_bq["Last_Seen"].max()
-                recently_stopped = fetch_ok and not active_exp and pd.notna(last_bq) and last_bq >= now_utc - pd.Timedelta(hours=24)
+    if active.empty and stopped.empty:
+        parts.append(
+            '<div class="stopped">No active or recently stopped experiments '
+            "match this email's current permissions.</div>"
+        )
 
-                if not active_exp and fetch_ok:
-                    if recently_stopped:
-                        body += f"""
-                        <div class="stopped-exp-box"><h4>Experiment: {html.escape(exp_name)}
-                        <span class="badge badge-neutral">Stopped</span></h4></div>
-                        <div class="completion-notice">Experiment termination detected. Final system transmission recorded at: {html.escape(format_time(last_bq))}</div>
-                        """
-                    continue
+    owners = set(active.get("Owner", pd.Series(dtype=str)).astype(str))
+    owners |= set(stopped.get("Owner", pd.Series(dtype=str)).astype(str))
 
-                report_df = build_sensor_rows(exp_bq, sensors, exp_name, device_name, now_utc, fetch_ok)
-                attention = int(report_df.apply(requires_attention, axis=1).sum()) if not report_df.empty else 0
-                total = len(report_df)
-                if attention:
-                    badge_class = "badge badge-issue"
-                    badge_text = f"{attention} / {total} sensors require attention"
-                else:
-                    badge_class = "badge badge-good"
-                    badge_text = f"All {total} sensors are healthy"
+    for owner in sorted(filter(None, owners), key=natural_key):
+        parts.append(f'<div class="owner"><b>Owner: {html.escape(owner)}</b></div>')
+        owner_active = active[active["Owner"] == owner] if not active.empty else active
+        owner_stopped = stopped[stopped["Owner"] == owner] if not stopped.empty else stopped
 
-                body += f"""
-                <div class="exp-box"><h4>Experiment: {html.escape(exp_name)}
-                <span class="{badge_class}">{html.escape(badge_text)}</span></h4></div>
-                """
-                body += html_table(report_df, now_utc)
+        devices = {
+            (row.Mac_Address, row.Device_Name)
+            for frame in (owner_active, owner_stopped) if not frame.empty
+            for row in frame.itertuples(index=False)
+        }
+        for mac, name in sorted(devices, key=lambda item: natural_key(item[1] or item[0])):
+            parts.append(
+                f'<div class="device"><b>Device: '
+                f'{html.escape(device_label(name, mac))}</b></div>'
+            )
+            device_active = owner_active[owner_active["Mac_Address"] == mac] if not owner_active.empty else owner_active
+            device_stopped = owner_stopped[owner_stopped["Mac_Address"] == mac] if not owner_stopped.empty else owner_stopped
 
-    body += """
-      <div style="margin-top:30px;padding:15px;background:#f8f9fa;border-left:4px solid #85c1ad;font-size:13px;color:#444;line-height:1.6;">
-        <strong>Metrics Explanation:</strong><br>
-        <strong>[1] Is Active:</strong> ✓ when a battery packet was received in BigQuery during the last 15 minutes; otherwise X.<br>
-        <strong>[2] Battery Status:</strong> Uses battery measurements from the last 24 hours and at most the latest 20 measurements. If no BigQuery battery packet exists in the last 24 hours, the latest Firestore battery value is displayed.<br>
-        <strong>[3] Packet Loss:</strong> One expected battery packet every 3 minutes. Experiments older than 24 hours use 480 expected packets. New experiments start from Exp_Started_At rounded upward to the next 3-minute point. A newly replaced sensor starts from the replaced record's Updated_At during the first 24 hours after replacement.
-      </div></body></html>
-    """
-    return body
+            for name_exp in sorted(device_active["Exp_Name"].unique(), key=natural_key) if not device_active.empty else []:
+                exp_df = device_active[device_active["Exp_Name"] == name_exp].copy()
+                issues = int(exp_df.apply(attention, axis=1).sum())
+                key = (owner, mac.lower(), name_exp)
+                if key not in totals:
+                    raise ValueError(f"Missing endpoint active_count for {owner}/{mac}/{name_exp}")
+                total = totals[key]
+                badge = "issue" if issues else "good"
+                label = f"{issues} / {total} sensors require attention"
+                parts.append(
+                    f'<div class="exp"><b>Experiment: {html.escape(name_exp)}</b>'
+                    f'<span class="badge {badge}">{html.escape(label)}</span></div>'
+                )
+                parts.append(sensor_table(exp_df))
+
+            for name_exp in sorted(device_stopped["Exp_Name"].unique(), key=natural_key) if not device_stopped.empty else []:
+                row = device_stopped[device_stopped["Exp_Name"] == name_exp].sort_values(
+                    "Last_BQ_Timestamp", ascending=False
+                ).iloc[0]
+                parts.append(
+                    f'<div class="stopped"><b>Experiment: {html.escape(name_exp)}</b>'
+                    '<span class="badge neutral">Stopped</span><br><br>'
+                    "Experiment termination detected.<br>Last BigQuery battery data: "
+                    f'<b>{html.escape(fmt_time(row["Last_BQ_Timestamp"]))}</b></div>'
+                )
+
+    parts.append("""
+    <div style="margin-top:30px;padding:15px;background:#f8f9fa;border-left:4px solid #85c1ad;font-size:13px;line-height:1.6">
+    <strong>[1] Is Active:</strong> ✓ when Firestore Last_Seen is 15 minutes old or less; otherwise X.<br>
+    <strong>[2] Battery Status:</strong> Uses BigQuery battery measurements from the last 24 hours and at most the latest 20. With no BigQuery data, the latest Firestore battery is displayed without assigning OK.<br>
+    <strong>[3] Packet Loss:</strong> One packet every 3 minutes; a full day is 480. New experiments and replacements use their rounded 3-minute start time.<br>
+    <strong>Time:</strong> BigQuery clock values are used as stored. Firestore UTC times are converted to Asia/Jerusalem.
+    </div></body></html>
+    """)
+    return "".join(parts)
+
+
+def send_email(recipient: str, body: str) -> None:
+    response = requests.post(
+        EMAIL_API_URL,
+        json={
+            "to": recipient,
+            "subject": "Field 4D: Sensor Status Report",
+            "body": body,
+            "is_html": True,
+        },
+        timeout=HTTP_TIMEOUT,
+    )
+    response.raise_for_status()
 
 
 def send_daily_reports(request):
-    print("[INFO] Cloud Function triggered: send_daily_reports")
+    del request
+    print("[INFO] Cloud Function triggered")
     try:
-        client = bigquery.Client()
-        dataframe = run_bigquery(client)
+        client = bigquery.Client(project=PROJECT_ID)
+        now = pd.Timestamp.now(tz=TZ).tz_localize(None)
+
+        devices = load_devices(client)
+        permissions, system_admins, recipients = load_access(client)
+        print(f"[INFO] Devices={len(devices)}, system_admins={sorted(system_admins)}")
+        print(f"[INFO] Recipients={recipients}")
+
+        if devices.empty:
+            return ("No devices found", 200)
+        if not recipients:
+            return ("No active recipients found", 200)
+
+        experiments = discover_experiments(devices)
+        sensors = prepare_sensors(experiments, now)
+        battery = query_battery(client, now)
+        active_results = calculate_results(sensors, battery, now)
+        stopped_results = detect_stopped(experiments, battery, now)
+        totals = total_lookup(experiments)
+
+        success = failed = 0
+        for recipient in recipients:
+            active, stopped = permitted(
+                active_results, stopped_results, permissions,
+                recipient, system_admins,
+            )
+            print(
+                f"[INFO] {recipient}: {len(active)} active sensor rows, "
+                f"{len(stopped)} stopped experiments"
+            )
+            try:
+                send_email(recipient, build_email(recipient, active, stopped, now, totals))
+                success += 1
+                print(f"[INFO] Sent to {recipient}")
+            except requests.RequestException as exc:
+                failed += 1
+                print(f"[ERROR] Email failed for {recipient}: {exc}")
+
+        print(f"[INFO] Completed. Success={success}, Failed={failed}")
+        if failed == 0:
+            return (f"Reports sent successfully: {success}", 200)
+        if success:
+            return (f"Partial failure. Success={success}, Failed={failed}", 207)
+        return (f"All email deliveries failed: {failed}", 500)
+
     except Exception as exc:
-        print(f"[ERROR] BigQuery failure: {exc}")
-        return ("Database Error", 500)
-
-    if dataframe.empty:
-        return ("No data found", 200)
-
-    scopes = dataframe[["Owner", "Mac_Address", "Exp_Name"]].drop_duplicates()
-    firestore_data = {}
-    for _, scope in scopes.iterrows():
-        owner, mac, exp_name = text(scope["Owner"]), text(scope["Mac_Address"]), text(scope["Exp_Name"])
-        firestore_data[(owner, mac, exp_name)] = fetch_firestore(owner, mac, exp_name)
-
-    now_utc = pd.Timestamp.now(tz="UTC")
-    success_count = 0
-    fail_count = 0
-
-    for recipient, recipient_df in dataframe.groupby("Email"):
-        recipient = text(recipient)
-        payload = {
-            "to": recipient,
-            "subject": "Field 4D: System Admin Network Status Report",
-            "body": build_email(recipient, recipient_df, firestore_data, now_utc),
-            "is_html": True,
-        }
-        try:
-            response = requests.post(EMAIL_API_URL, json=payload, timeout=30)
-            response.raise_for_status()
-            success_count += 1
-            print(f"[INFO] Report sent to {recipient}")
-        except requests.RequestException as exc:
-            fail_count += 1
-            print(f"[ERROR] Email failed for {recipient}: {exc}")
-
-    print(f"[INFO] Completed. Success: {success_count}, Failed: {fail_count}")
-    if fail_count == 0:
-        return ("Reports transmitted successfully", 200)
-    return (f"Partial failure. Failed: {fail_count}", 207)
+        print(f"[ERROR] Pipeline failed: {exc}")
+        return ("Field4D report pipeline failed", 500)
