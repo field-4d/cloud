@@ -11,7 +11,7 @@ ENV_PATH = "/home/pi/F4D/.env"
 
 ########
 REGISTER_URL = "https://us-central1-iucc-f4d.cloudfunctions.net/f4d-register-device"
-def register_device(mac, hostname):
+def register_device(mac, hostname,local_ip):
     """
     Send device registration to Field4D Cloud Function.
     This must NEVER crash the initializer.
@@ -22,6 +22,7 @@ def register_device(mac, hostname):
         "owner": hostname,
         # "device_name": f"{hostname}_{mac}",
         # "description": f"F4D device {hostname}",
+        "ip_addresses": [local_ip] if local_ip != "unknown" else [],
         "source": "env_initializer"
     }
 
@@ -63,6 +64,22 @@ def get_hostname():
     return socket.gethostname()
 
 
+def get_local_ip():
+    """
+    Return the machine's local LAN IP address.
+    Does not send application data.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    try:
+        sock.connect(("8.8.8.8", 80))
+        return sock.getsockname()[0]
+    except OSError:
+        return "unknown"
+    finally:
+        sock.close()
+
+
 def sanitize(value):
     """
     Make hostname safe for dataset IDs etc.
@@ -99,9 +116,11 @@ def run_initializer():
 
     mac = get_mac_address()
     hostname = sanitize(get_hostname())
+    local_ip = get_local_ip()
 
     update_env_var("MAC_ADDRESS", mac)
     update_env_var("HOSTNAME", hostname)
+    update_env_var("LOCAL_IP", local_ip)
     
     update_env_var(
         "API_SYNC_URL",
@@ -114,11 +133,12 @@ def run_initializer():
     )
 
     # New Step
-    register_device(mac, hostname)
+    register_device(mac, hostname, local_ip)
 
     print("Initializer completed")
     print(f"MAC_ADDRESS={mac}")
     print(f"HOSTNAME={hostname}")
+    print(f"LOCAL_IP={local_ip}")
 
 
 
