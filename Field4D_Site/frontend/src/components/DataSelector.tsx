@@ -4,7 +4,7 @@
  * Handles data fetching, mock data generation, and visualization panel.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Range } from 'react-date-range';
 import Plot from 'react-plotly.js';
 import Select, {
@@ -22,9 +22,16 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import VisualizationPanel from './VisualizationPanel';
 import { API_ENDPOINTS } from '../config';
-import { apiLog, logger } from '../config/logger';
+import { logger } from '../config/logger';
 import LabelFilter from './LabelFilter';
 import { applyOutlierFiltering, type OutlierConfig } from '../utils/outlierFiltering';
+import {
+  HARD_MAX_MERGED_ROWS,
+  SENSOR_CHUNK_SIZE,
+  buildUtcDayWindows,
+  computeDaysPerChunk,
+  type UtcDateWindow,
+} from '../utils/dateChunking';
 import {
   getSelectedLabelMemberships,
   normalizeIncludedLabels,
@@ -132,6 +139,156 @@ interface SensorDataRow {
   owner: string;
   mac_address: string;
 }
+
+interface FetchProgress {
+  sensorChunk: number;
+  sensorChunks: number;
+  dateWindow: number;
+  dateWindows: number;
+  rowsLoaded: number;
+}
+
+interface FetchDataRequestPayload {
+  owner: string;
+  mac_address: string;
+  experimentId: number;
+  experiment: string;
+  selectedSensors: string[];
+  selectedParameters: string[];
+  dateRange: UtcDateWindow;
+}
+
+class FetchDataHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly responseBody: string
+  ) {
+    super(message);
+    this.name = 'FetchDataHttpError';
+  }
+}
+
+const MAX_ERROR_BODY_LENGTH = 500;
+const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError';
+
+const parseRetryAfterMs = (retryAfter: string | null): number | null => {
+  if (!retryAfter) return null;
+
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+
+  const retryAt = Date.parse(retryAfter);
+  return Number.isFinite(retryAt) ? Math.max(0, retryAt - Date.now()) : null;
+};
+
+const waitForRetry = (delayMs: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('The request was cancelled', 'AbortError'));
+      return;
+    }
+
+    const handleAbort = () => {
+      window.clearTimeout(timeoutId);
+      reject(new DOMException('The request was cancelled', 'AbortError'));
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      signal.removeEventListener('abort', handleAbort);
+      resolve();
+    }, delayMs);
+
+    signal.addEventListener('abort', handleAbort, { once: true });
+  });
+
+const fetchDataWindow = async (
+  requestData: FetchDataRequestPayload,
+  signal: AbortSignal,
+  sensorChunkNumber: number,
+  sensorChunkCount: number,
+  dateWindowNumber: number,
+  dateWindowCount: number
+): Promise<SensorDataRow[]> => {
+  const context =
+    `sensor chunk ${sensorChunkNumber}/${sensorChunkCount}, ` +
+    `date window ${dateWindowNumber}/${dateWindowCount} ` +
+    `(${requestData.dateRange.start} to ${requestData.dateRange.end})`;
+
+  for (let attempt = 0; attempt <= 1; attempt += 1) {
+    try {
+      const response = await fetch(API_ENDPOINTS.FETCH_DATA, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+        signal,
+      });
+
+      if (response.ok) {
+        return await response.json() as SensorDataRow[];
+      }
+
+      let responseBody = '';
+      try {
+        responseBody = (await response.text()).slice(0, MAX_ERROR_BODY_LENGTH);
+      } catch {
+        responseBody = '';
+      }
+
+      if (attempt === 0 && RETRYABLE_HTTP_STATUSES.has(response.status)) {
+        const retryAfterMs =
+          response.status === 429
+            ? parseRetryAfterMs(response.headers.get('Retry-After'))
+            : null;
+        const delayMs = retryAfterMs ?? 1000 + Math.random() * 1000;
+        logger.warn('Retrying fetch-data request', {
+          status: response.status,
+          context,
+          delayMs: Math.round(delayMs),
+        });
+        await waitForRetry(delayMs, signal);
+        continue;
+      }
+
+      const isResponseSizeError =
+        response.status === 500 &&
+        /response size.*too large|too large.*response size/i.test(responseBody);
+      const detail = responseBody || response.statusText || 'No error details returned';
+      const message = isResponseSizeError
+        ? `The server response exceeded its size limit for ${context}. ${detail}`
+        : `Fetch failed with HTTP ${response.status} for ${context}. ${detail}`;
+
+      throw new FetchDataHttpError(message, response.status, responseBody);
+    } catch (error) {
+      if (isAbortError(error) || error instanceof FetchDataHttpError) {
+        throw error;
+      }
+
+      const isEligibleNetworkFailure = error instanceof TypeError;
+      if (attempt === 0 && isEligibleNetworkFailure) {
+        const delayMs = 1000 + Math.random() * 1000;
+        logger.warn('Retrying fetch-data after network failure', {
+          context,
+          delayMs: Math.round(delayMs),
+        });
+        await waitForRetry(delayMs, signal);
+        continue;
+      }
+
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Fetch failed for ${context}. ${detail}`);
+    }
+  }
+
+  throw new Error(`Fetch failed for ${context}`);
+};
 
 const Y_AXIS_COLORS = ['#8ac6bb', '#b2b27a', '#e6a157'];
 
@@ -321,6 +478,10 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const [sensorData, setSensorData] = useState<SensorData[]>([]);
   const [showVisualization, setShowVisualization] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState<FetchProgress | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const [showLabelFilter, setShowLabelFilter] = useState(false);
   const [sensorLabelMap, setSensorLabelMap] = useState<Record<string, string[]>>({});
   /** Latest Location per LLA (summary + merged from fetch rows). */
@@ -360,6 +521,32 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   
   // Artifact filtering state (single source of truth)
   const [artifactFiltering, setArtifactFiltering] = React.useState<boolean>(false);
+
+  const selectionSignature = [
+    selectedExperimentId ?? '',
+    dateRange[0]?.getTime() ?? '',
+    dateRange[1]?.getTime() ?? '',
+    selectedSensors.join('\u0001'),
+    selectedParameters.join('\u0001'),
+  ].join('|');
+
+  useEffect(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    requestIdRef.current += 1;
+    setIsLoading(false);
+    setFetchProgress(null);
+    setFetchError(null);
+  }, [selectionSignature]);
+
+  useEffect(
+    () => () => {
+      requestIdRef.current += 1;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    },
+    []
+  );
 
   // Helper: Filter artifact measurements (e.g., -40°C for temperature)
   function filterArtifacts(data: SensorData[]): SensorData[] {
@@ -832,70 +1019,113 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   /**
    * handleFetchData
    * Fetches sensor/parameter data from backend for selected experiment and date range.
-   * Implements chunking of selectedSensors to avoid request size limits.
+   * Chunks sensors and UTC calendar days to keep each response bounded.
    * Updates sensorData and visualization state.
    * Side effect: network request, state update.
    */
+  const cancelFetchData = () => {
+    requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsLoading(false);
+    setFetchProgress(null);
+  };
+
   const handleFetchData = async () => {
     if (
-      selectedExperimentId !== null &&
-      dateRange[0] &&
-      dateRange[1] &&
-      selectedSensors.length > 0 &&
-      selectedParameters.length > 0
+      selectedExperimentId === null ||
+      !dateRange[0] ||
+      !dateRange[1] ||
+      selectedSensors.length === 0 ||
+      selectedParameters.length === 0
     ) {
-      setIsLoading(true);
-      const startTime = performance.now();
-      try {
-        // Get UTC range while preserving local day boundaries
-        const utcRange = getUtcRangeFromLocalDates(dateRange[0], dateRange[1]);
+      return;
+    }
 
-        // Label filter is enforced via selected sensors + viz (atomic matching); fetch returns latest Label per LLA for every row.
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
-        // Split selectedSensors into chunks of 20
-        const CHUNK_SIZE = 20;
-        const sensorChunks: string[][] = [];
-        for (let i = 0; i < selectedSensors.length; i += CHUNK_SIZE) {
-          sensorChunks.push(selectedSensors.slice(i, i + CHUNK_SIZE));
-        }
+    const experimentIdForRequest = selectedExperimentId;
+    const experimentNameForRequest = selectedExperimentName;
+    const sensorsForRequest = [...selectedSensors];
+    const parametersForRequest = [...selectedParameters];
+    const utcRange = getUtcRangeFromLocalDates(dateRange[0], dateRange[1]);
+    const sensorChunks: string[][] = [];
+    for (let index = 0; index < sensorsForRequest.length; index += SENSOR_CHUNK_SIZE) {
+      sensorChunks.push(sensorsForRequest.slice(index, index + SENSOR_CHUNK_SIZE));
+    }
 
-        // Process each chunk and transform data immediately (long-format rows)
-        const transformedData: SensorData[] = [];
+    setIsLoading(true);
+    setFetchError(null);
+    setFetchProgress({
+      sensorChunk: 1,
+      sensorChunks: sensorChunks.length,
+      dateWindow: 1,
+      dateWindows: 1,
+      rowsLoaded: 0,
+    });
 
-        for (const [index, sensorChunk] of sensorChunks.entries()) {
-          const requestData = {
-            owner,
-            mac_address,
-            experimentId: selectedExperimentId,
-            experiment: selectedExperimentName,
-            selectedSensors: sensorChunk,
-            selectedParameters: selectedParameters,
-            dateRange: utcRange,
-          };
+    const startTime = performance.now();
+    const transformedData: SensorData[] = [];
 
-          console.log('Fetch-data selected experiment:', {
-            experimentId: selectedExperimentId,
-            experimentName: selectedExperimentName,
-          });
+    try {
+      for (const [sensorIndex, sensorChunk] of sensorChunks.entries()) {
+        const daysPerChunk = computeDaysPerChunk(
+          sensorChunk.length,
+          parametersForRequest.length
+        );
+        const dateWindows = buildUtcDayWindows(
+          utcRange.start,
+          utcRange.end,
+          daysPerChunk
+        );
 
-          const response = await fetch(API_ENDPOINTS.FETCH_DATA, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} for chunk ${index + 1}`);
+        for (const [dateIndex, dateWindow] of dateWindows.entries()) {
+          if (controller.signal.aborted || requestId !== requestIdRef.current) {
+            throw new DOMException('The request was cancelled', 'AbortError');
           }
 
-          const data: SensorDataRow[] = await response.json();
-          apiLog(`[API] fetch-data response chunk ${index + 1}/${sensorChunks.length}`, {
-            request: requestData,
-            rowCount: data.length,
-            data,
+          setFetchProgress({
+            sensorChunk: sensorIndex + 1,
+            sensorChunks: sensorChunks.length,
+            dateWindow: dateIndex + 1,
+            dateWindows: dateWindows.length,
+            rowsLoaded: transformedData.length,
           });
+
+          const requestData: FetchDataRequestPayload = {
+            owner,
+            mac_address,
+            experimentId: experimentIdForRequest,
+            experiment: experimentNameForRequest,
+            selectedSensors: sensorChunk,
+            selectedParameters: parametersForRequest,
+            dateRange: dateWindow,
+          };
+
+          const data = await fetchDataWindow(
+            requestData,
+            controller.signal,
+            sensorIndex + 1,
+            sensorChunks.length,
+            dateIndex + 1,
+            dateWindows.length
+          );
+
+          if (controller.signal.aborted || requestId !== requestIdRef.current) {
+            throw new DOMException('The request was cancelled', 'AbortError');
+          }
+
+          if (transformedData.length + data.length > HARD_MAX_MERGED_ROWS) {
+            throw new Error(
+              `This selection exceeds the browser safety limit of ` +
+              `${HARD_MAX_MERGED_ROWS.toLocaleString()} rows. ` +
+              `The last date window was not added; select fewer sensors, parameters, or days.`
+            );
+          }
 
           for (const row of data) {
             transformedData.push({
@@ -907,57 +1137,76 @@ const DataSelector: React.FC<DataSelectorProps> = ({
               location: row.location,
             });
           }
-        }
 
-        const endTime = performance.now();
-        const duration = (endTime - startTime) / 1000; // Convert to seconds
-        logger.info(`All processing completed in ${duration.toFixed(2)} seconds`);
-        logger.info('Total transformed data points:', transformedData.length);
-        logger.info('Transformed data:', transformedData);
+          logger.info('Fetched data window', {
+            sensorChunk: sensorIndex + 1,
+            sensorChunks: sensorChunks.length,
+            dateWindow: dateIndex + 1,
+            dateWindows: dateWindows.length,
+            dateRange: dateWindow,
+            rowCount: data.length,
+            rowsLoaded: transformedData.length,
+          });
 
-        const sortedSensorsForFront = Array.from(
-          new Set(transformedData.map((row) => row.sensor))
-        )
-          .slice()
-          .sort(compareSensorNames)
-          .map((sensor) => ({
-            value: sensor,
-            label: getSensorDisplayName(sensor),
-          }));
-        const sortedParametersForFront = Array.from(
-          new Set(transformedData.map((row) => row.parameter))
-        )
-          .slice()
-          .sort((a, b) => a.localeCompare(b))
-          .map((parameter) => ({
-            value: parameter,
-            label: getParameterDisplayLabel(parameter),
-            unit: getParameterUnit(parameter),
-          }));
-
-        apiLog('[API] fetch-data transformed for front', {
-          rowCount: transformedData.length,
-          sensors: sortedSensorsForFront,
-          parameters: sortedParametersForFront,
-          data: transformedData,
-        });
-
-        setSensorLocationMap((prev) => {
-          const merged: Record<string, string> = { ...prev };
-          for (const row of transformedData) {
-            if (row.sensor && row.location != null && String(row.location).trim() !== '') {
-              merged[String(row.sensor)] = String(row.location).trim();
-            }
+          if (requestId === requestIdRef.current) {
+            setFetchProgress({
+              sensorChunk: sensorIndex + 1,
+              sensorChunks: sensorChunks.length,
+              dateWindow: dateIndex + 1,
+              dateWindows: dateWindows.length,
+              rowsLoaded: transformedData.length,
+            });
           }
-          return merged;
-        });
-        setSensorData(transformedData);
-        setVisualizedSensors(selectedSensors);
-        setShowVisualization(true);
-      } catch (error) {
-        logger.error('Error fetching data:', error);
-      } finally {
+        }
+      }
+
+      transformedData.sort(
+        (left, right) =>
+          left.timestamp.localeCompare(right.timestamp) ||
+          left.sensor.localeCompare(right.sensor) ||
+          left.parameter.localeCompare(right.parameter)
+      );
+
+      if (controller.signal.aborted || requestId !== requestIdRef.current) {
+        throw new DOMException('The request was cancelled', 'AbortError');
+      }
+
+      setSensorLocationMap((prev) => {
+        if (requestId !== requestIdRef.current) {
+          return prev;
+        }
+        const merged: Record<string, string> = { ...prev };
+        for (const row of transformedData) {
+          if (row.sensor && row.location != null && String(row.location).trim() !== '') {
+            merged[String(row.sensor)] = String(row.location).trim();
+          }
+        }
+        return merged;
+      });
+      setSensorData(transformedData);
+      setVisualizedSensors(sensorsForRequest);
+      setShowVisualization(true);
+
+      logger.info('Completed fetch-data request', {
+        durationSeconds: ((performance.now() - startTime) / 1000).toFixed(2),
+        sensorChunks: sensorChunks.length,
+        rowCount: transformedData.length,
+      });
+    } catch (error) {
+      if (requestId !== requestIdRef.current || isAbortError(error)) {
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      setFetchError(message);
+      logger.error('Error fetching data', { message });
+    } finally {
+      if (requestId === requestIdRef.current) {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
         setIsLoading(false);
+        setFetchProgress(null);
       }
     }
   };
@@ -1385,6 +1634,15 @@ const DataSelector: React.FC<DataSelectorProps> = ({
               'Fetch Data'
             )}
           </button>
+          {isLoading && (
+            <button
+              type="button"
+              onClick={cancelFetchData}
+              className="bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           {showSelectionWarning && (
             <div className="mt-2 text-red-600 text-sm font-semibold">You need to choose at least one sensor and one parameter.</div>
           )}
@@ -1397,6 +1655,18 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             </button>
           )}
         </div>
+        {isLoading && fetchProgress && (
+          <div className="mt-3 text-sm text-gray-700" role="status">
+            Sensor chunk {fetchProgress.sensorChunk} of {fetchProgress.sensorChunks}
+            {' · '}Date window {fetchProgress.dateWindow} of {fetchProgress.dateWindows}
+            {' · '}{fetchProgress.rowsLoaded.toLocaleString()} rows loaded
+          </div>
+        )}
+        {fetchError && (
+          <div className="mt-3 text-sm font-semibold text-red-600" role="alert">
+            {fetchError}
+          </div>
+        )}
       </div>
 
       {/* Data Visualization */}

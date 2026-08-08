@@ -50,6 +50,8 @@ interface ScatterPlotProps {
   groupBy?: 'sensor' | 'label';
   includedLabels?: string[];
   errorType?: 'STD' | 'SE';
+  /** Optional override for the plot's outer wrapper className (e.g. to fill a fullscreen container). Defaults to the standard embedded sizing. */
+  containerClassName?: string;
 }
 
 const defaultGetSensorColor = (colorKey: string, colorDomain: string[]) => {
@@ -117,6 +119,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   groupBy,
   includedLabels,
   errorType = 'SE',
+  containerClassName = 'h-[calc(70vh-280px)] w-full',
 }) => {
   // Check for parameter limit and notify if exceeded
   useEffect(() => {
@@ -415,7 +418,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             hovertemplate: `%{x}<br>${getParameterDisplayLabel(param)}: %{y}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<extra>${legendSensorName}</extra>`,
           };
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     }).flat();
   }
 
@@ -430,7 +433,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   }
 
   return (
-    <div className="h-[calc(70vh-280px)] w-full">
+    <div className={containerClassName}>
       <Plot
         data={plotData}
         layout={{

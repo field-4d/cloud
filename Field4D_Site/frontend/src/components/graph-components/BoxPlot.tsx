@@ -59,6 +59,8 @@ interface BoxPlotProps {
   legendSize?: number; // New prop for controlling legend size
   sensorLabelMap?: Record<string, string[]>; // Add this
   includedLabels?: string[]; // Add this
+  /** Optional override for the plot's outer wrapper className (e.g. to fill a fullscreen container). Defaults to the standard embedded sizing. */
+  containerClassName?: string;
 }
 
 
@@ -97,6 +99,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   legendSize = 18, // Default legend size
   sensorLabelMap = {},
   includedLabels = [],
+  containerClassName = 'h-[calc(70vh-280px)] w-full',
 }) => {
   // Check for parameter limit and notify if exceeded
   useEffect(() => {
@@ -202,17 +205,17 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
       const mainGroups = Array.from(new Set(expandedData.filter(d => d.parameter === param && selectedSensors.includes(d.sensor)).map(mainGroupKey!)));
       const subGroups = Array.from(new Set(expandedData.filter(d => d.parameter === param && selectedSensors.includes(d.sensor)).map(subGroupKey!)));
       
-      // Sort main groups (dates should be chronological, others alphabetically)
+      // Sort main groups (dates should be chronological, others naturally/numerically)
       const sortedMainGroups = mainGroups.sort((a, b) => {
         // If they look like dates (YYYY-MM-DD), sort chronologically
         if (/^\d{4}-\d{2}-\d{2}$/.test(a) && /^\d{4}-\d{2}-\d{2}$/.test(b)) {
           return a.localeCompare(b);
         }
-        return a.localeCompare(b);
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
       });
-      
-      // Sort sub groups alphabetically
-      const sortedSubGroups = subGroups.sort((a, b) => a.localeCompare(b));
+
+      // Sort sub groups naturally/numerically so e.g. sensor IDs order 1, 2, ..., 10 instead of 1, 10, 2
+      const sortedSubGroups = subGroups.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
       
       // For hierarchical grouping, create one trace per sub-group
       // Each trace will have boxes at each main group position
@@ -287,7 +290,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
     }
   }).flat()
     .filter(t => t !== null)
-    .sort((a, b) => a.name!.localeCompare(b.name!)); // Sort traces alphabetically by name
+    .sort((a, b) => a.name!.localeCompare(b.name!, undefined, { numeric: true, sensitivity: 'base' })); // Natural/numeric sort so sensor IDs order 1, 2, ..., 10 instead of 1, 10, 2
 
   // Add a stripplot-style raw-points overlay (jittered, translucent) on top of each box.
   // We keep this as lightweight box traces with transparent boxes so grouped offsets remain aligned.
@@ -404,7 +407,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
   }
 
   return (
-    <div className="h-[calc(70vh-280px)] w-full">
+    <div className={containerClassName}>
       <Plot
         data={traces}
         layout={layout}

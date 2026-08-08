@@ -16,6 +16,7 @@ import CorrelationScatter from './graph-components/CorrelationScatter';
 import LoadingSpinner from './graph-components/LoadingSpinner';
 import ANOVAResultsScatterPlot from './graph-components/ANOVAResultsScatterPlot';
 import HealthCheckButton from './analytics/HealthCheckButton';
+import PlotExpandOverlay from './graph-components/PlotExpandOverlay';
 import {
   getParameterDisplayLabel,
   getParameterUnit,
@@ -27,6 +28,7 @@ import {
   type OutlierConfig,
   type OutlierMethod,
 } from '../utils/outlierFiltering';
+import { normalizeIncludedLabels } from '../utils/labelGrouping';
 
 interface SensorData {
   timestamp: string;
@@ -182,6 +184,26 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   const [plotHeight, setPlotHeight] = useState(1000); // default height
   const [showDates, setShowDates] = useState(false); // Add state for dates toggle
   const [isLoading, setIsLoading] = useState(true); // Add loading state
+  // Expand Plot (fullscreen overlay) state - purely a rendering-location toggle,
+  // does not affect any selection/data state.
+  const [isPlotExpanded, setIsPlotExpanded] = useState(false);
+  const [expandedContainerWidth, setExpandedContainerWidth] = useState<number | null>(null);
+  const expandedContentRef = useRef<HTMLDivElement | null>(null);
+
+  // Measure the expanded overlay's content width so Histogram (which uses an
+  // explicit pixel width instead of true autosize) can widen to fill it.
+  useEffect(() => {
+    if (!isPlotExpanded) return undefined;
+    const node = expandedContentRef.current;
+    if (!node) return undefined;
+
+    const updateWidth = () => setExpandedContainerWidth(node.clientWidth);
+    updateWidth();
+
+    const observer = new ResizeObserver(() => updateWidth());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isPlotExpanded]);
   // Hour range filter state (only for BoxPlot) - always enabled by default (0-23 = all hours)
   const [hourRangeEnabled, setHourRangeEnabled] = useState(true);
   const [hourRange, setHourRange] = useState<[number, number]>([0, 23]); // Current slider value (for display only)
@@ -750,6 +772,165 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     };
   };
 
+  // Gate: only allow expanding when a real chart (not a loading/placeholder state) is rendered.
+  const includedLabelsForGate = normalizeIncludedLabels(props.includedLabels ?? []);
+  const boxGroupByForGate = boxPlotGroupingMode === 'date-label' ? 'label' : boxPlotGroupingMode;
+  const canExpandPlot = !isLoading && (
+    selectedViz === 'scatter'
+      ? !(props.groupBy === 'label' && includedLabelsForGate.length === 0)
+      : selectedViz === 'box'
+      ? isBoxPlotData
+        && !isApplyingHourFilter
+        && hasAppliedHourFilter
+        && appliedHourRange !== null
+        && !(boxGroupByForGate === 'label' && includedLabelsForGate.length === 0)
+      : selectedViz === 'histogram'
+      ? !isApplyingHourFilter && !(props.groupBy === 'label' && includedLabelsForGate.length === 0)
+      : false
+  );
+
+  const expandPlotButton = (
+    <button
+      type="button"
+      onClick={() => setIsPlotExpanded(true)}
+      disabled={!canExpandPlot}
+      aria-label="Expand plot"
+      title={canExpandPlot ? 'Expand plot to fullscreen' : 'Nothing to expand yet'}
+      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-2 ${
+        canExpandPlot
+          ? 'bg-[#8ac6bb] text-white hover:bg-[#7ab6ab]'
+          : 'cursor-not-allowed bg-gray-200 text-gray-400 shadow-none'
+      }`}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} className="h-5 w-5" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" />
+      </svg>
+      Expand Plot
+    </button>
+  );
+
+  /**
+   * Renders whichever chart type is currently selected, using the exact same
+   * `processedData` and props for both the embedded and expanded (fullscreen)
+   * views - single source of truth, no duplicated plotting logic.
+   */
+  const renderActiveChart = (options: { expanded: boolean }) => {
+    const containerClassName = options.expanded ? 'h-full w-full' : undefined;
+
+    if (isLoading) {
+      return (
+        <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent"></div>
+            <p className="mt-4 text-gray-600">Loading visualization...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab !== 'visualization') return null;
+
+    if (selectedViz === 'scatter') {
+      return (
+        <div className={`flex justify-center ${options.expanded ? 'h-full w-full' : ''}`}>
+          <ScatterPlot
+            data={processedData}
+            selectedParameters={selectedParameters}
+            selectedSensors={props.selectedSensors}
+            experimentName={props.experimentName}
+            getSensorColor={props.getSensorColor}
+            getSensorDisplayName={props.getSensorDisplayName}
+            getParameterUnit={getParameterUnit}
+            sensorLabelMap={props.sensorLabelMap}
+            groupBy={props.groupBy}
+            includedLabels={props.includedLabels}
+            errorType={props.errorType}
+            containerClassName={containerClassName}
+          />
+        </div>
+      );
+    }
+
+    if (selectedViz === 'box' && isBoxPlotData) {
+      return (
+        <div className={`flex justify-center ${options.expanded ? 'h-full w-full' : ''}`}>
+          {isApplyingHourFilter ? (
+            <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent mb-4"></div>
+                <p className="text-lg font-medium text-gray-700 mb-2">Applying Filter</p>
+                <p className="text-sm text-gray-500">Processing data and rendering visualization...</p>
+              </div>
+            </div>
+          ) : hasAppliedHourFilter && appliedHourRange !== null ? (
+            <MemoizedBoxPlot
+              data={processedData}
+              selectedParameters={selectedParameters}
+              selectedSensors={props.selectedSensors}
+              experimentName={props.experimentName}
+              getSensorColor={props.getSensorColor}
+              getSensorDisplayName={props.getSensorDisplayName}
+              getParameterUnit={getParameterUnit}
+              onParameterLimitExceeded={() => {
+                setSelectedParameters(selectedParameters.slice(0, 2));
+              }}
+              combine={false}
+              groupBy={boxPlotGroupingMode === 'date-label' ? 'label' : boxPlotGroupingMode}
+              mainGroupBy={boxPlotGroupingMode === 'date-label' ? 'date' : undefined}
+              subGroupBy={boxPlotGroupingMode === 'date-label' ? 'label' : undefined}
+              hourRange={hourRangeEnabled ? { start: appliedHourRange[0], end: appliedHourRange[1] } : undefined}
+              sensorLabelMap={props.sensorLabelMap}
+              includedLabels={props.includedLabels}
+              containerClassName={containerClassName}
+            />
+          ) : (
+            <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <div className="text-4xl mb-4">📊</div>
+                <p className="text-lg font-medium text-gray-700 mb-2">Hour Range Filter Required</p>
+                <p className="text-sm text-gray-500 mb-4">Set your hour range and click "Apply" to visualize the data</p>
+                <div className="text-xs text-gray-400">
+                  <p>Default range: 0:00 - 23:00 (all hours)</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (selectedViz === 'histogram') {
+      return (
+        <div className={`flex justify-center ${options.expanded ? 'h-full w-full' : ''}`}>
+          {isApplyingHourFilter ? (
+            <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent mb-4"></div>
+                <p className="text-lg font-medium text-gray-700 mb-2">Applying Filter</p>
+                <p className="text-sm text-gray-500">Processing data and rendering visualization...</p>
+              </div>
+            </div>
+          ) : (
+            <Histogram
+              data={processedData}
+              selectedParameters={selectedParameters}
+              selectedSensors={props.selectedSensors}
+              experimentName={props.experimentName}
+              getSensorColor={props.getSensorColor}
+              getParameterUnit={getParameterUnit}
+              sensorLabelMap={props.sensorLabelMap}
+              includedLabels={props.includedLabels}
+              groupBy={props.groupBy}
+              subplotWidth={options.expanded && expandedContainerWidth ? Math.max(900, expandedContainerWidth - 48) : undefined}
+            />
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="w-full space-y-4">
       {/* Tab Navigation */}
@@ -1285,7 +1466,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
         </div>
       )}
 
-      {/* Group by and Error Type Controls */}
+      {/* Group by / Error Type + Expand Plot (centered with grouping — keeps Expand away from Plotly modebar) */}
       {activeTab === 'visualization' && (
         <div className="mb-4">
           {(selectedViz === 'scatter' || selectedViz === 'histogram') && (
@@ -1307,7 +1488,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                   Group by Label
                 </button>
               </div>
-              
+
               {/* Error Type Selection - Only show for scatter plot */}
               {selectedViz === 'scatter' && props.groupBy === 'label' && (
                 <div className="flex items-center space-x-2">
@@ -1331,6 +1512,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                   </div>
                 </div>
               )}
+
+              <div className="mx-1 h-6 w-px bg-gray-300" aria-hidden="true" />
+              {expandPlotButton}
             </div>
           )}
           {selectedViz === 'box' && (
@@ -1340,8 +1524,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 <button
                   type="button"
                   className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${
-                    boxPlotGroupingMode === 'date-label' 
-                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white' 
+                    boxPlotGroupingMode === 'date-label'
+                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white'
                       : 'bg-transparent text-gray-700 hover:bg-white focus:text-[#8ac6bb]'
                   }`}
                   onClick={() => setBoxPlotGroupingMode('date-label')}
@@ -1351,8 +1535,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 <button
                   type="button"
                   className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${
-                    boxPlotGroupingMode === 'label' 
-                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white' 
+                    boxPlotGroupingMode === 'label'
+                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white'
                       : 'bg-transparent text-gray-700 hover:bg-white focus:text-[#8ac6bb]'
                   }`}
                   onClick={() => setBoxPlotGroupingMode('label')}
@@ -1362,8 +1546,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                 <button
                   type="button"
                   className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8ac6bb] focus-visible:ring-offset-1 ${
-                    boxPlotGroupingMode === 'sensor' 
-                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white' 
+                    boxPlotGroupingMode === 'sensor'
+                      ? 'bg-[#8ac6bb] text-white shadow-sm focus:text-white'
                       : 'bg-transparent text-gray-700 hover:bg-white focus:text-[#8ac6bb]'
                   }`}
                   onClick={() => setBoxPlotGroupingMode('sensor')}
@@ -1371,110 +1555,27 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
                   Group by Sensor
                 </button>
               </div>
+
+              <div className="mx-1 h-6 w-px bg-gray-300" aria-hidden="true" />
+              {expandPlotButton}
             </div>
           )}
         </div>
       )}
 
       {/* Visualization Content */}
-      {isLoading ? (
-        <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent"></div>
-            <p className="mt-4 text-gray-600">Loading visualization...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Grouping uses post-cleaning dataset (`processedData`) across chart types. */}
-          {activeTab === 'visualization' && selectedViz === 'scatter' && (
-            <div className="flex justify-center">
-              <ScatterPlot
-                data={processedData}
-                selectedParameters={selectedParameters}
-                selectedSensors={props.selectedSensors}
-                experimentName={props.experimentName}
-                getSensorColor={props.getSensorColor}
-                getSensorDisplayName={props.getSensorDisplayName}
-                getParameterUnit={getParameterUnit}
-                sensorLabelMap={props.sensorLabelMap}
-                groupBy={props.groupBy}
-                includedLabels={props.includedLabels}
-                errorType={props.errorType}
-              />
-            </div>
-          )}
-          {activeTab === 'visualization' && selectedViz === 'box' && isBoxPlotData && (
-            <div className="flex justify-center">
-              {isApplyingHourFilter ? (
-                <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent mb-4"></div>
-                    <p className="text-lg font-medium text-gray-700 mb-2">Applying Filter</p>
-                    <p className="text-sm text-gray-500">Processing data and rendering visualization...</p>
-                  </div>
-                </div>
-              ) : hasAppliedHourFilter && appliedHourRange !== null ? (
-                <MemoizedBoxPlot
-                  data={processedData}
-                  selectedParameters={selectedParameters}
-                  selectedSensors={props.selectedSensors}
-                  experimentName={props.experimentName}
-                  getSensorColor={props.getSensorColor}
-                  getSensorDisplayName={props.getSensorDisplayName}
-                  getParameterUnit={getParameterUnit}
-                  onParameterLimitExceeded={() => {
-                    setSelectedParameters(selectedParameters.slice(0, 2));
-                  }}
-                  combine={false}
-                  groupBy={boxPlotGroupingMode === 'date-label' ? 'label' : boxPlotGroupingMode}
-                  mainGroupBy={boxPlotGroupingMode === 'date-label' ? 'date' : undefined}
-                  subGroupBy={boxPlotGroupingMode === 'date-label' ? 'label' : undefined}
-                  hourRange={hourRangeEnabled ? { start: appliedHourRange[0], end: appliedHourRange[1] } : undefined}
-                  sensorLabelMap={props.sensorLabelMap}
-                  includedLabels={props.includedLabels}
-                />
-              ) : (
-                <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <div className="text-center">
-                    <div className="text-4xl mb-4">📊</div>
-                    <p className="text-lg font-medium text-gray-700 mb-2">Hour Range Filter Required</p>
-                    <p className="text-sm text-gray-500 mb-4">Set your hour range and click "Apply" to visualize the data</p>
-                    <div className="text-xs text-gray-400">
-                      <p>Default range: 0:00 - 23:00 (all hours)</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {activeTab === 'visualization' && selectedViz === 'histogram' && (
-            <div className="flex justify-center">
-              {isApplyingHourFilter ? (
-                <div className="h-[calc(70vh-280px)] w-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#8ac6bb] border-t-transparent mb-4"></div>
-                    <p className="text-lg font-medium text-gray-700 mb-2">Applying Filter</p>
-                    <p className="text-sm text-gray-500">Processing data and rendering visualization...</p>
-                  </div>
-                </div>
-              ) : (
-                <Histogram
-                  data={processedData}
-                  selectedParameters={selectedParameters}
-                  selectedSensors={props.selectedSensors}
-                  experimentName={props.experimentName}
-                  getSensorColor={props.getSensorColor}
-                  getParameterUnit={getParameterUnit}
-                  sensorLabelMap={props.sensorLabelMap}
-                  includedLabels={props.includedLabels}
-                  groupBy={props.groupBy}
-                />
-              )}
-            </div>
-          )}
-        </>
-      )}
+      {/* Only one Plot instance is ever mounted at a time: while expanded, the embedded slot
+          is intentionally not rendered (the overlay covers the full viewport anyway). */}
+      {!isPlotExpanded && renderActiveChart({ expanded: false })}
+
+      <PlotExpandOverlay
+        isOpen={isPlotExpanded}
+        onClose={() => setIsPlotExpanded(false)}
+        title={`${VISUALIZATIONS.find(viz => viz.value === selectedViz)?.label ?? 'Plot'} - Expanded View`}
+        contentRef={expandedContentRef}
+      >
+        {renderActiveChart({ expanded: true })}
+      </PlotExpandOverlay>
 
                 {/* Advanced Analytics Tab Content */}
           {activeTab === 'analytics' && (
