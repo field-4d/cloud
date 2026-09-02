@@ -12,13 +12,16 @@ Current API groups:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from config.settings import get_settings
+from middleware.fetch_metrics import FetchMetricsMiddleware
 
 from routers.analytics_health import router as analytics_health_router
 from routers.auth import router as auth_router
 from routers.experiment_summary import router as experiment_summary_router
 from routers.fetch_data import router as fetch_data_router
+from routers.fetch_data_v2 import router as fetch_data_v2_router
 from routers.permission_management import router as permission_management_router
 from routers.permissions import router as permissions_router
 
@@ -45,7 +48,22 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[
+        "X-Request-ID",
+        "X-Field4D-BQ-Duration-Ms",
+        "X-Field4D-BQ-Server-Ms",
+        "X-Field4D-BQ-Bytes",
+        "X-Field4D-Materialization-Ms",
+        "X-Field4D-Normalization-Ms",
+        "X-Field4D-Serialization-Ms",
+        "X-Field4D-Serialized-Bytes",
+        "X-Field4D-Materialization-Method",
+        "Content-Encoding",
+        "Content-Length",
+    ],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=3)
+app.add_middleware(FetchMetricsMiddleware)
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -55,5 +73,6 @@ app.include_router(analytics_health_router, prefix="/api", tags=["analytics-heal
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(experiment_summary_router, prefix="/api", tags=["experiment-summary"])
 app.include_router(fetch_data_router, prefix="/api", tags=["fetch-data"])
+app.include_router(fetch_data_v2_router, prefix="/api", tags=["fetch-data-v2"])
 app.include_router(permissions_router, prefix="/api", tags=["permissions"])
 app.include_router(permission_management_router, prefix="/api", tags=["permission-management"])

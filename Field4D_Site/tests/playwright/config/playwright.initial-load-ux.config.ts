@@ -1,0 +1,35 @@
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: '../../ux',
+  testMatch: ['initial-load-ux.spec.ts'],
+  fullyParallel: false,
+  workers: 1,
+  retries: 0,
+  timeout: 120_000,
+  expect: { timeout: 60_000 },
+  reporter: [['line']],
+  outputDir: '../../../test-results/initial-load-ux',
+  use: {
+    baseURL: 'http://localhost:5173',
+    browserName: 'chromium',
+    headless: false,
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 1,
+    colorScheme: 'light',
+    actionTimeout: 20_000,
+    navigationTimeout: 60_000,
+    trace: 'retain-on-failure',
+    video: 'off',
+    screenshot: 'only-on-failure',
+  },
+  webServer: {
+    cwd: '../../..',
+    command: 'npm --prefix frontend run dev -- --host localhost --port 5173 --strictPort',
+    url: 'http://localhost:5173',
+    reuseExistingServer: false,
+    timeout: 120_000,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
+});

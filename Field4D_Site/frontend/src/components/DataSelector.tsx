@@ -21,12 +21,14 @@ import timezone from 'dayjs/plugin/timezone';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import VisualizationPanel from './VisualizationPanel';
-import { API_ENDPOINTS } from '../config';
+import type { ScatterPlotBenchmarkResult } from './graph-components/ScatterPlot';
+import { API_ENDPOINTS, USE_PAGED_FETCH } from '../config';
 import { logger } from '../config/logger';
 import LabelFilter from './LabelFilter';
 import { applyOutlierFiltering, type OutlierConfig } from '../utils/outlierFiltering';
 import {
-  HARD_MAX_MERGED_ROWS,
+  LARGE_DATASET_WARNING_ROWS,
+  MAX_TESTED_MERGED_ROWS,
   SENSOR_CHUNK_SIZE,
   buildUtcDayWindows,
   computeDaysPerChunk,
@@ -44,6 +46,11 @@ import {
 } from '../constants/parameterMetadata';
 import { hasMeaningfulLabelOptions } from '../utils/labelAtomOptions';
 import { getSensorTypeSubtitle } from '../utils/sensorMetadata';
+import {
+  MAX_PAGED_MERGED_ROWS,
+  fetchDataPageStream,
+  type FetchDataPagePayload,
+} from '../utils/fetchDataPages';
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -93,6 +100,18 @@ interface DataSelectorProps {
   dateState: Range[];
   minDate: Date | null;
   maxDate: Date | null;
+  /** Development benchmark only. Production always uses the adopted safety policy. */
+  benchmarkMaxMergedRows?: number;
+  /** Development benchmark only. Production uses the configured transport feature flag. */
+  benchmarkUsePagedFetch?: boolean;
+  /** Development benchmark only. Production paging uses the adopted concurrency-one policy. */
+  benchmarkPageConcurrency?: 1 | 2;
+  /** Development benchmark only. Backend production defaults remain authoritative. */
+  benchmarkPageSize?: number;
+  /** Development benchmark only; omitted by the production application. */
+  onFetchBenchmarkEvent?: (event: FetchBenchmarkEvent) => void;
+  /** Development benchmark only; omitted by the production application. */
+  onScatterBenchmarkResult?: (result: ScatterPlotBenchmarkResult) => void;
 }
 
 interface SelectedData {
@@ -141,12 +160,74 @@ interface SensorDataRow {
 }
 
 interface FetchProgress {
+  mode: 'legacy' | 'paged';
   sensorChunk: number;
   sensorChunks: number;
   dateWindow: number;
   dateWindows: number;
   rowsLoaded: number;
+  chunksCompleted: number;
+  chunksTotal: number;
+  streamsCompleted?: number;
 }
+
+type FetchRequestStatus = 'idle' | 'loading' | 'complete' | 'failed' | 'cancelled';
+
+interface FetchRequestState {
+  requestId: number;
+  selectionSignature: string;
+  status: FetchRequestStatus;
+  rowsLoaded: number;
+  chunksCompleted: number;
+  chunksTotal: number;
+  estimatedRows: number;
+  startedAt: number | null;
+  completedAt: number | null;
+  error: string | null;
+  transport: 'legacy' | 'paged';
+}
+
+interface CompletedDataset {
+  requestId: number;
+  selectionSignature: string;
+  rowCount: number;
+  selectedSensors: string[];
+  selectedParameters: string[];
+  experimentName: string;
+  dateStart: string;
+  dateEnd: string;
+  completedAt: number;
+}
+
+interface FetchBenchmarkEvent {
+  type: 'start' | 'chunk' | 'sort' | 'complete' | 'failed' | 'cancelled';
+  requestId: number;
+  at: number;
+  rowsLoaded?: number;
+  chunkRows?: number;
+  chunksCompleted?: number;
+  chunksTotal?: number;
+  estimatedRows?: number;
+  transformMs?: number;
+  sortMs?: number;
+  totalMs?: number;
+  data?: SensorData[];
+  error?: string;
+}
+
+const EMPTY_FETCH_REQUEST: FetchRequestState = {
+  requestId: 0,
+  selectionSignature: '',
+  status: 'idle',
+  rowsLoaded: 0,
+  chunksCompleted: 0,
+  chunksTotal: 0,
+  estimatedRows: 0,
+  startedAt: null,
+  completedAt: null,
+  error: null,
+  transport: 'legacy',
+};
 
 interface FetchDataRequestPayload {
   owner: string;
@@ -468,10 +549,26 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   dateState,
   minDate,
   maxDate,
+  benchmarkMaxMergedRows,
+  benchmarkUsePagedFetch,
+  benchmarkPageConcurrency,
+  benchmarkPageSize,
+  onFetchBenchmarkEvent,
+  onScatterBenchmarkResult,
 }) => {
+  const usePagedFetch = import.meta.env.DEV && typeof benchmarkUsePagedFetch === 'boolean'
+    ? benchmarkUsePagedFetch
+    : USE_PAGED_FETCH;
+  const requestedPageConcurrency =
+    import.meta.env.DEV && (benchmarkPageConcurrency === 1 || benchmarkPageConcurrency === 2)
+      ? benchmarkPageConcurrency
+      : 1;
+  const requestedPageSize =
+    import.meta.env.DEV && Number.isInteger(benchmarkPageSize) && Number(benchmarkPageSize) > 0
+      ? Number(benchmarkPageSize)
+      : undefined;
   const [selectedSensors, setSelectedSensors] = useState<string[]>([]);
   const [selectedDisplayKeys, setSelectedDisplayKeys] = useState<string[]>([]);
-  const [visualizedSensors, setVisualizedSensors] = useState<string[]>([]);
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
   const [availableSensors, setAvailableSensors] = useState<string[]>([]);
   const [availableParameters, setAvailableParameters] = useState<string[]>([]);
@@ -480,6 +577,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [fetchProgress, setFetchProgress] = useState<FetchProgress | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetchRequest, setFetchRequest] = useState<FetchRequestState>(EMPTY_FETCH_REQUEST);
+  const [completedDataset, setCompletedDataset] = useState<CompletedDataset | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const [showLabelFilter, setShowLabelFilter] = useState(false);
@@ -531,12 +630,22 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   ].join('|');
 
   useEffect(() => {
+    const cancelledAt = Date.now();
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     requestIdRef.current += 1;
     setIsLoading(false);
     setFetchProgress(null);
     setFetchError(null);
+    setFetchRequest((previous) => previous.status === 'loading'
+      ? {
+          ...previous,
+          status: 'cancelled',
+          completedAt: cancelledAt,
+          error: 'Selection changed before the request completed.',
+        }
+      : previous
+    );
   }, [selectionSignature]);
 
   useEffect(
@@ -563,7 +672,13 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
   // Use processed data for CSV export if filtering is enabled
   const processedSensorData = React.useMemo(() => {
-    let data = sensorData.map(d => ({ ...d }));
+    if (!artifactFiltering && !outlierConfig.enabled) return sensorData;
+
+    // Outlier filtering mutates row values, so it still requires isolated row
+    // objects. Artifact-only filtering is pure and copies only matching rows.
+    let data = outlierConfig.enabled
+      ? sensorData.map(d => ({ ...d }))
+      : sensorData;
     
     // Apply artifact filtering first
     if (artifactFiltering) {
@@ -591,6 +706,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         setSelectedDisplayKeys([]);
         setSelectedParameters([]);
         setSensorData([]);
+        setCompletedDataset(null);
+        setFetchRequest(EMPTY_FETCH_REQUEST);
         setSensorLabelMap(
           experimentData.sensorLabelMap && typeof experimentData.sensorLabelMap === 'object'
             ? { ...experimentData.sensorLabelMap }
@@ -614,6 +731,8 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       setSelectedDisplayKeys([]);
       setSelectedParameters([]);
       setSensorData([]);
+      setCompletedDataset(null);
+      setFetchRequest(EMPTY_FETCH_REQUEST);
       setSensorLabelMap({});
       setSensorLocationMap({});
       setSensorsAfterLabelFilter([]);
@@ -1024,11 +1143,27 @@ const DataSelector: React.FC<DataSelectorProps> = ({
    * Side effect: network request, state update.
    */
   const cancelFetchData = () => {
+    const cancelledRequestId = requestIdRef.current;
     requestIdRef.current += 1;
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setIsLoading(false);
     setFetchProgress(null);
+    setFetchError(null);
+    setFetchRequest((previous) => previous.requestId === cancelledRequestId
+      ? {
+          ...previous,
+          status: 'cancelled',
+          completedAt: Date.now(),
+          error: null,
+        }
+      : previous
+    );
+    onFetchBenchmarkEvent?.({
+      type: 'cancelled',
+      requestId: cancelledRequestId,
+      at: performance.now(),
+    });
   };
 
   const handleFetchData = async () => {
@@ -1053,35 +1188,181 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     const sensorsForRequest = [...selectedSensors];
     const parametersForRequest = [...selectedParameters];
     const utcRange = getUtcRangeFromLocalDates(dateRange[0], dateRange[1]);
+    const pagedConcurrency = usePagedFetch ? requestedPageConcurrency : 1;
+    const sensorChunkSize = usePagedFetch
+      ? Math.ceil(sensorsForRequest.length / Math.min(pagedConcurrency, sensorsForRequest.length))
+      : SENSOR_CHUNK_SIZE;
     const sensorChunks: string[][] = [];
-    for (let index = 0; index < sensorsForRequest.length; index += SENSOR_CHUNK_SIZE) {
-      sensorChunks.push(sensorsForRequest.slice(index, index + SENSOR_CHUNK_SIZE));
+    for (let index = 0; index < sensorsForRequest.length; index += sensorChunkSize) {
+      sensorChunks.push(sensorsForRequest.slice(index, index + sensorChunkSize));
     }
+    const dateWindowsBySensorChunk = usePagedFetch
+      ? sensorChunks.map(() => [utcRange])
+      : sensorChunks.map((sensorChunk) =>
+          buildUtcDayWindows(
+            utcRange.start,
+            utcRange.end,
+            computeDaysPerChunk(sensorChunk.length, parametersForRequest.length)
+          )
+        );
+    let chunksTotal = usePagedFetch
+      ? 0
+      : dateWindowsBySensorChunk.reduce(
+          (total, windows) => total + windows.length,
+          0
+        );
+    const inclusiveDayCount = Math.floor(
+      (Date.parse(utcRange.end) - Date.parse(utcRange.start)) / (24 * 60 * 60 * 1000)
+    ) + 1;
+    const estimatedRows =
+      sensorsForRequest.length * parametersForRequest.length * inclusiveDayCount * 480;
+    const benchmarkLimit =
+      import.meta.env.DEV
+      && Number.isInteger(benchmarkMaxMergedRows)
+      && Number(benchmarkMaxMergedRows) > 0
+        ? Number(benchmarkMaxMergedRows)
+        : null;
+    const mergedRowLimit = benchmarkLimit ?? (
+      usePagedFetch ? MAX_PAGED_MERGED_ROWS : MAX_TESTED_MERGED_ROWS
+    );
 
     setIsLoading(true);
     setFetchError(null);
     setFetchProgress({
+      mode: usePagedFetch ? 'paged' : 'legacy',
       sensorChunk: 1,
       sensorChunks: sensorChunks.length,
       dateWindow: 1,
       dateWindows: 1,
       rowsLoaded: 0,
+      chunksCompleted: 0,
+      chunksTotal,
+      streamsCompleted: 0,
+    });
+    setFetchRequest({
+      requestId,
+      selectionSignature,
+      status: 'loading',
+      rowsLoaded: 0,
+      chunksCompleted: 0,
+      chunksTotal,
+      estimatedRows,
+      startedAt: Date.now(),
+      completedAt: null,
+      error: null,
+      transport: usePagedFetch ? 'paged' : 'legacy',
     });
 
     const startTime = performance.now();
     const transformedData: SensorData[] = [];
+    let chunksCompleted = 0;
+    let sortMs = 0;
+    onFetchBenchmarkEvent?.({
+      type: 'start',
+      requestId,
+      at: startTime,
+      chunksTotal,
+      estimatedRows,
+    });
 
     try {
-      for (const [sensorIndex, sensorChunk] of sensorChunks.entries()) {
-        const daysPerChunk = computeDaysPerChunk(
-          sensorChunk.length,
-          parametersForRequest.length
+      if (usePagedFetch) {
+        let nextStreamIndex = 0;
+        let streamsCompleted = 0;
+        const runStreamWorker = async () => {
+          while (true) {
+            const sensorIndex = nextStreamIndex;
+            nextStreamIndex += 1;
+            if (sensorIndex >= sensorChunks.length) return;
+            const sensorChunk = sensorChunks[sensorIndex];
+            const requestData: FetchDataPagePayload = {
+              owner,
+              mac_address,
+              experimentId: experimentIdForRequest,
+              experiment: experimentNameForRequest,
+              selectedSensors: sensorChunk,
+              selectedParameters: parametersForRequest,
+              dateRange: utcRange,
+              pageSize: requestedPageSize,
+            };
+            await fetchDataPageStream(
+              API_ENDPOINTS.FETCH_DATA_V2_PAGE,
+              requestData,
+              controller.signal,
+              ({ page }) => {
+                if (controller.signal.aborted || requestId !== requestIdRef.current) {
+                  throw new DOMException('The request was cancelled', 'AbortError');
+                }
+                if (transformedData.length + page.rows.length > mergedRowLimit) {
+                  throw new Error(
+                    `This selection exceeds the paged browser safety limit of ` +
+                    `${mergedRowLimit.toLocaleString()} rows. No incomplete rows were published.`
+                  );
+                }
+                const transformStartedAt = performance.now();
+                for (const row of page.rows) {
+                  transformedData.push({
+                    timestamp: row.timestamp,
+                    sensor: row.sensor,
+                    parameter: row.parameter,
+                    value: row.value,
+                    label: row.label,
+                    location: row.location,
+                  });
+                }
+                const transformMs = performance.now() - transformStartedAt;
+                chunksCompleted += 1;
+                const lowerBoundTotal = chunksCompleted + (sensorChunks.length - streamsCompleted);
+                onFetchBenchmarkEvent?.({
+                  type: 'chunk',
+                  requestId,
+                  at: performance.now(),
+                  rowsLoaded: transformedData.length,
+                  chunkRows: page.rows.length,
+                  chunksCompleted,
+                  chunksTotal: lowerBoundTotal,
+                  transformMs,
+                });
+                setFetchProgress({
+                  mode: 'paged',
+                  sensorChunk: sensorIndex + 1,
+                  sensorChunks: sensorChunks.length,
+                  dateWindow: page.page_sequence,
+                  dateWindows: page.complete ? page.page_sequence : page.page_sequence + 1,
+                  rowsLoaded: transformedData.length,
+                  chunksCompleted,
+                  chunksTotal: lowerBoundTotal,
+                  streamsCompleted,
+                });
+                setFetchRequest((previous) => previous.requestId === requestId
+                  ? {
+                      ...previous,
+                      rowsLoaded: transformedData.length,
+                      chunksCompleted,
+                      chunksTotal: lowerBoundTotal,
+                    }
+                  : previous
+                );
+              }
+            );
+            streamsCompleted += 1;
+            if (requestId === requestIdRef.current) {
+              setFetchProgress((previous) => previous?.mode === 'paged'
+                ? { ...previous, streamsCompleted }
+                : previous
+              );
+            }
+          }
+        };
+        await Promise.all(
+          Array.from(
+            { length: Math.min(pagedConcurrency, sensorChunks.length) },
+            () => runStreamWorker()
+          )
         );
-        const dateWindows = buildUtcDayWindows(
-          utcRange.start,
-          utcRange.end,
-          daysPerChunk
-        );
+        chunksTotal = chunksCompleted;
+      } else for (const [sensorIndex, sensorChunk] of sensorChunks.entries()) {
+        const dateWindows = dateWindowsBySensorChunk[sensorIndex];
 
         for (const [dateIndex, dateWindow] of dateWindows.entries()) {
           if (controller.signal.aborted || requestId !== requestIdRef.current) {
@@ -1089,11 +1370,14 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           }
 
           setFetchProgress({
+            mode: 'legacy',
             sensorChunk: sensorIndex + 1,
             sensorChunks: sensorChunks.length,
             dateWindow: dateIndex + 1,
             dateWindows: dateWindows.length,
             rowsLoaded: transformedData.length,
+            chunksCompleted,
+            chunksTotal,
           });
 
           const requestData: FetchDataRequestPayload = {
@@ -1119,14 +1403,15 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             throw new DOMException('The request was cancelled', 'AbortError');
           }
 
-          if (transformedData.length + data.length > HARD_MAX_MERGED_ROWS) {
+          if (transformedData.length + data.length > mergedRowLimit) {
             throw new Error(
-              `This selection exceeds the browser safety limit of ` +
-              `${HARD_MAX_MERGED_ROWS.toLocaleString()} rows. ` +
+              `This selection exceeds the tested browser safety limit of ` +
+              `${mergedRowLimit.toLocaleString()} rows. ` +
               `The last date window was not added; select fewer sensors, parameters, or days.`
             );
           }
 
+          const transformStartedAt = performance.now();
           for (const row of data) {
             transformedData.push({
               timestamp: row.timestamp,
@@ -1137,6 +1422,18 @@ const DataSelector: React.FC<DataSelectorProps> = ({
               location: row.location,
             });
           }
+          const transformMs = performance.now() - transformStartedAt;
+          chunksCompleted += 1;
+          onFetchBenchmarkEvent?.({
+            type: 'chunk',
+            requestId,
+            at: performance.now(),
+            rowsLoaded: transformedData.length,
+            chunkRows: data.length,
+            chunksCompleted,
+            chunksTotal,
+            transformMs,
+          });
 
           logger.info('Fetched data window', {
             sensorChunk: sensorIndex + 1,
@@ -1150,22 +1447,42 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
           if (requestId === requestIdRef.current) {
             setFetchProgress({
+              mode: 'legacy',
               sensorChunk: sensorIndex + 1,
               sensorChunks: sensorChunks.length,
               dateWindow: dateIndex + 1,
               dateWindows: dateWindows.length,
               rowsLoaded: transformedData.length,
+              chunksCompleted,
+              chunksTotal,
             });
+            setFetchRequest((previous) => previous.requestId === requestId
+              ? {
+                  ...previous,
+                  rowsLoaded: transformedData.length,
+                  chunksCompleted,
+                }
+              : previous
+            );
           }
         }
       }
 
+      const sortStartedAt = performance.now();
       transformedData.sort(
         (left, right) =>
           left.timestamp.localeCompare(right.timestamp) ||
           left.sensor.localeCompare(right.sensor) ||
           left.parameter.localeCompare(right.parameter)
       );
+      sortMs = performance.now() - sortStartedAt;
+      onFetchBenchmarkEvent?.({
+        type: 'sort',
+        requestId,
+        at: performance.now(),
+        rowsLoaded: transformedData.length,
+        sortMs,
+      });
 
       if (controller.signal.aborted || requestId !== requestIdRef.current) {
         throw new DOMException('The request was cancelled', 'AbortError');
@@ -1184,8 +1501,43 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         return merged;
       });
       setSensorData(transformedData);
-      setVisualizedSensors(sensorsForRequest);
       setShowVisualization(true);
+      const completedAt = Date.now();
+      setCompletedDataset({
+        requestId,
+        selectionSignature,
+        rowCount: transformedData.length,
+        selectedSensors: sensorsForRequest,
+        selectedParameters: parametersForRequest,
+        experimentName: experimentNameForRequest,
+        dateStart: utcRange.start,
+        dateEnd: utcRange.end,
+        completedAt,
+      });
+      setFetchRequest({
+        requestId,
+        selectionSignature,
+        status: 'complete',
+        rowsLoaded: transformedData.length,
+        chunksCompleted,
+        chunksTotal,
+        estimatedRows,
+        startedAt: completedAt - (performance.now() - startTime),
+        completedAt,
+        error: null,
+        transport: usePagedFetch ? 'paged' : 'legacy',
+      });
+      onFetchBenchmarkEvent?.({
+        type: 'complete',
+        requestId,
+        at: performance.now(),
+        rowsLoaded: transformedData.length,
+        chunksCompleted,
+        chunksTotal,
+        sortMs,
+        totalMs: performance.now() - startTime,
+        data: transformedData,
+      });
 
       logger.info('Completed fetch-data request', {
         durationSeconds: ((performance.now() - startTime) / 1000).toFixed(2),
@@ -1199,6 +1551,27 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
       const message = error instanceof Error ? error.message : String(error);
       setFetchError(message);
+      setFetchRequest((previous) => previous.requestId === requestId
+        ? {
+            ...previous,
+            status: 'failed',
+            rowsLoaded: transformedData.length,
+            chunksCompleted,
+            completedAt: Date.now(),
+            error: message,
+          }
+        : previous
+      );
+      onFetchBenchmarkEvent?.({
+        type: 'failed',
+        requestId,
+        at: performance.now(),
+        rowsLoaded: transformedData.length,
+        chunksCompleted,
+        chunksTotal,
+        totalMs: performance.now() - startTime,
+        error: message,
+      });
       logger.error('Error fetching data', { message });
     } finally {
       if (requestId === requestIdRef.current) {
@@ -1210,6 +1583,18 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       }
     }
   };
+
+  const displayedDatasetMatchesSelection = Boolean(
+    completedDataset?.selectionSignature === selectionSignature
+  );
+  const displayedDatasetIsPreviousRequest = Boolean(
+    completedDataset
+    && completedDataset.requestId !== fetchRequest.requestId
+    && (fetchRequest.status === 'failed' || fetchRequest.status === 'cancelled')
+  );
+  const exportParameters = completedDataset?.selectedParameters ?? [];
+  const exportSensors = completedDataset?.selectedSensors ?? [];
+  const exportExperimentName = completedDataset?.experimentName ?? selectedExperimentName;
 
   /**
    * handleDownloadCSV
@@ -1272,7 +1657,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       const allTimestamps = gridTimestamps;
 
       // Create a separate file for each parameter
-      selectedParameters.forEach(param => {
+      exportParameters.forEach(param => {
         // Build columns: for each label, add mean and errorType (SE or STD)
         const columns: string[] = ['Timestamp'];
         labelsToExport.forEach(label => {
@@ -1323,7 +1708,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${selectedExperimentName}_${param}_labels_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `${exportExperimentName}_${param}_labels_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1335,7 +1720,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     // Default: Group by Sensor — 3-minute buckets, mean when multiple points fall in a bucket
     const dataByParameter: Record<string, Record<string, Record<string, number[]>>> = {};
 
-    selectedParameters.forEach(param => {
+    exportParameters.forEach(param => {
       dataByParameter[param] = {};
     });
 
@@ -1360,12 +1745,12 @@ const DataSelector: React.FC<DataSelectorProps> = ({
     const sensorsWithAnyRows = new Set(
       processedSensorData.map((row) => String(row.sensor ?? ''))
     );
-    const allSensors = [...visualizedSensors].sort(compareSensorNames);
+    const allSensors = [...exportSensors].sort(compareSensorNames);
     const { namesBySensor: sensorHeaderMap, replacedSensors } =
       buildReplacementNamesForParameter(processedSensorData, allSensors);
 
     // Create and download a file for each parameter
-    selectedParameters.forEach(param => {
+    exportParameters.forEach(param => {
       const paramData = dataByParameter[param];
       const timestamps = gridTimestamps;
       const sensors = allSensors.filter(
@@ -1396,7 +1781,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${selectedExperimentName}_${param}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `${exportExperimentName}_${param}_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1420,6 +1805,21 @@ const DataSelector: React.FC<DataSelectorProps> = ({
 
   const isSelectionValid = selectedSensors.length > 0 && selectedParameters.length > 0;
   const [showSelectionWarning, setShowSelectionWarning] = useState(false);
+  const estimatedSelectionRows = React.useMemo(() => {
+    if (!dateRange[0] || !dateRange[1] || !isSelectionValid) return 0;
+    const startDay = Date.UTC(
+      dateRange[0].getFullYear(),
+      dateRange[0].getMonth(),
+      dateRange[0].getDate()
+    );
+    const endDay = Date.UTC(
+      dateRange[1].getFullYear(),
+      dateRange[1].getMonth(),
+      dateRange[1].getDate()
+    );
+    const days = Math.max(0, Math.floor((endDay - startDay) / (24 * 60 * 60 * 1000)) + 1);
+    return selectedSensors.length * selectedParameters.length * days * 480;
+  }, [dateRange, isSelectionValid, selectedSensors.length, selectedParameters.length]);
 
   if (selectedExperimentId === null) return null;
 
@@ -1605,6 +2005,27 @@ const DataSelector: React.FC<DataSelectorProps> = ({
         </div>
 
         {/* Action Buttons */}
+        {estimatedSelectionRows > LARGE_DATASET_WARNING_ROWS && (
+          <div
+            className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+            role="status"
+            data-testid="large-request-warning"
+          >
+            Large request: estimated {estimatedSelectionRows.toLocaleString()} raw rows.
+            {' '}Completeness is confirmed only after every request finishes.
+            {estimatedSelectionRows > (
+              usePagedFetch ? MAX_PAGED_MERGED_ROWS : MAX_TESTED_MERGED_ROWS
+            ) && (
+              <>
+                {' '}This estimate exceeds the tested frontend range of{' '}
+                {(usePagedFetch
+                  ? MAX_PAGED_MERGED_ROWS
+                  : MAX_TESTED_MERGED_ROWS).toLocaleString()} rows; loading will stop safely if the
+                actual row count crosses that limit.
+              </>
+            )}
+          </div>
+        )}
         <div className="flex space-x-4 mt-6">
           <button
             onClick={() => {
@@ -1646,20 +2067,37 @@ const DataSelector: React.FC<DataSelectorProps> = ({
           {showSelectionWarning && (
             <div className="mt-2 text-red-600 text-sm font-semibold">You need to choose at least one sensor and one parameter.</div>
           )}
-          {processedSensorData.length > 0 && !isLoading && (
+          {processedSensorData.length > 0 && completedDataset && !isLoading && (
             <button
               onClick={handleDownloadCSV}
               className="bg-[#b2b27a] text-white py-2 px-4 rounded hover:bg-[#a2a26a] transition-colors"
             >
-              Download CSV
+              {displayedDatasetMatchesSelection ? 'Download CSV' : 'Download previous completed CSV'}
             </button>
           )}
         </div>
         {isLoading && fetchProgress && (
-          <div className="mt-3 text-sm text-gray-700" role="status">
-            Sensor chunk {fetchProgress.sensorChunk} of {fetchProgress.sensorChunks}
-            {' · '}Date window {fetchProgress.dateWindow} of {fetchProgress.dateWindows}
+          <div
+            className="mt-3 text-sm text-gray-700"
+            role="status"
+            data-testid="fetch-progress"
+          >
+            {fetchProgress.mode === 'paged' ? (
+              <>
+                Page {fetchProgress.chunksCompleted}
+                {' · '}Stream {fetchProgress.streamsCompleted ?? 0} of{' '}
+                {fetchProgress.sensorChunks} complete
+              </>
+            ) : (
+              <>
+                Sensor chunk {fetchProgress.sensorChunk} of {fetchProgress.sensorChunks}
+                {' · '}Date window {fetchProgress.dateWindow} of {fetchProgress.dateWindows}
+                {' · '}Request {fetchProgress.chunksCompleted} of{' '}
+                {fetchProgress.chunksTotal} complete
+              </>
+            )}
             {' · '}{fetchProgress.rowsLoaded.toLocaleString()} rows loaded
+            {' · '}Estimated {fetchRequest.estimatedRows.toLocaleString()} rows
           </div>
         )}
         {fetchError && (
@@ -1667,16 +2105,48 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             {fetchError}
           </div>
         )}
+        {fetchRequest.status === 'cancelled' && (
+          <div className="mt-3 text-sm font-semibold text-amber-700" role="status">
+            New data request cancelled. No incomplete rows were published.
+          </div>
+        )}
+        {fetchRequest.status === 'complete' && completedDataset && (
+          <div className="mt-3 text-sm font-medium text-emerald-700" role="status">
+            Complete dataset: {completedDataset.rowCount.toLocaleString()} raw rows from{' '}
+            {fetchRequest.chunksCompleted} of {fetchRequest.chunksTotal}{' '}
+            {fetchRequest.transport === 'paged' ? 'pages' : 'requests'}.
+          </div>
+        )}
+        {completedDataset
+          && (!displayedDatasetMatchesSelection || displayedDatasetIsPreviousRequest)
+          && !isLoading && (
+          <div
+            className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+            role="status"
+            data-testid="dataset-provenance"
+          >
+            Displaying the previous completed dataset ({completedDataset.rowCount.toLocaleString()} raw rows;
+            {' '}{completedDataset.selectedSensors.length.toLocaleString()} sensors;
+            {' '}{completedDataset.selectedParameters.length.toLocaleString()}{' '}
+            {completedDataset.selectedParameters.length === 1 ? 'parameter' : 'parameters'}).
+            {' '}It is not the result of the current
+            {fetchRequest.status === 'failed'
+              ? ' failed request.'
+              : fetchRequest.status === 'cancelled'
+                ? ' cancelled request.'
+                : ' selection.'}
+          </div>
+        )}
       </div>
 
       {/* Data Visualization */}
-      {showVisualization && processedSensorData.length > 0 && !isLoading && (
+      {showVisualization && completedDataset && processedSensorData.length > 0 && !isLoading && (
         <div className="p-4 bg-white rounded-lg shadow">
           <VisualizationPanel
             data={sensorData as any}
-            selectedParameters={selectedParameters}
-            selectedSensors={visualizedSensors}
-            experimentName={selectedExperimentName}
+            selectedParameters={completedDataset.selectedParameters}
+            selectedSensors={completedDataset.selectedSensors}
+            experimentName={completedDataset.experimentName}
             getSensorColor={getSensorColor}
             getSensorDisplayName={getSensorDisplayName}
             outlierConfig={outlierConfig}
@@ -1690,6 +2160,7 @@ const DataSelector: React.FC<DataSelectorProps> = ({
             setGroupBy={setGroupBy}
             errorType={errorType}
             setErrorType={setErrorType}
+            onScatterBenchmarkResult={onScatterBenchmarkResult}
           />
         </div>
       )}
@@ -1697,4 +2168,4 @@ const DataSelector: React.FC<DataSelectorProps> = ({
   );
 };
 
-export default DataSelector; 
+export default DataSelector;

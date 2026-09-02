@@ -18,16 +18,33 @@ import {
   getParameterUnit as getMetadataParameterUnit,
   formatAxisTitle,
 } from '../../constants/parameterMetadata';
+import {
+  prepareSensorTracesIndexed,
+  prepareSensorTracesLegacy,
+  type ScatterSensorRow,
+  type SensorTracePreparationStats,
+} from './sensorTracePreparation';
 
-interface SensorData {
-  timestamp: string;
-  [key: string]: string | number;
-}
+type SensorData = ScatterSensorRow;
 
 interface AxisConfig {
   tickSize?: number;
   textSize?: number;
   distanceFromPlot?: number;
+}
+
+export type ScatterRendererMode = 'svg' | 'webgl';
+export type ScatterTracePreparationMode = 'legacy' | 'indexed';
+
+export interface ScatterPlotBenchmarkResult {
+  rendererMode: ScatterRendererMode;
+  tracePreparationMs: number;
+  plotlyRenderMs: number;
+  totalMs: number;
+  traceCount: number;
+  renderedPointCount: number;
+  tracePreparationMode: ScatterTracePreparationMode;
+  preparationStats: SensorTracePreparationStats | null;
 }
 
 interface ScatterPlotProps {
@@ -52,6 +69,20 @@ interface ScatterPlotProps {
   errorType?: 'STD' | 'SE';
   /** Optional override for the plot's outer wrapper className (e.g. to fill a fullscreen container). Defaults to the standard embedded sizing. */
   containerClassName?: string;
+  /** Benchmark-only renderer override. Normal application usage remains SVG. */
+  rendererMode?: ScatterRendererMode;
+  /** Benchmark-only browser timing callback, completed by Plotly's initial onAfterPlot event. */
+  onBenchmarkResult?: (result: ScatterPlotBenchmarkResult) => void;
+  /** Benchmark-only preparation override. Normal application usage uses the indexed path. */
+  tracePreparationMode?: ScatterTracePreparationMode;
+  /** Benchmark-only proof that expensive sensor preparation executed. */
+  onTracePreparation?: (event: {
+    executionCount: number;
+    sourceRowCount: number;
+    selectedSensors: string[];
+    selectedParameters: string[];
+    durationMs: number;
+  }) => void;
 }
 
 const defaultGetSensorColor = (colorKey: string, colorDomain: string[]) => {
@@ -120,7 +151,16 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   includedLabels,
   errorType = 'SE',
   containerClassName = 'h-[calc(70vh-280px)] w-full',
+  rendererMode = 'svg',
+  onBenchmarkResult,
+  tracePreparationMode = 'indexed',
+  onTracePreparation,
 }) => {
+  const tracePreparationStartedAt =
+    onBenchmarkResult && typeof performance !== 'undefined' ? performance.now() : 0;
+  const benchmarkReportedRef = React.useRef(false);
+  const preparationExecutionCountRef = React.useRef(0);
+
   // Check for parameter limit and notify if exceeded
   useEffect(() => {
     if (selectedParameters.length > 2) {
@@ -140,7 +180,10 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
   }, [selectedParameters, onParameterLimitExceeded]);
 
   // Always limit to maximum of 2 parameters
-  const limitedParameters = selectedParameters.slice(0, 2);
+  const limitedParameters = React.useMemo(
+    () => selectedParameters.slice(0, 2),
+    [selectedParameters]
+  );
   
   const getColorKey = React.useCallback(
     (sensor: string) => {
@@ -162,79 +205,6 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
     }
     return keys;
   }, [selectedSensors, getColorKey]);
-
-  const buildLegendNamesForParameter = React.useCallback((parameterRows: SensorData[]) => {
-    const presentSensors = Array.from(
-      new Set(
-        parameterRows
-          .map((row) => String(row.sensor ?? ''))
-          .filter((sensor) => selectedSensors.includes(sensor))
-      )
-    );
-
-    const rangesBySensor = new Map<string, { latest: number; earliest: number }>();
-    for (const sensor of presentSensors) {
-      rangesBySensor.set(sensor, { latest: Number.NEGATIVE_INFINITY, earliest: Number.POSITIVE_INFINITY });
-    }
-
-    for (const row of parameterRows) {
-      const sensor = String(row.sensor ?? '');
-      if (!rangesBySensor.has(sensor)) continue;
-      const ts = Date.parse(String(row.timestamp ?? ''));
-      if (!Number.isFinite(ts)) continue;
-      const range = rangesBySensor.get(sensor);
-      if (!range) continue;
-      range.latest = Math.max(range.latest, ts);
-      range.earliest = Math.min(range.earliest, ts);
-    }
-
-    const groupedByLocation = new Map<string, string[]>();
-    for (const sensor of presentSensors) {
-      const displayName = getSensorDisplayName(sensor);
-      const group = groupedByLocation.get(displayName);
-      if (group) {
-        group.push(sensor);
-      } else {
-        groupedByLocation.set(displayName, [sensor]);
-      }
-    }
-
-    const legendNames: Record<string, string> = {};
-    for (const [displayName, sensorsInLocation] of groupedByLocation.entries()) {
-      if (sensorsInLocation.length <= 1) {
-        legendNames[sensorsInLocation[0]] = displayName;
-        continue;
-      }
-
-      const ranked = sensorsInLocation
-        .slice()
-        .sort((left, right) => {
-          const leftRange = rangesBySensor.get(left);
-          const rightRange = rangesBySensor.get(right);
-          const leftLatest = leftRange?.latest ?? Number.NEGATIVE_INFINITY;
-          const rightLatest = rightRange?.latest ?? Number.NEGATIVE_INFINITY;
-          if (leftLatest !== rightLatest) return rightLatest - leftLatest;
-          const leftEarliest = leftRange?.earliest ?? Number.POSITIVE_INFINITY;
-          const rightEarliest = rightRange?.earliest ?? Number.POSITIVE_INFINITY;
-          if (leftEarliest !== rightEarliest) return rightEarliest - leftEarliest;
-          return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
-        });
-
-      ranked.forEach((sensor, index) => {
-        if (index === 0) {
-          legendNames[sensor] = displayName;
-          return;
-        }
-        if (ranked.length === 2) {
-          legendNames[sensor] = `${displayName} (replaced)`;
-          return;
-        }
-        legendNames[sensor] = `${displayName} (replaced ${index})`;
-      });
-    }
-
-    return legendNames;
-  }, [selectedSensors, getSensorDisplayName]);
 
   // Use location/display-name color grouping so replacement LLAs share the same color.
   const colorFn = React.useCallback(
@@ -271,13 +241,56 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
     };
   }
 
+  const traceType = rendererMode === 'webgl' ? 'scattergl' : 'scatter';
   let plotData: any[] = [];
+  let preparationStats: SensorTracePreparationStats | null = null;
   const yAxisTitle = formatAxisTitle(limitedParameters[0] ?? selectedParameters[0]);
   const yAxisTwoTitle =
     limitedParameters.length > 1
       ? formatAxisTitle(limitedParameters[1] ?? selectedParameters[1])
       : '';
-  const selectedLabelGroups = normalizeIncludedLabels(includedLabels ?? []);
+  const selectedLabelGroups = React.useMemo(
+    () => normalizeIncludedLabels(includedLabels ?? []),
+    [includedLabels]
+  );
+
+  const sensorPreparation = React.useMemo(() => {
+    if (groupBy === 'label' && sensorLabelMap) return null;
+    preparationExecutionCountRef.current += 1;
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
+    const options = {
+      data,
+      limitedParameters,
+      selectedParameterCount: selectedParameters.length,
+      selectedSensors,
+      traceType,
+      getSensorDisplayName,
+      getSensorColor: colorFn,
+    };
+    const result = tracePreparationMode === 'legacy'
+      ? prepareSensorTracesLegacy(options)
+      : prepareSensorTracesIndexed(options);
+    onTracePreparation?.({
+      executionCount: preparationExecutionCountRef.current,
+      sourceRowCount: data.length,
+      selectedSensors: [...selectedSensors],
+      selectedParameters: [...limitedParameters],
+      durationMs: typeof performance !== 'undefined' ? performance.now() - startedAt : 0,
+    });
+    return result;
+  }, [
+    colorFn,
+    data,
+    getSensorDisplayName,
+    groupBy,
+    limitedParameters,
+    onTracePreparation,
+    selectedParameters.length,
+    selectedSensors,
+    sensorLabelMap,
+    tracePreparationMode,
+    traceType,
+  ]);
 
   if (groupBy === 'label' && sensorLabelMap) {
     const labelsToPlot = selectedLabelGroups;
@@ -333,7 +346,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         plotData.push({
           x: timestamps.map(ts => String(ts)),
           y: means,
-          type: 'scatter',
+          type: traceType,
           mode: 'lines',
           name: `${label} - ${getParameterDisplayLabel(param)}`,
           yaxis: paramIdx === 0 ? 'y' : 'y2',
@@ -369,7 +382,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             plotData.push({
               x: [...errorBandX, ...errorBandX.slice().reverse()],
               y: [...errorBandUpper, ...errorBandLower.slice().reverse()],
-              type: 'scatter',
+              type: traceType,
               mode: 'lines',
               fill: 'toself',
               fillcolor: labelColor(label) + '22', // semi-transparent
@@ -385,45 +398,24 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
     }
   } else {
     // Default: group by sensor
-    plotData = limitedParameters.flatMap((param, paramIdx) => {
-      // Filter data for this parameter
-      const paramData = data.filter((d) => rowMatchesParameter(d as RowWithSensorLabel, param));
-      const legendNameBySensor = buildLegendNamesForParameter(paramData);
-      const presentSensors = Array.from(
-        new Set(
-          paramData
-            .map((d) => String(d.sensor ?? ''))
-            .filter((sensor) => selectedSensors.includes(sensor))
-        )
-      );
-      return selectedSensors
-        .filter((sensor) => presentSensors.includes(sensor))
-        .map(sensor => {
-          const sensorData = paramData.filter(d => String(d.sensor) === sensor);
-          const color = colorFn(sensor);
-          const legendSensorName = legendNameBySensor[sensor] ?? getSensorDisplayName(sensor);
-          return {
-            x: sensorData.map(d => String(d.timestamp)),
-            y: sensorData.map(d => d.value == null ? null : Number(d.value)),
-            type: 'scatter',
-            mode: 'lines',
-            name: selectedParameters.length > 1
-              ? `${legendSensorName} - ${getParameterDisplayLabel(param)}`
-              : legendSensorName,
-            yaxis: paramIdx === 0 ? 'y' : 'y2',
-            line: {
-              color: color,
-              width: 2,
-            },
-            hovertemplate: `%{x}<br>${getParameterDisplayLabel(param)}: %{y}${getMetadataParameterUnit(param) ? ` ${getMetadataParameterUnit(param)}` : ''}<extra>${legendSensorName}</extra>`,
-          };
-        })
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-    }).flat();
+    const preparation = sensorPreparation as NonNullable<typeof sensorPreparation>;
+    plotData = preparation.preparedTraces.map(({ trace }) => trace);
+    preparationStats = preparation.stats;
   }
 
   // Ensure plotData is always an array of objects
   plotData = Array.isArray(plotData) ? plotData.filter(trace => typeof trace === 'object' && trace !== null && 'x' in trace && 'y' in trace) : [];
+
+  const traceCount = plotData.length;
+  const renderedPointCount = onBenchmarkResult
+    ? plotData.reduce(
+        (total, trace) => total + (Array.isArray(trace.x) ? trace.x.length : 0),
+        0
+      )
+    : 0;
+  const tracePreparationEndedAt =
+    onBenchmarkResult && typeof performance !== 'undefined' ? performance.now() : 0;
+  const plotRenderRequestedAt = tracePreparationEndedAt;
 
   // Guard: If groupBy is 'label' and no includedLabels, show info message
   const labelWarningFontColor = '#8AC6BB';
@@ -510,9 +502,24 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         }}
         useResizeHandler={true}
         style={{ width: '100%', height: '100%' }}
+        onAfterPlot={() => {
+          if (!onBenchmarkResult || benchmarkReportedRef.current) return;
+          benchmarkReportedRef.current = true;
+          const plotlyCompletedAt = performance.now();
+          onBenchmarkResult({
+            rendererMode,
+            tracePreparationMs: tracePreparationEndedAt - tracePreparationStartedAt,
+            plotlyRenderMs: plotlyCompletedAt - plotRenderRequestedAt,
+            totalMs: plotlyCompletedAt - tracePreparationStartedAt,
+            traceCount,
+            renderedPointCount,
+            tracePreparationMode,
+            preparationStats,
+          });
+        }}
       />
     </div>
   );
 };
 
-export default ScatterPlot; 
+export default React.memo(ScatterPlot);

@@ -2,10 +2,10 @@
 
 Full API payloads and responses: **[README.md](README.md)**.
 
-### Required `backend_fastapi/.env` variables
-- `GCP_PROJECT_ID`
-- `GCP_CLIENT_EMAIL`
-- `GCP_PRIVATE_KEY`
+### Local configuration and credentials
+- `GCP_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT`
+- Google Application Default Credentials (ADC); if a local credential file is needed,
+  store it outside Git and set `GOOGLE_APPLICATION_CREDENTIALS` in the local process
 - `FIREBASE_PROJECT_ID` (optional but recommended, for Firebase token audience validation)
 - `GCP_AUTH_URL` (used by legacy `POST /api/auth` path)
 - `GCP_ANALYTICS_URL` (used by `GET /api/analytics-health`)
@@ -16,7 +16,8 @@ Optional:
 ### Run backend locally
 1. `cd backend_fastapi`
 2. `pip install -r requirements.txt`
-3. Ensure `backend_fastapi/.env` is present (copied from the legacy backend and adjusted).
+3. Ensure ADC is available and add only required application settings to
+   `backend_fastapi/.env`.
 4. `uvicorn main:app --reload --host 0.0.0.0 --port 3001`
 
 Health:
@@ -30,6 +31,7 @@ Health:
   - `/api/permissions`
   - `/api/experiment-summary`
   - `/api/fetch-data`
+  - `/api/v2/fetch-data-page`
   - `/api/analytics-health`
 
 ### Current auth + permissions model

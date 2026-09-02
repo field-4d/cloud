@@ -2,8 +2,10 @@ export const POINTS_PER_DAY = 480;
 export const TARGET_MAX_ROWS_PER_REQUEST = 50_000;
 export const MIN_DAYS_PER_CHUNK = 1;
 export const MAX_DAYS_PER_CHUNK = 3;
-export const WARN_MERGED_ROWS = 100_000;
-export const HARD_MAX_MERGED_ROWS = 300_000;
+/** Existing boundary retained as a user-visible large-request warning threshold. */
+export const LARGE_DATASET_WARNING_ROWS = 300_000;
+/** Largest exact, stable headed-Chromium dataset validated by Phase 4. */
+export const MAX_TESTED_MERGED_ROWS = 1_008_000;
 export const SENSOR_CHUNK_SIZE = 20;
 
 export interface UtcDateWindow {

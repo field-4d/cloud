@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import ScatterPlot from './graph-components/ScatterPlot';
+import ScatterPlot, { type ScatterPlotBenchmarkResult } from './graph-components/ScatterPlot';
 import BoxPlot from './graph-components/BoxPlot';
 import Select from 'react-select';
 import Histogram from './graph-components/Histogram';
@@ -29,6 +29,11 @@ import {
   type OutlierMethod,
 } from '../utils/outlierFiltering';
 import { normalizeIncludedLabels } from '../utils/labelGrouping';
+import {
+  analyzeDefaultIqrOutliers,
+  filterRowsBySelectedDates,
+  filterRowsByUtcHourRange,
+} from '../utils/frontendDataProcessing';
 
 interface SensorData {
   timestamp: string;
@@ -77,6 +82,8 @@ interface VisualizationPanelProps {
   setGroupBy?: React.Dispatch<React.SetStateAction<'sensor' | 'label'>>;
   errorType?: 'STD' | 'SE';
   setErrorType?: React.Dispatch<React.SetStateAction<'STD' | 'SE'>>;
+  /** Development benchmark only; omitted by the production application. */
+  onScatterBenchmarkResult?: (result: ScatterPlotBenchmarkResult) => void;
 }
 
 const VISUALIZATIONS = [
@@ -293,7 +300,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   const [allDatesSelected, setAllDatesSelected] = useState(true);
 
   // Extract unique parameters from data
-  const allParameters = Array.from(new Set(props.data.map(d => d.parameter).filter(Boolean))).map(String);
+  const allParameters = useMemo(
+    () => Array.from(new Set(props.data.map(d => d.parameter).filter(Boolean))).map(String),
+    [props.data]
+  );
   const [selectedParameters, setSelectedParameters] = useState<string[]>(allParameters);
   const currentOutlierVizType = toOutlierVizType(selectedViz);
 
@@ -387,10 +397,11 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     });
   }, [allDates, allDatesSelected]);
 
-  // Filter data by selected dates unless allDatesSelected
-  const filteredData = allDatesSelected
-    ? props.data
-    : props.data.filter(d => selectedDates.includes((d.timestamp as string).split('T')[0]));
+  // Filter data by selected dates unless allDatesSelected.
+  const filteredData = useMemo(
+    () => filterRowsBySelectedDates(props.data, allDatesSelected, selectedDates),
+    [props.data, allDatesSelected, selectedDates]
+  );
 
   // Effect to detect artifacts after data is fetched
   useEffect(() => {
@@ -441,39 +452,13 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     });
   }
 
-  // Helper: Filter data by hour range
-  // Each hour includes the full hour: e.g., hour 23 includes 23:00:00 to 23:59:59.999
-  // Range 0-23 includes all hours (00:00:00 to 23:59:59.999)
-  function filterByHourRange(data: SensorData[], hourRange: [number, number]): SensorData[] {
-    return data.filter(d => {
-      const timestamp = typeof d.timestamp === 'string' ? d.timestamp : '';
-      if (!timestamp) return false;
-      
-      try {
-        const date = new Date(timestamp);
-        const hour = date.getUTCHours(); // Use UTC hours for consistency
-        
-        // Handle range that crosses midnight (e.g., 22-2 means 22:00 to 02:59 next day)
-        if (hourRange[0] <= hourRange[1]) {
-          // Normal range (e.g., 11-13 includes 11:00:00 to 13:59:59.999)
-          return hour >= hourRange[0] && hour <= hourRange[1];
-        } else {
-          // Wraps around midnight (e.g., 22-2 includes 22:00:00 to 23:59:59.999 and 00:00:00 to 02:59:59.999)
-          return hour >= hourRange[0] || hour <= hourRange[1];
-        }
-      } catch (e) {
-        return false;
-      }
-    });
-  }
-
   // Preprocess data before outlier filtering (artifact -> hour)
   const baseProcessedData = React.useMemo(() => {
     let data = filteredData;
     
     // Apply artifact filtering first (if enabled and relevant)
     if (props.artifactFiltering && isArtifactFilteringRelevant) {
-      data = filterArtifacts([...data]); // Create copy to avoid mutation
+      data = filterArtifacts(data);
     }
     
     // Apply hour range filtering for BoxPlot and Histogram (same rules; only after Apply sets appliedHourRange)
@@ -483,7 +468,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       appliedHourRange !== null
     ) {
       if (appliedHourRange[0] !== 0 || appliedHourRange[1] !== 23) {
-        data = filterByHourRange(data, appliedHourRange);
+        data = filterRowsByUtcHourRange(data, appliedHourRange);
       }
     }
     
@@ -522,56 +507,15 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     currentOutlierVizType,
   ]);
 
+  const outlierHintAnalysis = useMemo(
+    () => analyzeDefaultIqrOutliers(baseProcessedData, DEFAULT_OUTLIER_HINT_IQR_THRESHOLD),
+    [baseProcessedData]
+  );
+
   const outlierHintDetection = useMemo(() => {
     if (baseProcessedData.length === 0) {
       return { hasDefaultRuleOutliers: false, datasetSignature: 'empty' };
     }
-
-    const preparedForHint = baseProcessedData.map((row) => {
-      const numericValue = typeof row.value === 'number' && Number.isFinite(row.value) ? row.value : null;
-      return {
-        ...row,
-        value: numericValue ?? Number.NaN,
-        __rawNumericValue: numericValue,
-      };
-    });
-
-    const filteredForHint = applyOutlierFiltering(preparedForHint, {
-      enabled: true,
-      method: 'IQR',
-      threshold: DEFAULT_OUTLIER_HINT_IQR_THRESHOLD,
-    });
-
-    const hasDefaultRuleOutliers = filteredForHint.some((row) => {
-      const raw = row.__rawNumericValue;
-      return typeof raw === 'number' && Number.isFinite(raw) && Number.isNaN(row.value);
-    });
-
-    let finiteCount = 0;
-    let finiteSum = 0;
-    let finiteMin = Number.POSITIVE_INFINITY;
-    let finiteMax = Number.NEGATIVE_INFINITY;
-    for (const row of baseProcessedData) {
-      if (typeof row.value !== 'number' || !Number.isFinite(row.value)) continue;
-      finiteCount += 1;
-      finiteSum += row.value;
-      if (row.value < finiteMin) finiteMin = row.value;
-      if (row.value > finiteMax) finiteMax = row.value;
-    }
-
-    const firstRow = baseProcessedData[0];
-    const lastRow = baseProcessedData[baseProcessedData.length - 1];
-    const dataFingerprint = [
-      baseProcessedData.length,
-      finiteCount,
-      finiteSum.toFixed(6),
-      Number.isFinite(finiteMin) ? finiteMin.toFixed(6) : 'na',
-      Number.isFinite(finiteMax) ? finiteMax.toFixed(6) : 'na',
-      String(firstRow?.timestamp ?? ''),
-      String(lastRow?.timestamp ?? ''),
-      String(firstRow?.parameter ?? ''),
-      String(lastRow?.parameter ?? ''),
-    ].join('|');
 
     const datasetSignature = [
       selectedViz,
@@ -581,12 +525,16 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
       props.artifactFiltering ? 'artifact-on' : 'artifact-off',
       allDatesSelected ? `all:${allDates.length}` : selectedDates.join(','),
       selectedParameters.join(','),
-      dataFingerprint,
+      outlierHintAnalysis.dataFingerprint,
     ].join('::');
 
-    return { hasDefaultRuleOutliers, datasetSignature };
+    return {
+      hasDefaultRuleOutliers: outlierHintAnalysis.hasDefaultRuleOutliers,
+      datasetSignature,
+    };
   }, [
     baseProcessedData,
+    outlierHintAnalysis,
     selectedViz,
     props.groupBy,
     boxPlotGroupingMode,
@@ -621,8 +569,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
     }
   }, [processedData, isApplyingHourFilter, hasAppliedHourFilter, appliedHourRange]);
 
-  // Compute correlation matrix
-  const correlationData = useMemo(() => {
+  // Preserve the dormant correlation implementation without executing it while
+  // the correlation visualization has no selectable or rendered consumer.
+  const computeCorrelationData = React.useCallback((): CorrelationData | null => {
     if (allParameters.length < 2) {
       return null;
     }
@@ -846,6 +795,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
             includedLabels={props.includedLabels}
             errorType={props.errorType}
             containerClassName={containerClassName}
+            onBenchmarkResult={props.onScatterBenchmarkResult}
           />
         </div>
       );
@@ -1834,4 +1784,4 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = (props) => {
   );
 };
 
-export default VisualizationPanel; 
+export default VisualizationPanel;

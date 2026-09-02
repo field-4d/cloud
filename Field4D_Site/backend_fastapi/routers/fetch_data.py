@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
+import hashlib
+import json
 import logging
+import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from google.cloud import bigquery
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
-from services.bigquery_client import run_query
+from services.bigquery_client import run_query_with_job
 
 
 router = APIRouter()
@@ -44,7 +47,7 @@ class FetchDataRow(BaseModel):
 
 
 @router.post("/fetch-data", response_model=list[FetchDataRow])
-def post_fetch_data(payload: FetchDataRequest) -> list[FetchDataRow]:
+def post_fetch_data(payload: FetchDataRequest, request: Request) -> list[FetchDataRow]:
     experiment_id = payload.experimentId if payload.experimentId is not None else payload.exp_id
     experiment_name = payload.experiment.strip()
 
@@ -65,6 +68,24 @@ def post_fetch_data(payload: FetchDataRequest) -> list[FetchDataRow]:
     if payload.dateRange.end < payload.dateRange.start:
         raise HTTPException(status_code=400, detail="dateRange.end must be >= dateRange.start")
 
+    selection_signature = hashlib.sha256(
+        json.dumps(
+            {
+                "owner": payload.owner.strip(),
+                "mac_address": payload.mac_address.strip(),
+                "experiment_id": experiment_id,
+                "experiment_name": None if experiment_id is not None else experiment_name,
+                "selected_sensors": sorted(set(payload.selectedSensors)),
+                "selected_parameters": sorted(set(payload.selectedParameters)),
+                "start": payload.dateRange.start.isoformat(),
+                "end": payload.dateRange.end.isoformat(),
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
     # Use an exclusive end boundary to avoid precision edge cases on single-day requests
     # (for example end=23:59:59.999Z). +1 ms preserves current UI semantics.
     end_exclusive = payload.dateRange.end + timedelta(milliseconds=1)
@@ -74,6 +95,7 @@ def post_fetch_data(payload: FetchDataRequest) -> list[FetchDataRow]:
     query = f"""
 WITH all_rows AS (
   SELECT
+    row_id,
     Timestamp,
     LLA,
     Variable,
@@ -95,7 +117,7 @@ label_ranked AS (
   SELECT
     LLA,
     Label AS latest_label,
-    ROW_NUMBER() OVER (PARTITION BY LLA ORDER BY Timestamp DESC) AS rn
+    ROW_NUMBER() OVER (PARTITION BY LLA ORDER BY Timestamp DESC, row_id DESC) AS rn
   FROM all_rows
   WHERE Label IS NOT NULL AND Label != ''
 ),
@@ -107,6 +129,7 @@ sensor_latest_label AS (
 windowed AS (
   SELECT
     t.Timestamp AS timestamp,
+    t.row_id AS row_id,
     t.LLA AS sensor,
     t.Variable AS parameter,
     t.Value AS value,
@@ -133,7 +156,7 @@ SELECT
   owner,
   mac_address
 FROM windowed
-ORDER BY timestamp ASC, sensor ASC, parameter ASC;
+ORDER BY timestamp ASC, sensor ASC, parameter ASC, row_id ASC;
 """
 
     query_parameters = [
@@ -159,8 +182,11 @@ ORDER BY timestamp ASC, sensor ASC, parameter ASC;
         }
     )
 
-    rows = run_query(query=query, query_parameters=query_parameters)
+    query_started = time.perf_counter()
+    rows, query_job = run_query_with_job(query=query, query_parameters=query_parameters)
+    query_ms = (time.perf_counter() - query_started) * 1000
 
+    materialize_model_started = time.perf_counter()
     response: list[FetchDataRow] = []
     for row in rows:
         label = row["label"]
@@ -180,4 +206,22 @@ ORDER BY timestamp ASC, sensor ASC, parameter ASC;
             )
         )
 
+    materialize_model_ms = (time.perf_counter() - materialize_model_started) * 1000
+    server_ms = None
+    if query_job.started is not None and query_job.ended is not None:
+        server_ms = (query_job.ended - query_job.started).total_seconds() * 1000
+    request.scope["state"]["fetch_metrics"].update(
+        {
+            "selection_signature": selection_signature,
+            "page_sequence": 1,
+            "rows_returned": len(response),
+            "bigquery_duration_ms": round(query_ms, 3),
+            "bigquery_server_ms": round(server_ms, 3) if server_ms is not None else None,
+            "bigquery_bytes_processed": int(query_job.total_bytes_processed or 0),
+            "materialization_duration_ms": round(materialize_model_ms, 3),
+            "model_normalization_duration_ms": None,
+            "complete": True,
+            "terminal_state": "complete",
+        }
+    )
     return response

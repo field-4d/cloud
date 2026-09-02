@@ -53,6 +53,10 @@ class Settings(BaseSettings):
         default="http://localhost:5173",
         validation_alias=AliasChoices("CORS_ALLOW_ORIGINS"),
     )
+    fetch_cursor_secret: str | None = PydField(
+        default=None,
+        validation_alias=AliasChoices("F4D_FETCH_CURSOR_SECRET"),
+    )
 
     sensors_data_table: str = "iucc-f4d.Field4D.F4D_sensors_data"
     permissions_table: str = "iucc-f4d.Field4D.F4D_permissions"
@@ -68,6 +72,7 @@ class Settings(BaseSettings):
         "access_manager_url",
         "firebase_project_id",
         "cors_allow_origins",
+        "fetch_cursor_secret",
         mode="before",
     )
     @classmethod

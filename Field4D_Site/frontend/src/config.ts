@@ -21,6 +21,13 @@ const getBaseUrl = () => {
 
 export const API_BASE_URL = getBaseUrl();
 
+export const USE_PAGED_FETCH =
+  import.meta.env.VITE_USE_PAGED_FETCH === 'true'
+  || (
+    import.meta.env.DEV
+    && import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
+  );
+
 // API endpoints
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth`,
@@ -35,7 +42,8 @@ export const API_ENDPOINTS = {
   USERS_SEARCH: `${API_BASE_URL}/api/users/search`,
   EXPERIMENT_SUMMARY: `${API_BASE_URL}/api/experiment-summary`,
   FETCH_DATA: `${API_BASE_URL}/api/fetch-data`,
+  FETCH_DATA_V2_PAGE: `${API_BASE_URL}/api/v2/fetch-data-page`,
 };
 
 // Analytics API endpoints
-export const API_ENDPOINTS_ANALYTICS = 'https://field4d-analytics-1000435921680.us-central1.run.app'; 
+export const API_ENDPOINTS_ANALYTICS = 'https://field4d-analytics-1000435921680.us-central1.run.app';

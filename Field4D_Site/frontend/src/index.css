@@ -128,6 +128,130 @@
   animation: fadeIn 0.3s ease-out forwards;
 }
 
+@keyframes field4d-logo-breathe {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes field4d-boot-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.field4d-loading-logo {
+  display: flex;
+  min-height: 88px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #58736c;
+  text-align: center;
+}
+
+.field4d-loading-logo__mark {
+  width: 88px;
+  transform-origin: center;
+  animation: field4d-logo-breathe 1.8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.field4d-loading-logo__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.field4d-loading-logo__label {
+  margin-top: -6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  animation: field4d-boot-message-in 400ms ease-out;
+}
+
+.field4d-app-boot {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 43%, rgba(138, 198, 187, 0.18), transparent 36%),
+    linear-gradient(150deg, #f8faf6 0%, #eef5f1 100%);
+  opacity: 1;
+  transition: opacity 250ms ease-out;
+}
+
+.field4d-app-boot--exiting {
+  opacity: 0;
+}
+
+.field4d-loading-logo--app-boot {
+  min-height: 0;
+  padding: 2rem;
+  color: #456860;
+}
+
+.field4d-loading-logo--app-boot .field4d-loading-logo__mark {
+  width: clamp(154px, 17vw, 205px);
+}
+
+.field4d-loading-logo--app-boot .field4d-loading-logo__label {
+  margin-top: -10px;
+  font-size: 0.9375rem;
+  letter-spacing: 0.025em;
+}
+
+.permission-loading-copy {
+  margin-bottom: 1rem;
+  color: #58736c;
+  font-size: 0.875rem;
+}
+
+.permission-selector-placeholder select {
+  color: #78918b;
+  background-color: #f4f8f7;
+  cursor: wait;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field4d-loading-logo__mark {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+  }
+
+  .field4d-loading-logo__label {
+    animation: none;
+  }
+
+  .field4d-app-boot {
+    transition: none;
+  }
+
+  .field4d-app-boot--exiting {
+    opacity: 1;
+  }
+}
+
 input,
 select,
 textarea,
@@ -394,4 +518,3 @@ select.experiment-select {
   background-color: #303030;
   opacity: 8%;
 }
- 

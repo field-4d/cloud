@@ -30,6 +30,49 @@ interface Permission {
   description?: string | null;
 }
 
+interface PermissionsResponse {
+  success: boolean;
+  permissions: Permission[];
+}
+
+const PERMISSIONS_ERROR_MESSAGE =
+  'Unable to access your account permissions. Please contact your system administrator to ensure your account has been properly configured.';
+
+// In-memory only: coalesce overlapping StrictMode/remount requests, then discard the result.
+// This deliberately provides no permission persistence or stale reuse across app boots.
+const inFlightPermissionRequests = new Map<string, Promise<PermissionsResponse>>();
+
+const requestFreshPermissions = (email: string): Promise<PermissionsResponse> => {
+  const requestKey = email.trim().toLowerCase();
+  const existingRequest = inFlightPermissionRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    const token = await getFirebaseToken();
+    const response = await fetch(
+      `${API_ENDPOINTS.PERMISSIONS}?email=${encodeURIComponent(email)}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+    );
+    if (!response.ok) throw new Error(PERMISSIONS_ERROR_MESSAGE);
+
+    const data = await response.json() as PermissionsResponse;
+    if (!data.success) throw new Error(PERMISSIONS_ERROR_MESSAGE);
+    return {
+      success: true,
+      permissions: Array.isArray(data.permissions) ? data.permissions : [],
+    };
+  })();
+
+  inFlightPermissionRequests.set(requestKey, request);
+  const clearRequest = () => {
+    if (inFlightPermissionRequests.get(requestKey) === request) {
+      inFlightPermissionRequests.delete(requestKey);
+    }
+  };
+  request.then(clearRequest, clearRequest);
+  return request;
+};
+
 type DeviceId = 1 | 2 | 3;
 interface SensorData {
   timestamp: string;
@@ -161,6 +204,7 @@ const Dashboard: React.FC = () => {
   const [selectedSensors, setSelectedSensors] = useState<SensorType[]>(['temperature']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permissionRequestAttempt, setPermissionRequestAttempt] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarWidth] = useState(420); // Increased from 192 to 320
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -187,8 +231,14 @@ const Dashboard: React.FC = () => {
   const [isExperimentSelectOpen, setIsExperimentSelectOpen] = useState(false);
 
   useEffect(() => {
-    fetchPermissions();
-  }, []);
+    let isActive = true;
+    void fetchPermissions(() => isActive);
+    return () => {
+      isActive = false;
+    };
+    // A changed attempt represents an explicit retry. The request remains fresh and in-memory only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionRequestAttempt]);
 
   /**
    * fetchPermissions
@@ -196,26 +246,19 @@ const Dashboard: React.FC = () => {
    * Sets permissions state and handles errors.
    * Side effect: may set selectedPermission and generate mock data.
    */
-  const fetchPermissions = async () => {
+  const fetchPermissions = async (isActive: () => boolean = () => true) => {
+    setLoading(true);
+    setError(null);
     try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
       if (!userData.email) {
         throw new Error('No user email found');
       }
 
-      const token = await getFirebaseToken();
-      const response = await fetch(`${API_ENDPOINTS.PERMISSIONS}?email=${encodeURIComponent(userData.email)}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!response.ok) {
-        throw new Error('Unable to access your account permissions. Please contact your system administrator to ensure your account has been properly configured.');
-      }
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error('Unable to access your account permissions. Please contact your system administrator to ensure your account has been properly configured.');
-      }
+      const data = await requestFreshPermissions(userData.email);
+      if (!isActive()) return;
 
-      const permissionsForFront: Permission[] = Array.isArray(data.permissions) ? data.permissions : [];
+      const permissionsForFront = data.permissions;
       const strongestRole = getStrongestDashboardRole(permissionsForFront);
       const uniqueOwnersForFront = Array.from(
         new Set(permissionsForFront.map((permission: Permission) => permission.owner))
@@ -237,7 +280,7 @@ const Dashboard: React.FC = () => {
         uniqueSystems: uniqueSystemsForFront,
       });
 
-      setPermissions(data.permissions);
+      setPermissions(permissionsForFront);
       setActorRole(strongestRole);
       localStorage.setItem(
         'userData',
@@ -247,16 +290,21 @@ const Dashboard: React.FC = () => {
           timestamp: Date.now(),
         })
       );
-      if (data.permissions.length > 0) {
-        setSelectedPermission(data.permissions[0]);
+      if (permissionsForFront.length > 0) {
+        setSelectedPermission(permissionsForFront[0]);
         generateMockData();
       }
       setLoading(false);
-      logger.info('Systems for Select a system:', data.permissions);
+      logger.info('Systems for Select a system:', permissionsForFront);
     } catch (err) {
+      if (!isActive()) return;
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
+  };
+
+  const retryPermissions = () => {
+    setPermissionRequestAttempt((attempt) => attempt + 1);
   };
 
   /**
@@ -726,16 +774,13 @@ const Dashboard: React.FC = () => {
     ).values()
   );
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 p-4">Error: {error}</div>;
-
   return (
-    <div className="flex h-screen w-screen bg-[#f7f8f3]">
+    <div className="flex h-screen w-screen bg-[#f7f8f3]" data-testid="dashboard-shell">
       {/* Sidebar */}
       {isSidebarCollapsed ? (
         <div className="w-full h-16 bg-[#f7f8f3] flex items-center border-b border-[#b2b27a] px-4 z-20 fixed top-0 left-0">
           <div className="flex items-center">
-            <img src="/logo.png" alt="Field4F Logo" className="w-10 h-10 mr-4" />
+            <img src="/logo.png" alt="Field4D Logo" className="w-10 h-10 mr-4" />
             <button
               className="bg-[#b2b27a] text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-[#8ac6bb] transition-colors"
               onClick={() => setIsSidebarCollapsed(false)}
@@ -752,7 +797,7 @@ const Dashboard: React.FC = () => {
         >
           {/* Logo and collapse button container */}
           <div className="flex-shrink-0 flex flex-col items-center mb-6">
-            <img src="/logo.png" alt="Field4F Logo" className="w-12 h-12 mb-2" />
+            <img src="/logo.png" alt="Field4D Logo" className="w-12 h-12 mb-2" />
             <button
               className="absolute top-4 right-2 bg-[#b2b27a] text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-[#8ac6bb] transition-colors"
               style={{ left: sidebarWidth - 24, zIndex: 20 }}
@@ -788,7 +833,59 @@ const Dashboard: React.FC = () => {
               </button>
 
             {isDataViewerOpen && activeMainModule === 'data_viewer' && (
-              <div className="rounded-lg bg-white/60 p-2">
+              <div
+                className="min-h-[380px] rounded-lg bg-white/60 p-2"
+                data-testid="permission-panel"
+                aria-busy={loading}
+              >
+            {loading ? (
+              <div data-testid="permission-loading-state">
+                <p className="permission-loading-copy" role="status" aria-live="polite">
+                  Loading fresh access details...
+                </p>
+                <div className="space-y-6" aria-hidden="true">
+                  {[
+                    ['Owner', 'Loading owners...'],
+                    ['System', 'Loading systems...'],
+                    ['Experiment', 'Loading experiments...'],
+                  ].map(([label, placeholder]) => (
+                    <div key={label} className="permission-selector-placeholder">
+                      <span className="mb-2 block text-sm font-medium text-[#709f96]">
+                        Select {label}
+                      </span>
+                      <select
+                        disabled
+                        tabIndex={-1}
+                        className="w-full rounded border border-[#c7d7d2] p-2"
+                        data-testid={`permission-placeholder-${label.toLowerCase()}`}
+                      >
+                        <option>{placeholder}</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : error ? (
+              <div
+                className="flex min-h-[336px] flex-col items-center justify-center px-4 text-center"
+                data-testid="permission-error-state"
+                role="alert"
+              >
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-lg text-red-600">
+                  !
+                </div>
+                <h2 className="mb-2 text-base font-semibold text-[#405f57]">Access details unavailable</h2>
+                <p className="mb-4 max-w-xs text-sm text-[#64736f]">{error}</p>
+                <button
+                  type="button"
+                  onClick={retryPermissions}
+                  className="rounded-md bg-[#7bb8ac] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#679f95] focus:outline-none focus:ring-2 focus:ring-[#7bb8ac] focus:ring-offset-2"
+                >
+                  Retry access check
+                </button>
+              </div>
+            ) : (
+              <>
             {/* Owner Selection - only show if user has more than one owner */}
             {uniqueOwners.length > 1 && (
               <div className="mb-6">
@@ -796,6 +893,7 @@ const Dashboard: React.FC = () => {
                   Select Owner
                 </label>
                 <select 
+                  aria-label="Select Owner"
                   className="w-full p-2 border border-[#b2b27a] rounded text-[#8ac6bb] focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
                   value={selectedOwner}
                   onChange={(e) => {
@@ -821,6 +919,7 @@ const Dashboard: React.FC = () => {
                 Select System
               </label>
               <select 
+                aria-label="Select System"
                 className="w-full p-2 border border-[#b2b27a] rounded text-[#8ac6bb] focus:ring-[#8ac6bb] focus:border-[#8ac6bb]"
                 onChange={(e) => {
                   const permission = permissions.find(p => p.mac_address === e.target.value);
@@ -860,6 +959,7 @@ const Dashboard: React.FC = () => {
                     const shouldUseSize = inactiveExperiments.length > 5 && isExperimentSelectOpen;
                     return (
                       <select
+                        aria-label="Select Experiment"
                         ref={experimentSelectRef}
                         value={selectedExperimentId !== null ? String(selectedExperimentId) : ''}
                         onChange={(e) => {
@@ -938,6 +1038,8 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             )}
+              </>
+            )}
               </div>
             )}
             </div>
@@ -999,6 +1101,24 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
 
+        {activeMainModule === 'data_viewer' && !selectedPermission && (
+          <div
+            className="flex h-full min-h-[360px] items-center justify-center px-8"
+            data-testid="dashboard-main-frame"
+          >
+            <div className="w-full max-w-2xl rounded-2xl border border-[#d8e5e1] bg-white/75 px-8 py-12 text-center shadow-sm">
+              <h1 className="mb-3 text-2xl font-semibold text-[#405f57]">Field4D Data Viewer</h1>
+              <p className="text-sm leading-6 text-[#687873]">
+                {loading
+                  ? 'The dashboard is ready while your fresh access details load.'
+                  : error
+                    ? 'The dashboard is available, but access details could not be loaded.'
+                    : 'No data systems are available for this account.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeMainModule === 'data_viewer' && selectedPermission && (
           <div className="space-y-4">
             <DataSelector 
@@ -1058,4 +1178,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

@@ -1,7 +1,7 @@
 # Field4D FastAPI Backend
 
 **Author:** Nir Averbuch  
-**Last updated:** 2026-03-29
+**Last updated:** 2026-09-02
 
 Python **FastAPI** service that reads long-format sensor data from **Google BigQuery** and exposes REST endpoints for authentication, permissions, experiment summaries, and time-series fetch. The browser never queries BigQuery directly.
 
@@ -19,6 +19,7 @@ Python **FastAPI** service that reads long-format sensor data from **Google BigQ
 - **Analytics health proxy** — `GET /api/analytics-health` calls `{GCP_ANALYTICS_URL}/health` for CORS-safe monitoring from the SPA
 - **CORS** — Configurable via `CORS_ALLOW_ORIGINS` (default includes Vite dev origin)
 - **OpenAPI** — Interactive docs at `/docs` when the server is running
+- **Bounded large-data transport** — 100K versioned signed-cursor pages backed by a fixed BigQuery snapshot and one immutable Storage read stream, with a finite 24 MiB row-body ceiling
 
 ---
 
@@ -34,12 +35,16 @@ backend_fastapi/
 ├── config/
 │   └── settings.py              # Pydantic BaseSettings: project, table IDs, URLs, CORS
 ├── services/
-│   └── bigquery_client.py       # run_query() helper for parameterized BigQuery jobs
+│   ├── bigquery_client.py       # Parameterized BigQuery query/read clients
+│   └── fetch_cursor.py          # Signed, compressed opaque cursor state
+├── middleware/
+│   └── fetch_metrics.py         # Value-free fetch timing/size observability
 ├── routers/
 │   ├── auth.py                  # POST /api/auth
 │   ├── permissions.py           # GET /api/permissions
 │   ├── experiment_summary.py    # POST /api/experiment-summary
 │   ├── fetch_data.py            # POST /api/fetch-data
+│   ├── fetch_data_v2.py         # POST /api/v2/fetch-data-page
 │   └── analytics_health.py      # GET /api/analytics-health
 └── utils/                       # Optional shared helpers (e.g. label parsing)
 ```
@@ -57,21 +62,21 @@ backend_fastapi/
    pip install -r requirements.txt
    ```
 
-3. **Credentials**
+3. **Credentials and local configuration**
 
-   Create `backend_fastapi/.env` with at least:
+   BigQuery and Firebase Admin clients use Google Application Default Credentials (ADC).
+   For local development, use your normal ADC setup or point
+   `GOOGLE_APPLICATION_CREDENTIALS` to a credential file stored outside Git. Do not copy a
+   service-account JSON file into the repository.
 
-   - GCP project and service account fields used by the BigQuery client (`GOOGLE_CLOUD_PROJECT` / `GCP_PROJECT_ID`, `GCP_CLIENT_EMAIL`, `GCP_PRIVATE_KEY`, etc.)
-   - `GCP_AUTH_URL` (or `AUTH_URL`) for login
-   - Optionally `GCP_ANALYTICS_URL` for analytics health
-   - Optionally `CORS_ALLOW_ORIGINS` (comma-separated origins, or `*`)
+   Use `backend_fastapi/.env` only for application configuration such as
+   `GOOGLE_CLOUD_PROJECT`, optional legacy `GCP_AUTH_URL`, optional
+   `GCP_ANALYTICS_URL`, `FIREBASE_PROJECT_ID`, `F4D_FETCH_CURSOR_SECRET`, and
+   `CORS_ALLOW_ORIGINS`. Do not commit `.env`.
 
-   **Private key:** In `.env`, newlines in the private key are often escaped as `\n`; the Google client libraries accept this.
-
-   **Do not commit `.env`.**
-
-   **Cloud Run note:** You can also mount a Secret Manager file and point the app at it with
-   `ENV_FILE_PATH`. The backend will use that file instead of the local `backend_fastapi/.env`.
+   In production, Cloud Run uses its attached runtime service identity through ADC.
+   `ENV_FILE_PATH` may point to an existing Secret Manager-mounted application-config file;
+   it is not a reason to commit credential material.
 
 ---
 
@@ -305,6 +310,10 @@ The backend applies a half-open timestamp window internally: `Timestamp >= start
 
 **`label` field:** Latest non-empty `Label` for that `LLA` in the experiment (from all history in BigQuery for that experiment), not only rows inside `dateRange`.
 
+**Compatibility/authentication:** Phase 4B did not change this endpoint's authentication,
+authorization, bearer-token, login, or session behavior. Its JSON array contract remains the
+legacy/F4D Agent compatibility path.
+
 **Example (curl):**
 
 ```bash
@@ -312,6 +321,30 @@ curl -s -X POST http://localhost:3001/api/fetch-data \
   -H "Content-Type: application/json" \
   -d "{\"owner\":\"owner_id\",\"mac_address\":\"aa:bb:cc:dd:ee:ff\",\"experiment\":\"exp_1\",\"selectedSensors\":[\"LLA_1\"],\"selectedParameters\":[\"temperature\"],\"dateRange\":{\"start\":\"2025-03-01T00:00:00Z\",\"end\":\"2025-03-02T00:00:00Z\"}}"
 ```
+
+---
+
+### `POST /api/v2/fetch-data-page`
+
+Returns the same nine public row fields as `/api/fetch-data`, but in bounded, versioned pages.
+The first request supplies the normal selection plus optional `pageSize`; continuation requests
+send the unchanged selection and the opaque `cursor` returned by the preceding page.
+
+- Default page size: 100,000 rows; maximum requested page size: 100,000 rows.
+- Bounded uncompressed row-body ceiling: 24 MiB per page. This finite ceiling was sized
+  to permit the validated 100K production page; it is not an unlimited response target.
+- One fixed BigQuery time-travel snapshot and one ordered Storage read stream per selection.
+- Total order: `timestamp`, `sensor`, `parameter`, then private globally unique `row_id`.
+- Cursors are signed, selection-bound, page-size-bound, expiring, and retry-idempotent.
+- Responses include `page_sequence`, `rows_in_page`, `cumulative_rows`, `total_rows`,
+  `next_cursor`, and `complete`.
+- Gzip is enabled for eligible responses. Timing/size headers are exposed through CORS.
+
+The full request, response, cursor, retry, expiry, and error contract is documented in
+`../docs/architecture/FIELD4D_PHASE4B_CURSOR_PAGE_CONTRACT_2026-08-10.md`.
+
+**Authentication compatibility:** this endpoint intentionally inherits the current fetch-data
+security posture. Phase 4B does not introduce Firebase enforcement or new bearer-token behavior.
 
 ---
 
@@ -338,12 +371,13 @@ Proxies to `{GCP_ANALYTICS_URL}/health`.
 | Variable | Purpose |
 |----------|---------|
 | `GOOGLE_CLOUD_PROJECT` / `GCP_PROJECT_ID` | GCP project |
-| `GCP_CLIENT_EMAIL`, `GCP_PRIVATE_KEY`, … | Service account for BigQuery |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Optional local-only path to an ADC credential file stored outside Git; Cloud Run uses its attached identity |
 | `GCP_AUTH_URL` / `AUTH_URL` | External login service (legacy compatibility path) |
 | `FIREBASE_PROJECT_ID` | Optional Firebase audience check for ID tokens |
 | `GCP_ANALYTICS_URL` / `ANALYTICS_URL` | Analytics base URL for health |
 | `CORS_ALLOW_ORIGINS` | Comma-separated list or `*`. Default in code: `http://localhost:5173` |
 | `ENV_FILE_PATH` | Optional path to a mounted `.env` file (useful on Cloud Run with Secret Manager) |
+| `F4D_FETCH_CURSOR_SECRET` | Optional shared HMAC secret for cursors. Required before enabling paged fetch across multiple workers/revisions; local fallback is process-scoped. |
 
 Default **BigQuery table IDs** are set in `config/settings.py` (`sensors_data_table`, `permissions_table`, `mac_to_device_table`, `user_table`).
 
@@ -358,6 +392,9 @@ Default **BigQuery table IDs** are set in `config/settings.py` (`sensors_data_ta
 | `fastapi` | Web framework |
 | `uvicorn[standard]` | ASGI server |
 | `google-cloud-bigquery` | BigQuery client |
+| `google-cloud-bigquery-storage` | Bounded Arrow pages from an immutable query-result stream |
+| `pyarrow` | Arrow batch conversion |
+| `orjson` | Bounded response serialization |
 | `pydantic-settings` | `.env` + typed settings |
 | `python-dotenv` | Env loading (via pydantic-settings) |
 | `httpx` | HTTP client for auth + analytics proxies |
