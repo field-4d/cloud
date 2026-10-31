@@ -1,6 +1,6 @@
 # F4D Serial Ingest Service
 
-This project reads messages from a serial-connected device, parses structured payloads, forwards live events to ApiSync over WebSocket, writes aggregated sensor values to DuckDB on a timed flush cycle, and uploads new rows to BigQuery (automatically after each successful flush, or on demand via CLI / `run_sync`).
+This project reads messages from a serial-connected device, parses structured payloads, maintains device-aware NORMAL/LIVE Last_Package delivery to ApiSync over WebSocket, writes aggregated sensor values to DuckDB on a timed flush cycle, and uploads new rows to BigQuery (automatically after each successful flush, or on demand via CLI / `run_sync`).
 
 Optionally, a Pi-attached **virtual freezer sensor** (MAX31855 thermocouple over SPI) can inject temperature packets into the same flash-buffer and WebSocket flow, with configurable email alerts when the freezer is too warm.
 
@@ -12,9 +12,11 @@ Optionally, a Pi-attached **virtual freezer sensor** (MAX31855 thermocouple over
   - `PING` lines: extracts the LLA and sends a WebSocket `Ping` event.
   - antenna initialization logs: emits `antenna_log` and prints details.
   - JSON sensor payload blocks (`JSON_START`/`JSON_END`):
-    - updates an in-memory flash buffer,
-    - sends live `Last_Package` payload to ApiSync (queued sender thread),
-    - and gets persisted to DuckDB on the next 3-minute flush.
+    - update the scientific in-memory flash buffer,
+    - route `Last_Package` independently according to device state:
+      - **NORMAL:** keep only the latest packet per LLA in a dedicated cache and send one multi-sensor batch at the synchronized 3-minute boundary,
+      - **LIVE:** preserve the legacy behavior and queue every incoming sensor packet immediately,
+    - and get persisted to DuckDB on the next 3-minute flush.
 - Syncs metadata from the Firestore-backed API into DuckDB `sensors_metadata`, including multiple active experiments when the payload contains more than one `Exp_Name`.
 - Uploads DuckDB `sensors_data` and `packet_events` to BigQuery through the `f4d-bq-sync` HTTP service:
   - **Automatic:** after a successful timed flush, `services/flush_service.py` calls `DB.run_sync()` for all experiments marked active in `sensors_metadata`.
@@ -91,7 +93,10 @@ F4D/
 │   └── port.py
 ├── services/
 │   ├── __init__.py
+│   ├── device_service.py
+│   ├── device_state.py
 │   ├── flush_service.py
+│   ├── last_package_cache.py
 │   ├── metadata_service.py
 │   └── virtual_sensor_service.py
 ├── sync/
@@ -128,11 +133,18 @@ This is the exact flow when a sensor package is received:
 - Update `last_packet_time`.
 - Store packet event arrival timestamps in UTC ISO format with millisecond precision and trailing `Z`.
 
-5. Immediate live sync:
-`last_package(packet_for_buffer)` sends current sensor snapshot to ApiSync via WebSocket.
+5. Last_Package routing (independent from the scientific flash buffer):
+- `services.device_state.is_live()` determines the operational mode.
+- **LIVE:** `enqueue_last_package(packet_for_buffer)` preserves the legacy immediate-per-packet WebSocket behavior.
+- **NORMAL:** `update_last_package_cache(packet_for_buffer)` keeps only the latest merged packet for each LLA. Repeated packets in the same interval update that sensor's cached values rather than accumulating history.
 
-6. Timed flush thread:
-`start_flush_thread()` runs a daemon worker that waits for the next 3-minute boundary.
+6. Timed flush / device heartbeat:
+`start_flush_thread()` runs a daemon worker aligned to the next 3-minute boundary.
+- At each boundary, `send_device_heartbeat()` reports device health and receives the stream lease (`active`, `open_until`, `remaining_seconds`).
+- `update_stream_state()` updates the Pi-local NORMAL/LIVE state.
+- A LIVE lease also expires locally when `open_until` passes.
+- In NORMAL, the Last_Package cache is popped and queued as one multi-sensor batch.
+- On a `NORMAL -> LIVE` transition, the accumulated NORMAL cache is also popped and sent once before immediate LIVE behavior continues.
 
 7. Metadata refresh before write:
 - `sync_metadata_for_interval()` refreshes local metadata so the interval write uses the latest active experiment rows.
@@ -188,8 +200,9 @@ sequenceDiagram
   - Opens the serial port via `open_serial_with_auto_recovery` (Linux: can detach `screen` holding `/dev/ttyACM0`).
   - Reads serial data continuously.
   - Routes parsed messages by type.
-  - Sends PING and queues Last_Package messages to ApiSync.
-  - Buffers sensor packets in flash memory.
+  - Sends PING messages immediately.
+  - Routes Last_Package independently: immediate queueing in LIVE, latest-per-LLA caching in NORMAL.
+  - Buffers every sensor packet in the scientific flash-memory path regardless of NORMAL/LIVE mode.
 
 - `parser/json_parser.py`
   - Detects and parses:
@@ -202,8 +215,23 @@ sequenceDiagram
   - Supports update, snapshot pop, and restore for fault-tolerant flush.
   - Stores packet arrival timestamps in UTC ISO `...Z` format before DB normalization.
 
+- `services/device_service.py`
+  - Collects device health (local IP, boot time, uptime, disk capacity/free space, timezone).
+  - Sends the device heartbeat to ApiSync and receives the current stream lease/state.
+
+- `services/device_state.py`
+  - Maintains Pi-local `NORMAL` / `LIVE` state.
+  - Tracks `open_until` in UTC and returns to NORMAL automatically when the lease expires.
+
+- `services/last_package_cache.py`
+  - Thread-safe cache dedicated to NORMAL Last_Package delivery.
+  - Keeps one latest merged packet per LLA and supports atomic snapshot/pop at the 3-minute boundary.
+  - Is independent from the scientific flash buffer used for DuckDB/BigQuery.
+
 - `services/flush_service.py`
   - Flush worker aligned to 3-minute clock boundaries.
+  - Sends the device heartbeat and updates local NORMAL/LIVE state.
+  - In NORMAL (and on NORMAL -> LIVE transition), pops and queues the Last_Package batch.
   - Refreshes metadata before each interval write.
   - Moves buffered data into DuckDB `sensors_data` and `packet_events`.
   - On successful write, runs `run_sync()` for all active experiments (both tables) unless an exception is raised (errors are logged only).
@@ -229,7 +257,9 @@ sequenceDiagram
 - `sync/ApiSync_client.py`
   - WebSocket client for:
     - `send_ping(lla)`
-    - queued `Last_Package` uploads (started from `main.py` via `start_last_package_sender`)
+    - queued single-sensor `Last_Package` uploads used by LIVE mode
+    - queued multi-sensor `Last_Package` batches used by NORMAL mode
+  - Both modes use the same background sender and ApiSync `/ws/ping` contract.
 
 - `initializer/env_initializer.py`
   - Creates/updates `.env` with `HOSTNAME`, `MAC_ADDRESS`, `API_SYNC_URL`, and `F4D_BQ_SYNC_URL`.
@@ -325,6 +355,30 @@ Config-driven packet builder:
 ```bash
 python3 -m sensors.freezer_reader
 ```
+
+## Device NORMAL / LIVE Last_Package Modes
+
+`Last_Package` freshness is an operational path and is intentionally separate from the scientific DuckDB/BigQuery path.
+
+### NORMAL (default)
+
+- Every incoming sensor packet still updates the scientific flash buffer.
+- A dedicated Last_Package cache stores only the latest packet for each LLA.
+- At the synchronized 3-minute boundary, the Pi sends a device heartbeat and one multi-sensor Last_Package batch.
+- After the cache snapshot is popped, the next interval begins with an empty Last_Package cache.
+- This reduces ApiSync/WebSocket request volume while preserving the full scientific interval aggregation and packet-event history.
+
+### LIVE (temporary lease)
+
+- The ApiSync device stream lease sets `active=true` until `open_until`.
+- Once the Pi observes LIVE through its heartbeat, each new sensor packet is queued immediately for Last_Package upload, matching the legacy behavior.
+- When LIVE expires locally or the backend reports the stream inactive, new packets return to NORMAL caching.
+- Opening or stopping LIVE does not stop the experiment, serial collection, DuckDB writes, or BigQuery synchronization.
+
+### Transition behavior
+
+- `NORMAL -> LIVE`: send/pop the accumulated NORMAL Last_Package cache once, then use immediate LIVE delivery for subsequent packets.
+- `LIVE -> NORMAL`: subsequent packets enter the Last_Package cache; the scientific flash buffer continues independently throughout.
 
 ## Data Tables (DuckDB)
 
@@ -686,8 +740,11 @@ python3 main.py
 What to look for in logs:
 - `[SYNC] Waiting for 3-minute sync clock...`
 - `[FLASH] Updated buffer for sensor: ...`
-- `[Web-Socket] Queued sensor data for upload: ...`
+- In **NORMAL**: `[Last-Package Cache] Updated sensor: ...`
+- In **LIVE**: `[Web-Socket] Queued sensor data for upload: ...` followed by `[Fire-Store] LastPackage for ... received=True`
 - At boundary: `[SYNC] 3-minute boundary reached...`
+- Device state: `[DEVICE] Heartbeat OK ...` and `[DEVICE STATE] Mode remains NORMAL`, `NORMAL -> LIVE`, or `LIVE -> NORMAL`
+- NORMAL batch: `[Last-Package Batch] Queued ... sensors for upload` followed by `[Fire-Store] LastPackage batch for ... sensors received=True`
 - Metadata refresh: `[METADATA] Starting metadata refresh before interval write...`
 - Write summary: `[WRITE:sensors_data] ...` and `[WRITE:packet_events] ...`
 - After a successful write: `[BQ SYNC] - Starting Automatic BigQuery sync for active experiments...` then `[BQ SYNC RESULT] ...` or `[BQ SYNC ERROR] ...`

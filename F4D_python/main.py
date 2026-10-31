@@ -5,6 +5,10 @@ from DB import update_flash_memory
 from services import start_flush_thread
 from helpers import open_serial_with_auto_recovery
 
+# import for Live and Normal mode for SP last package sender
+from services.device_state import is_live
+from services.last_package_cache import update_last_package_cache
+
 def main():
     start_flush_thread()  # single timed worker: metadata sync + flush
     start_last_package_sender()
@@ -46,11 +50,24 @@ def main():
                 print(f"[FLASH] Failed to update flash memory: {e}")
                 continue
 
-            queued = enqueue_last_package(packet_for_buffer)
-            if queued:
-                print(f"[Web-Socket] Queued sensor data for upload: {ipv6}")
+            # queued = enqueue_last_package(packet_for_buffer)
+            # if queued:
+            #     print(f"[Web-Socket] Queued sensor data for upload: {ipv6}")
+            # else:
+            #     print(f"[Web-Socket] Failed to queue sensor data: {ipv6}")
+            
+            if is_live():
+                # LIVE: keep the current behavior exactly as it is today.
+                queued = enqueue_last_package(packet_for_buffer)
+                if queued:
+                    print(f"[Web-Socket] Queued sensor data for upload: {ipv6}")
+                else:
+                    print(f"[Web-Socket] Failed to queue sensor data: {ipv6}")
             else:
-                print(f"[Web-Socket] Failed to queue sensor data: {ipv6}")
+                # NORMAL: do not send Last_Package immediately.
+                # Merge the latest values for this sensor into the separate cache.
+                update_last_package_cache(packet_for_buffer)
+                print(f"[Last-Package Cache] Updated sensor: {ipv6}")
         else:
             print(f"unknown packet type: {packet_type}")
             print(packet)

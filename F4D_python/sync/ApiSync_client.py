@@ -109,6 +109,7 @@ async def send_last_package_async(packet: dict):
         "sensors": packet
     }
 
+
     async with websockets.connect(ws_url) as websocket:
         await websocket.send(json.dumps(payload))
         response = await websocket.recv()
@@ -133,26 +134,55 @@ def transform_last_package(packet: dict) -> dict:
 def _sender_worker():
     """
     Background worker:
-    waits for packets from the queue and sends them one by one.
+    waits for single packets or aggregated batches from the queue
+    and sends them through the existing Last_Package WebSocket path.
     """
     print("[Web-Socket] Sender thread started")
 
     while True:
-        packet = _last_package_queue.get()
+        item = _last_package_queue.get()
 
         try:
-            transformed_packet = transform_last_package(packet)
+            is_batch = (
+                isinstance(item, dict)
+                and item.get("_last_package_batch") is True
+            )
+
+            if is_batch:
+                transformed_packet = item.get("sensors") or {}
+            else:
+                transformed_packet = transform_last_package(item)
 
             start = time.time()
-            response = asyncio.run(send_last_package_async(transformed_packet))
+
+            response = asyncio.run(
+                send_last_package_async(transformed_packet)
+            )
+
             elapsed = time.time() - start
 
             try:
                 response = json.loads(response)
                 received = response.get("received", False)
-                ipv6 = packet.get("ipv6", "unknown")
-                print(f"[Fire-Store] LastPackage for {ipv6} received={received}")
-                print(f"[Fire-Store] Send+response time: {elapsed:.4f} seconds")
+
+                if is_batch:
+                    print(
+                        f"[Fire-Store] LastPackage batch "
+                        f"for {len(transformed_packet)} sensors "
+                        f"received={received}"
+                    )
+                else:
+                    ipv6 = item.get("ipv6", "unknown")
+                    print(
+                        f"[Fire-Store] LastPackage for {ipv6} "
+                        f"received={received}"
+                    )
+
+                print(
+                    f"[Fire-Store] Send+response time: "
+                    f"{elapsed:.4f} seconds"
+                )
+
             except json.JSONDecodeError:
                 print("[Web-Socket] ApiSync returned non-JSON response")
 
@@ -189,7 +219,36 @@ def enqueue_last_package(packet: dict) -> bool:
     except queue.Full:
         ipv6 = packet.get("ipv6", "unknown")
         print(f"[Web-Socket] Queue full, dropping packet from {ipv6}")
+
         return False
+
+def enqueue_last_package_batch(sensors: dict) -> bool:
+    """
+    Queue an already-aggregated multi-sensor Last_Package batch.
+
+    sensors format:
+    {
+        "<LLA>": { ... sensor fields ... },
+        "<LLA>": { ... sensor fields ... }
+    }
+    """
+    if not sensors:
+        return False
+
+    try:
+        _last_package_queue.put_nowait({
+            "_last_package_batch": True,
+            "sensors": sensors,
+        })
+        return True
+
+    except queue.Full:
+        print(
+            f"[Web-Socket] Queue full, dropping Last_Package batch "
+            f"with {len(sensors)} sensors"
+        )
+        return False
+
 
 
 def get_last_package_queue_size() -> int:
