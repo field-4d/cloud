@@ -9,10 +9,18 @@ from helpers import open_serial_with_auto_recovery
 from services.device_state import is_live
 from services.last_package_cache import update_last_package_cache
 
+from services.virtual_sensor_service import start_virtual_freezer_sensor_thread
+
 def main():
     start_flush_thread()  # single timed worker: metadata sync + flush
     start_last_package_sender()
-
+    
+    start_virtual_freezer_sensor_thread(
+        update_flash_memory_fn=update_flash_memory,
+        enqueue_last_package_fn=enqueue_last_package,
+        update_last_package_cache_fn=update_last_package_cache,
+        is_live_fn=is_live,
+    )
     ser = open_serial_with_auto_recovery("/dev/ttyACM0", 115200)
     port = SerialPort("/dev/ttyACM0", 115200)
 
