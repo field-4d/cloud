@@ -8,6 +8,8 @@ from sensors.freezer_reader import create_freezer_reader
 def start_virtual_freezer_sensor_thread(
     update_flash_memory_fn,
     enqueue_last_package_fn,
+    update_last_package_cache_fn,
+    is_live_fn,
     logger=print,
 ):
     """
@@ -83,7 +85,20 @@ def start_virtual_freezer_sensor_thread(
                 packet = reader.read_packet()
 
                 update_flash_memory_fn(packet)
-                enqueue_last_package_fn(packet)
+
+                if is_live_fn():
+                    queued = enqueue_last_package_fn(packet)
+                    if not queued:
+                        logger(
+                            f"[FREEZER] Failed to queue LIVE Last_Package: "
+                            f"{packet.get('ipv6')}"
+                        )
+                else:
+                    update_last_package_cache_fn(packet)
+                    logger(
+                        f"[Last-Package Cache] Updated freezer: "
+                        f"{packet.get('ipv6')}"
+                    )
 
                 if alert_enabled:
                     temp_value = packet.get(temp_key)
